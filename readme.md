@@ -707,7 +707,224 @@ python search_with_stream.py
   测试完成: 2025-10-24 14:24:56
 ```
 
-可以看到，由于嵌入的相似性原因，LLM有概率会把“优秀学生”（学校的荣誉称号）近似为“国家奖学金”（称号≠奖学金），这个问题需要后续的微调embedding来解决。
+可以看到，由于嵌入的相似性原因，LLM有概率会把"优秀学生"（学校的荣誉称号）近似为"国家奖学金"（称号≠奖学金），这个问题需要后续的微调embedding来解决。
+
+## 🔄 代码更新与维护
+
+### 日常启动流程
+
+**首次部署后，每次使用只需：**
+
+#### 方式 1: 快速启动脚本（推荐）
+
+在项目根目录创建 `start.sh`：
+
+```bash
+#!/bin/bash
+
+echo "🚀 启动 Graph-RAG-Agent..."
+
+# 1. 检查 Docker 是否运行
+if ! docker info > /dev/null 2>&1; then
+    echo "📦 启动 Docker Desktop..."
+    open -a Docker  # macOS 用户
+    # Linux 用户使用: sudo systemctl start docker
+    echo "⏳ 等待 Docker 启动 (30秒)..."
+    sleep 30
+fi
+
+# 2. 启动 Neo4j
+echo "🗄️  启动 Neo4j 数据库..."
+docker compose up -d
+
+# 3. 激活 Python 环境并启动后端
+echo "🔧 启动后端服务..."
+conda activate graphrag
+python server/main.py &
+
+# 4. 等待后端启动
+sleep 5
+
+# 5. 启动前端
+echo "🎨 启动前端界面..."
+streamlit run frontend/app.py
+```
+
+赋予执行权限并运行：
+```bash
+chmod +x start.sh
+./start.sh
+```
+
+#### 方式 2: 手动启动
+
+```bash
+# 1. 确保 Docker Desktop 运行（查看菜单栏是否有 🐋 图标）
+open -a Docker  # macOS
+# sudo systemctl start docker  # Linux
+
+# 2. 启动 Neo4j
+docker compose up -d
+
+# 3. 激活环境并启动后端（终端1）
+conda activate graphrag
+python server/main.py
+
+# 4. 启动前端（新开终端2）
+conda activate graphrag
+streamlit run frontend/app.py
+
+# 访问 http://localhost:8501
+```
+
+### 代码更新流程
+
+执行 `git pull` 后，根据更新内容执行相应操作：
+
+#### 自动检查更新影响
+
+创建 `check_update.sh` 脚本：
+
+```bash
+#!/bin/bash
+
+echo "🔍 检查代码更新影响..."
+
+# 检查依赖变化
+if git diff HEAD~1 HEAD --name-only | grep -q "requirements.txt"; then
+    echo "⚠️  依赖文件已更新，需要执行："
+    echo "   pip install -r requirements.txt --upgrade"
+fi
+
+# 检查配置变化
+if git diff HEAD~1 HEAD --name-only | grep -q ".env.example\|settings.py"; then
+    echo "⚠️  配置文件已更新，需要检查："
+    echo "   diff .env .env.example"
+    echo "   检查 graphrag_agent/config/settings.py"
+fi
+
+# 检查图谱构建逻辑变化
+if git diff HEAD~1 HEAD --name-only | grep -q "graphrag_agent/graph/\|graphrag_agent/community/"; then
+    echo "⚠️  图谱相关代码已更新，建议："
+    echo "   python graphrag_agent/integrations/build/main.py"
+fi
+
+# 检查 Docker 配置变化
+if git diff HEAD~1 HEAD --name-only | grep -q "docker-compose.yaml"; then
+    echo "⚠️  Docker 配置已更新，需要执行："
+    echo "   docker compose down && docker compose up -d"
+fi
+
+# 显示具体变动
+echo ""
+echo "📝 具体变动文件："
+git diff HEAD~1 HEAD --name-status
+```
+
+**使用方法：**
+```bash
+chmod +x check_update.sh
+git pull
+./check_update.sh
+```
+
+#### 快速更新流程（推荐）
+
+适用于大多数情况的更新步骤：
+
+```bash
+# 1. 拉取最新代码
+git pull
+
+# 2. 更新 Python 依赖
+conda activate graphrag
+pip install -r requirements.txt --upgrade
+pip install -e . --upgrade
+
+# 3. 检查配置文件（手动对比 .env 和 .env.example）
+diff .env .env.example
+# 如有新增配置项，手动添加到 .env
+
+# 4. 重启服务
+docker compose restart
+# 然后重启 Python 后端和前端服务
+
+# 5. 测试验证
+cd test/
+python search_without_stream.py
+```
+
+#### 根据更新类型的详细操作
+
+| 更新内容 | 判断方法 | 需要的操作 | 耗时 |
+|---------|---------|-----------|------|
+| **Python 依赖** | `git diff HEAD~1 HEAD requirements.txt` | `pip install -r requirements.txt --upgrade` | ~2分钟 |
+| **配置文件** | `.env.example` 或 `settings.py` 变化 | 手动对比更新 `.env` | ~5分钟 |
+| **Docker 配置** | `docker-compose.yaml` 变化 | `docker compose down && docker compose up -d` | ~2分钟 |
+| **搜索/Agent 逻辑** | `graphrag_agent/search/` 或 `agents/` 变化 | 仅需重启服务 | ~1分钟 |
+| **实体抽取逻辑** | `graphrag_agent/graph/extraction/` 变化 | 增量更新图谱 | ~10-30分钟 |
+| **实体类型定义** | `entity_types` 或 `relationship_types` 变化 | 完全重建图谱 | ~数小时 |
+
+#### 何时需要重建知识图谱？
+
+**需要完全重建：**
+- ✅ 实体/关系抽取 Prompt 大幅修改
+- ✅ 实体类型定义变化（`entity_types` 修改）
+- ✅ 关系类型定义变化（`relationship_types` 修改）
+
+**只需增量更新：**
+- ⚠️ 实体抽取算法优化
+- ⚠️ 新增文档到 `files/` 目录
+
+```bash
+# 增量更新（推荐，更快）
+python graphrag_agent/integrations/build/incremental_update.py --once
+
+# 完全重建（仅在必要时）
+python graphrag_agent/integrations/build/main.py
+```
+
+**无需重建：**
+- ❌ 只改了搜索逻辑
+- ❌ 只改了 Agent 推理逻辑
+- ❌ 只改了前端 UI
+- ❌ 只改了性能优化参数
+
+### 关闭系统
+
+```bash
+# 方式 1: 优雅关闭
+# 在运行服务的终端按 Ctrl+C
+
+# 方式 2: 停止 Neo4j 容器
+docker compose down
+
+# 方式 3: 停止 Docker Desktop（释放所有资源）
+# macOS: 菜单栏图标 -> Quit Docker Desktop
+# Linux: sudo systemctl stop docker
+```
+
+### 配置文件备份建议
+
+```bash
+# 备份您的自定义配置
+cp .env .env.backup
+cp graphrag_agent/config/settings.py graphrag_agent/config/settings.py.backup
+
+# git pull 后如果配置冲突，可以还原
+```
+
+### Docker 自动启动（可选）
+
+**macOS 用户：**
+1. 打开 Docker Desktop
+2. 进入 **Settings** → **General**
+3. 勾选 **Start Docker Desktop when you log in**
+
+**Linux 用户：**
+```bash
+sudo systemctl enable docker
+```
 
 ## 🔮 未来规划
 
