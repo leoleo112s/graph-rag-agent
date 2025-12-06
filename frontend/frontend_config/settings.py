@@ -1,8 +1,9 @@
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 
-from graphrag_agent.config.settings import examples as eg
+from graphrag_agent.config.settings import examples as eg, FILES_DIR
 
 load_dotenv()
 
