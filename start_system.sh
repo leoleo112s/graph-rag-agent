@@ -5,7 +5,39 @@ echo "🤖 GraphRAG 完整系统启动"
 echo "========================"
 echo ""
 
-# 1. 检查 conda 环境
+# 1. 检查 Docker
+echo "🐳 检查 Docker 状态..."
+if ! docker info &> /dev/null; then
+    echo "❌ Docker 未运行"
+    echo ""
+    echo "请先启动 Docker Desktop："
+    echo "  方法1: 在应用程序中找到 Docker 并双击启动"
+    echo "  方法2: 执行命令 'open -a Docker'"
+    echo ""
+    read -p "启动 Docker 后按回车继续..."
+
+    # 等待 Docker 启动
+    echo "等待 Docker 启动..."
+    for i in {1..30}; do
+        if docker info &> /dev/null; then
+            echo "✅ Docker 已启动"
+            break
+        fi
+        sleep 2
+        echo -n "."
+    done
+
+    if ! docker info &> /dev/null; then
+        echo ""
+        echo "❌ Docker 启动超时，请手动启动 Docker Desktop 后重试"
+        exit 1
+    fi
+fi
+
+echo "✅ Docker 运行正常"
+echo ""
+
+# 2. 检查 conda 环境
 if ! command -v conda &> /dev/null; then
     echo "⚠️  未找到 conda，请确保已安装 Anaconda/Miniconda"
     exit 1
@@ -20,7 +52,7 @@ fi
 echo "✅ conda 环境检查通过"
 echo ""
 
-# 2. 启动 Neo4j
+# 3. 启动 Neo4j
 echo "📊 启动 Neo4j 数据库..."
 docker compose up -d
 
