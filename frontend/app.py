@@ -8,9 +8,9 @@ from components.debug import display_debug_panel
 from utils.performance import init_performance_monitoring
 
 # 导入管理页面
-from pages.document_manager import document_manager_page
-from pages.config_manager import config_manager_page
-from pages.build_manager import build_manager_page
+from page_components.document_manager import document_manager_page
+from page_components.config_manager import config_manager_page
+from page_components.build_manager import build_manager_page
 
 
 def main():

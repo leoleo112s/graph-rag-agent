@@ -20,9 +20,13 @@ def get_build_status() -> Optional[Dict]:
         response = requests.get(f"{API_URL}/admin/build/status", timeout=5)
         if response.status_code == 200:
             return response.json()
-        return None
+        return {"error": f"API 返回错误: {response.status_code}"}
+    except requests.exceptions.ConnectionError:
+        return {"error": "无法连接到后端服务，请确保后端已启动"}
+    except requests.exceptions.Timeout:
+        return {"error": "请求超时"}
     except Exception as e:
-        return {"error": str(e)}
+        return {"error": f"未知错误: {str(e)}"}
 
 
 def trigger_full_build() -> tuple[bool, str]:
@@ -236,7 +240,36 @@ def build_manager_page():
         # 获取构建状态
         status = get_build_status()
 
-        if status and 'error' not in status:
+        if not status:
+            st.error("❌ 无法获取构建状态")
+            st.info("💡 请确保后端服务正在运行")
+            st.code(f"后端地址: {API_URL}")
+            return
+
+        if 'error' in status:
+            st.error(f"❌ 获取构建状态失败: {status['error']}")
+            st.info("💡 请检查后端服务是否正常运行")
+
+            # 提供诊断命令
+            with st.expander("🔍 诊断建议"):
+                st.markdown(f"""
+                请在终端执行以下命令检查后端状态：
+
+                ```bash
+                # 测试后端健康检查
+                curl {API_URL}/admin/health
+
+                # 测试构建状态API
+                curl {API_URL}/admin/build/status
+
+                # 检查后端是否运行
+                lsof -i :8000
+                ```
+                """)
+            return
+
+        # 状态正常，显示详细信息
+        if status:
             # 显示状态指示器
             status_text = status.get('status', 'unknown')
             if status_text == 'running':
