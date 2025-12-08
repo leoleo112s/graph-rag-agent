@@ -15,6 +15,8 @@ from pathlib import Path
 
 from graphrag_agent.config.settings import FILES_DIR, BASE_DIR
 from graphrag_agent.graph.core import connection_manager
+from graphrag_agent.config.graph_config_model import GraphConfig
+from graphrag_agent.config.graph_config_storage import get_storage
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -258,3 +260,149 @@ async def health_check():
         "neo4j": neo4j_status,
         "timestamp": datetime.now().isoformat()
     }
+
+
+# ==================== 图谱配置管理 API ====================
+
+@router.get("/graph/config")
+async def get_graph_config():
+    """获取当前图谱配置"""
+    logger.info("收到获取图谱配置请求")
+
+    try:
+        storage = get_storage()
+        config = storage.load()
+
+        if config is None:
+            logger.info("当前无配置，返回空")
+            return {"exists": False, "config": None}
+
+        logger.info(f"返回配置: {config.project_name}")
+        return {
+            "exists": True,
+            "config": config.model_dump(mode='json')
+        }
+
+    except Exception as e:
+        logger.error(f"获取图谱配置失败: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"获取配置失败: {str(e)}")
+
+
+@router.post("/graph/config")
+async def save_graph_config(config: GraphConfig):
+    """保存图谱配置"""
+    logger.info(f"收到保存图谱配置请求: {config.project_name}")
+
+    try:
+        storage = get_storage()
+        success = storage.save(config)
+
+        if success:
+            logger.info(f"配置保存成功: {config.project_name}")
+            return {"message": "配置保存成功", "project_name": config.project_name}
+        else:
+            logger.error("配置保存失败")
+            raise HTTPException(status_code=500, detail="配置保存失败")
+
+    except Exception as e:
+        logger.error(f"保存图谱配置失败: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"保存配置失败: {str(e)}")
+
+
+@router.delete("/graph/config")
+async def delete_graph_config():
+    """删除图谱配置"""
+    logger.info("收到删除图谱配置请求")
+
+    try:
+        storage = get_storage()
+        success = storage.delete()
+
+        if success:
+            logger.info("配置删除成功")
+            return {"message": "配置删除成功"}
+        else:
+            logger.error("配置删除失败")
+            raise HTTPException(status_code=500, detail="配置删除失败")
+
+    except Exception as e:
+        logger.error(f"删除图谱配置失败: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"删除配置失败: {str(e)}")
+
+
+@router.get("/graph/templates")
+async def list_graph_templates():
+    """列出所有可用的行业模板"""
+    logger.info("收到列出模板请求")
+
+    try:
+        storage = get_storage()
+        templates = storage.list_templates()
+
+        logger.info(f"返回 {len(templates)} 个模板")
+        return {"templates": templates}
+
+    except Exception as e:
+        logger.error(f"列出模板失败: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"列出模板失败: {str(e)}")
+
+
+@router.get("/graph/templates/{template_name}")
+async def get_graph_template(template_name: str):
+    """获取指定模板的详细信息"""
+    logger.info(f"收到获取模板请求: {template_name}")
+
+    try:
+        storage = get_storage()
+        config = storage.load_template(template_name)
+
+        if config is None:
+            logger.warning(f"模板不存在: {template_name}")
+            raise HTTPException(status_code=404, detail=f"模板 '{template_name}' 不存在")
+
+        logger.info(f"返回模板: {template_name}")
+        return {"config": config.model_dump(mode='json')}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"获取模板失败: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"获取模板失败: {str(e)}")
+
+
+@router.post("/graph/config/from-template")
+async def create_config_from_template(
+    template_name: str,
+    project_name: Optional[str] = None,
+    created_by: Optional[str] = None
+):
+    """从模板创建并保存配置"""
+    logger.info(f"收到从模板创建配置请求: {template_name}")
+
+    try:
+        storage = get_storage()
+        success = storage.save_from_template(
+            template_name=template_name,
+            project_name=project_name,
+            created_by=created_by
+        )
+
+        if success:
+            logger.info(f"从模板创建配置成功: {template_name}")
+            return {
+                "message": "配置创建成功",
+                "template_name": template_name,
+                "project_name": project_name or f"{template_name}_project"
+            }
+        else:
+            logger.error(f"模板不存在或保存失败: {template_name}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"模板 '{template_name}' 不存在或保存失败"
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"从模板创建配置失败: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"从模板创建配置失败: {str(e)}")
