@@ -11,6 +11,7 @@ from utils.performance import init_performance_monitoring
 from page_components.document_manager import document_manager_page
 from page_components.config_manager import config_manager_page
 from page_components.build_manager import build_manager_page
+from page_components.ai_config_wizard import ai_config_wizard_page
 
 
 def main():
@@ -38,11 +39,16 @@ def main():
         st.markdown("---")
 
         # 页面选择器
-        page = st.radio(
-            "导航菜单",
-            options=["💬 智能问答", "📚 文档管理", "⚙️ 配置管理", "🏗️ 构建管理"],
-            label_visibility="collapsed"
-        )
+        # 检查是否有页面切换请求
+        if "page_switch" in st.session_state:
+            page = st.session_state.page_switch
+            del st.session_state.page_switch
+        else:
+            page = st.radio(
+                "导航菜单",
+                options=["💬 智能问答", "📚 文档管理", "🤖 AI 配置向导", "⚙️ 配置管理", "🏗️ 构建管理"],
+                label_visibility="collapsed"
+            )
 
         st.markdown("---")
 
@@ -67,6 +73,9 @@ def main():
 
     elif page == "📚 文档管理":
         document_manager_page()
+
+    elif page == "🤖 AI 配置向导":
+        ai_config_wizard_page()
 
     elif page == "⚙️ 配置管理":
         config_manager_page()

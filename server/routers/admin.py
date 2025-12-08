@@ -406,3 +406,182 @@ async def create_config_from_template(
     except Exception as e:
         logger.error(f"从模板创建配置失败: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"从模板创建配置失败: {str(e)}")
+
+
+# ==================== AI Copilot API ====================
+
+@router.post("/ai-copilot/analyze-documents")
+async def analyze_documents_for_config(
+    industry_hint: Optional[str] = None,
+    num_clusters: Optional[int] = None
+):
+    """
+    分析已上传的文档，生成配置推荐
+
+    Args:
+        industry_hint: 行业提示（可选）
+        num_clusters: 聚类数量（可选，默认自动确定）
+
+    Returns:
+        文档分析结果和配置推荐
+    """
+    logger.info("收到 AI Copilot 文档分析请求")
+
+    try:
+        from graphrag_agent.models.get_models import get_llm_model, get_embeddings_model
+        from graphrag_agent.ai_copilot import DocumentAnalyzer
+        from graphrag_agent.pipelines.ingestion.document_processor import DocumentProcessor
+        from graphrag_agent.config.settings import FILES_DIR, CHUNK_SIZE, OVERLAP
+
+        # 初始化模型
+        llm = get_llm_model()
+        embeddings = get_embeddings_model()
+
+        # 创建文档分析器
+        analyzer = DocumentAnalyzer(llm, embeddings)
+
+        # 读取文档
+        doc_processor = DocumentProcessor(FILES_DIR, CHUNK_SIZE, OVERLAP)
+        processed_docs = doc_processor.process_directory()
+
+        if not processed_docs:
+            logger.warning("没有找到可分析的文档")
+            raise HTTPException(status_code=400, detail="没有找到可分析的文档，请先上传文档")
+
+        # 准备文档数据
+        documents = [
+            {
+                "filename": doc["filename"],
+                "content": doc["content"]
+            }
+            for doc in processed_docs
+        ]
+
+        logger.info(f"开始分析 {len(documents)} 个文档")
+
+        # 分析文档
+        analysis_result = analyzer.analyze_documents(documents, num_clusters)
+
+        logger.info(f"文档分析完成，聚类数: {len(analysis_result['clusters'])}")
+
+        # 生成推荐
+        logger.info("开始生成配置推荐")
+        recommendations = analyzer.recommend_domains_and_bridges(analysis_result, industry_hint)
+
+        logger.info("配置推荐生成完成")
+
+        return {
+            "analysis": analysis_result,
+            "recommendations": recommendations
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"AI Copilot 分析失败: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"文档分析失败: {str(e)}")
+
+
+@router.post("/ai-copilot/refine-config")
+async def refine_configuration(
+    user_feedback: str,
+    current_config: Optional[Dict] = None
+):
+    """
+    基于用户反馈优化配置
+
+    Args:
+        user_feedback: 用户反馈
+        current_config: 当前配置（可选，如果为空则从存储加载）
+
+    Returns:
+        优化后的配置
+    """
+    logger.info("收到 AI Copilot 配置优化请求")
+
+    try:
+        from graphrag_agent.models.get_models import get_llm_model, get_embeddings_model
+        from graphrag_agent.ai_copilot import DocumentAnalyzer
+
+        # 初始化模型
+        llm = get_llm_model()
+        embeddings = get_embeddings_model()
+
+        # 创建文档分析器
+        analyzer = DocumentAnalyzer(llm, embeddings)
+
+        # 获取当前配置
+        if current_config is None:
+            storage = get_storage()
+            config_obj = storage.load()
+            if config_obj is None:
+                raise HTTPException(status_code=400, detail="当前无配置，请先创建配置")
+            current_config = config_obj.model_dump(mode='json')
+
+        logger.info(f"开始优化配置，用户反馈: {user_feedback[:100]}...")
+
+        # 优化配置
+        refined_config = analyzer.refine_recommendations(current_config, user_feedback)
+
+        logger.info("配置优化完成")
+
+        return refined_config
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"AI Copilot 配置优化失败: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"配置优化失败: {str(e)}")
+
+
+@router.post("/ai-copilot/apply-recommendations")
+async def apply_ai_recommendations(
+    recommendations: Dict,
+    project_name: str,
+    industry: Optional[str] = None,
+    description: Optional[str] = None
+):
+    """
+    将 AI 推荐应用为新配置
+
+    Args:
+        recommendations: AI 推荐结果
+        project_name: 项目名称
+        industry: 行业
+        description: 项目描述
+
+    Returns:
+        创建的配置
+    """
+    logger.info(f"收到应用 AI 推荐请求: {project_name}")
+
+    try:
+        # 构建配置
+        config_dict = {
+            "project_name": project_name,
+            "version": "1.0",
+            "description": description or "基于 AI 推荐创建",
+            "industry": industry or "通用",
+            "bridge_definitions": recommendations.get("recommended_bridges", []),
+            "domain_definitions": recommendations.get("recommended_domains", [])
+        }
+
+        # 验证并保存
+        config = GraphConfig(**config_dict)
+        storage = get_storage()
+        success = storage.save(config)
+
+        if success:
+            logger.info(f"AI 推荐配置已保存: {project_name}")
+            return {
+                "message": "配置创建成功",
+                "config": config.model_dump(mode='json')
+            }
+        else:
+            raise HTTPException(status_code=500, detail="配置保存失败")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"应用 AI 推荐失败: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"应用推荐失败: {str(e)}")
