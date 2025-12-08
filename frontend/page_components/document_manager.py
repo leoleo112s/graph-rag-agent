@@ -142,13 +142,22 @@ def document_manager_page():
 
                 # 触发增量构建
                 if auto_build:
+                    st.info("🔨 正在触发增量构建，请稍候...")
                     with st.spinner("正在触发增量构建..."):
                         success, message = trigger_incremental_build()
                         if success:
-                            st.info(f"🔨 {message}")
+                            st.success(f"🎉 {message}")
+
+                            # 显示构建状态链接
+                            st.info("💡 你可以在「🏗️ 构建管理」页面查看构建进度")
+
+                            # 提供跳转提示
+                            if st.button("📊 前往构建管理页面"):
+                                st.session_state.page_switch = "🏗️ 构建管理"
+                                st.rerun()
                         else:
                             st.warning(f"⚠️ {message}")
-                            st.info("💡 你可以稍后在「构建管理」页面手动触发构建")
+                            st.info("💡 你可以稍后在「🏗️ 构建管理」页面手动触发构建")
 
             if error_files:
                 st.error("❌ 以下文件上传失败:")
@@ -221,12 +230,29 @@ def document_manager_page():
                 st.text(doc['modified'].strftime('%Y-%m-%d %H:%M'))
 
             with col5:
-                if st.button("🗑️", key=f"delete_{idx}", help=f"删除 {doc['name']}"):
-                    if delete_document(doc['name']):
-                        st.success(f"✅ {doc['name']} 已删除")
+                delete_key = f"delete_{idx}"
+                confirm_key = f"confirm_delete_{idx}"
+
+                # 如果还没有点击删除按钮
+                if not st.session_state.get(confirm_key, False):
+                    if st.button("🗑️", key=delete_key, help=f"删除 {doc['name']}"):
+                        st.session_state[confirm_key] = True
                         st.rerun()
-                    else:
-                        st.error(f"❌ 删除失败")
+                else:
+                    # 显示确认按钮
+                    col_confirm1, col_confirm2 = st.columns(2)
+                    with col_confirm1:
+                        if st.button("✅", key=f"yes_{idx}", help="确认删除"):
+                            if delete_document(doc['name']):
+                                st.success(f"✅ {doc['name']} 已删除")
+                                st.session_state[confirm_key] = False
+                                st.rerun()
+                            else:
+                                st.error(f"❌ 删除失败")
+                    with col_confirm2:
+                        if st.button("❌", key=f"no_{idx}", help="取消"):
+                            st.session_state[confirm_key] = False
+                            st.rerun()
 
             # 分隔线
             if idx < len(documents) - 1:

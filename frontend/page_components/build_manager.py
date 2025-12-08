@@ -347,7 +347,47 @@ def build_manager_page():
         # 获取统计信息
         stats = get_graph_stats()
 
-        if stats and 'error' not in stats:
+        if not stats:
+            st.warning("⚠️ 无法获取图谱统计信息")
+            st.info("💡 可能的原因：")
+            st.markdown("""
+            1. 后端服务未运行
+            2. Neo4j 数据库未连接
+            3. 还未构建知识图谱
+            """)
+
+            # 提供测试按钮
+            if st.button("🔍 测试连接"):
+                with st.spinner("测试中..."):
+                    try:
+                        response = requests.get(f"{API_URL}/admin/health", timeout=5)
+                        if response.status_code == 200:
+                            health = response.json()
+                            if health.get("neo4j") == "healthy":
+                                st.success("✅ Neo4j 连接正常")
+                                st.info("💡 可能还未构建知识图谱，请先上传文档并构建")
+                            else:
+                                st.error("❌ Neo4j 连接失败")
+                        else:
+                            st.error("❌ 后端服务异常")
+                    except Exception as e:
+                        st.error(f"❌ 连接测试失败: {e}")
+            return
+
+        if 'error' in stats:
+            st.error(f"❌ {stats['error']}")
+            return
+
+        # 检查是否有数据
+        if stats.get('entity_count', 0) == 0:
+            st.info("📭 知识图谱为空")
+            st.markdown("""
+            **请先构建知识图谱：**
+            1. 前往「📚 文档管理」上传文档
+            2. 在「🏗️ 构建管理」中触发构建
+            3. 等待构建完成后再查看统计信息
+            """)
+            return
             # 总览
             col1, col2, col3, col4 = st.columns(4)
 

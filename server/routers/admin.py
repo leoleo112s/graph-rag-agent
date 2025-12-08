@@ -9,11 +9,19 @@ from typing import Dict, Optional
 import subprocess
 import threading
 import time
+import logging
 from datetime import datetime
 from pathlib import Path
 
 from graphrag_agent.config.settings import FILES_DIR, BASE_DIR
 from graphrag_agent.graph.core import connection_manager
+
+# 配置日志
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -109,7 +117,10 @@ def run_build_command(command: list, build_type: str):
 @router.post("/build/full")
 async def trigger_full_build(background_tasks: BackgroundTasks):
     """触发完整构建"""
+    logger.info("收到完整构建请求")
+
     if build_status["status"] == "running":
+        logger.warning("已有构建任务正在运行，拒绝新请求")
         raise HTTPException(status_code=400, detail="已有构建任务正在运行")
 
     # 在后台启动构建
@@ -118,13 +129,17 @@ async def trigger_full_build(background_tasks: BackgroundTasks):
     thread.daemon = True
     thread.start()
 
+    logger.info("完整构建已在后台启动")
     return {"message": "完整构建已启动", "status": "running"}
 
 
 @router.post("/build/incremental")
 async def trigger_incremental_build(background_tasks: BackgroundTasks):
     """触发增量构建"""
+    logger.info("收到增量构建请求")
+
     if build_status["status"] == "running":
+        logger.warning("已有构建任务正在运行，拒绝新请求")
         raise HTTPException(status_code=400, detail="已有构建任务正在运行")
 
     # 在后台启动增量构建
@@ -133,6 +148,7 @@ async def trigger_incremental_build(background_tasks: BackgroundTasks):
     thread.daemon = True
     thread.start()
 
+    logger.info("增量构建已在后台启动")
     return {"message": "增量构建已启动", "status": "running"}
 
 
@@ -158,16 +174,20 @@ async def get_build_status():
 @router.get("/graph/stats")
 async def get_graph_stats():
     """获取图谱统计信息"""
+    logger.info("收到图谱统计请求")
+
     try:
         # 查询实体数量
         entity_count_query = "MATCH (n) RETURN count(n) as count"
         entity_result = connection_manager.execute_query(entity_count_query)
         entity_count = entity_result[0]['count'] if entity_result else 0
+        logger.info(f"实体数量: {entity_count}")
 
         # 查询关系数量
         relationship_count_query = "MATCH ()-[r]->() RETURN count(r) as count"
         relationship_result = connection_manager.execute_query(relationship_count_query)
         relationship_count = relationship_result[0]['count'] if relationship_result else 0
+        logger.info(f"关系数量: {relationship_count}")
 
         # 查询实体类型分布
         entity_type_query = """
@@ -205,7 +225,7 @@ async def get_graph_stats():
         files_dir = Path(FILES_DIR)
         document_count = len([f for f in files_dir.iterdir() if f.is_file()]) if files_dir.exists() else 0
 
-        return {
+        stats = {
             "entity_count": entity_count,
             "relationship_count": relationship_count,
             "community_count": community_count,
@@ -215,7 +235,11 @@ async def get_graph_stats():
             "last_build_time": datetime.now().isoformat() if entity_count > 0 else None
         }
 
+        logger.info(f"返回图谱统计: {entity_count} 实体, {relationship_count} 关系")
+        return stats
+
     except Exception as e:
+        logger.error(f"获取图谱统计失败: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"获取图谱统计失败: {str(e)}")
 
 
