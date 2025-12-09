@@ -585,3 +585,39 @@ async def apply_ai_recommendations(
     except Exception as e:
         logger.error(f"应用 AI 推荐失败: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"应用推荐失败: {str(e)}")
+
+
+@router.get("/files/list")
+async def list_files():
+    """列出所有已上传的文档"""
+    try:
+        files_dir = Path(FILES_DIR)
+        if not files_dir.exists():
+            files_dir.mkdir(parents=True, exist_ok=True)
+            return {"files": [], "count": 0}
+
+        files = []
+        for file_path in files_dir.iterdir():
+            if file_path.is_file():
+                stat = file_path.stat()
+                files.append({
+                    "name": file_path.name,
+                    "path": str(file_path),
+                    "size": stat.st_size,
+                    "created_at": datetime.fromtimestamp(stat.st_ctime).isoformat(),
+                    "modified_at": datetime.fromtimestamp(stat.st_mtime).isoformat()
+                })
+
+        # 按修改时间倒序排序
+        files.sort(key=lambda x: x["modified_at"], reverse=True)
+
+        logger.info(f"返回文件列表，共 {len(files)} 个文件")
+        return {
+            "files": files,
+            "count": len(files),
+            "directory": str(files_dir)
+        }
+
+    except Exception as e:
+        logger.error(f"获取文件列表失败: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"获取文件列表失败: {str(e)}")

@@ -548,9 +548,15 @@ def clear_chat():
 
         # 清除持久化的对话历史文件
         from pathlib import Path
-        history_file = Path("./cache/chat_history") / f"{st.session_state.session_id}.json"
+        history_dir = Path("./cache/chat_history")
+        history_file = history_dir / f"{st.session_state.session_id}.json"
         if history_file.exists():
             history_file.unlink()
+
+        # 同时清除默认会话文件
+        default_session_file = history_dir / "current_session.json"
+        if default_session_file.exists():
+            default_session_file.unlink()
         
         # 清除后端状态
         response = requests.post(

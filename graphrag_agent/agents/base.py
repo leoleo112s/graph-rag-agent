@@ -141,7 +141,15 @@ class BaseAgent(ABC):
         if "messages" in result and result["messages"]:
             message = result["messages"][0]
             content = message.content if hasattr(message, "content") else str(message)
-            
+
+            # 确保 content 是字符串类型
+            if isinstance(content, dict):
+                # 如果是字典，尝试提取答案字段
+                content = content.get('answer', str(content))
+            elif not isinstance(content, str):
+                # 如果不是字符串也不是字典，转换为字符串
+                content = str(content)
+
             # 按句子或段落分块，更自然
             import re
             chunks = re.split(r'([.!?。！？]\s*)', content)
