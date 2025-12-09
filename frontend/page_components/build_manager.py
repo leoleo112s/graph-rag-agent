@@ -98,6 +98,14 @@ def build_manager_page():
     with tab1:
         st.subheader("🔨 构建类型")
 
+        # 显示当前构建状态概览
+        current_status = get_build_status()
+        if current_status and current_status.get('status') == 'running':
+            st.info(f"🔄 构建进行中：{current_status.get('current_stage', '...')} - "
+                   f"进度 {current_status.get('progress', 0)}%")
+            st.caption("💡 切换到「📊 构建状态」标签查看详细进度")
+            st.markdown("---")
+
         col1, col2 = st.columns(2)
 
         with col1:
@@ -121,7 +129,10 @@ def build_manager_page():
                     success, message = trigger_incremental_build()
                     if success:
                         st.success(f"✅ {message}")
+                        st.info("💡 请切换到「📊 构建状态」标签查看进度")
+                        st.session_state.build_just_started = True
                         st.balloons()
+                        time.sleep(2)
                     else:
                         st.error(f"❌ {message}")
 
@@ -149,12 +160,16 @@ def build_manager_page():
             st.warning("⚠️ 完整构建将清空现有知识图谱！确定要继续吗？")
             col1, col2, col3 = st.columns([1, 1, 3])
             with col1:
-                if st.button("✅ 确认构建"):
+                if st.button("✅ 确认构建", type="primary"):
                     with st.spinner("正在启动完整构建..."):
                         success, message = trigger_full_build()
                         if success:
                             st.success(f"✅ {message}")
+                            st.info("💡 请切换到「📊 构建状态」标签查看进度")
+                            # 设置标记，用于在构建状态tab显示提示
+                            st.session_state.build_just_started = True
                             st.balloons()
+                            time.sleep(2)  # 给用户2秒时间看到消息
                         else:
                             st.error(f"❌ {message}")
                     st.session_state.confirm_full_build = False
@@ -224,6 +239,12 @@ def build_manager_page():
     # ===== 构建状态 =====
     with tab2:
         st.subheader("📊 实时构建状态")
+
+        # 检查是否刚刚启动构建
+        if st.session_state.get('build_just_started', False):
+            st.success("✅ 构建已成功启动！正在后台运行...")
+            st.info("💡 构建过程可能需要几分钟到几十分钟，请耐心等待")
+            st.session_state.build_just_started = False
 
         # 自动刷新
         auto_refresh = st.checkbox("🔄 自动刷新 (每5秒)", value=False)
