@@ -541,10 +541,16 @@ def clear_chat():
         st.session_state.execution_log = None
         st.session_state.kg_data = None
         st.session_state.source_content = None
-        
+
         # 重要：也要清除current_kg_message
         if 'current_kg_message' in st.session_state:
             del st.session_state.current_kg_message
+
+        # 清除持久化的对话历史文件
+        from pathlib import Path
+        history_file = Path("./cache/chat_history") / f"{st.session_state.session_id}.json"
+        if history_file.exists():
+            history_file.unlink()
         
         # 清除后端状态
         response = requests.post(

@@ -388,79 +388,76 @@ def build_manager_page():
             3. 等待构建完成后再查看统计信息
             """)
             return
-            # 总览
-            col1, col2, col3, col4 = st.columns(4)
 
-            with col1:
-                st.metric(
-                    "实体数量",
-                    stats.get('entity_count', 0),
-                    help="知识图谱中的实体总数"
+        # 总览
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            st.metric(
+                "实体数量",
+                stats.get('entity_count', 0),
+                help="知识图谱中的实体总数"
+            )
+
+        with col2:
+            st.metric(
+                "关系数量",
+                stats.get('relationship_count', 0),
+                help="实体间的关系总数"
+            )
+
+        with col3:
+            st.metric(
+                "社区数量",
+                stats.get('community_count', 0),
+                help="检测到的社区数量"
+            )
+
+        with col4:
+            st.metric(
+                "文档数量",
+                stats.get('document_count', 0),
+                help="已导入的文档数量"
+            )
+
+        st.markdown("---")
+
+        # 详细统计
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown("### 📊 实体类型分布")
+            if 'entity_type_distribution' in stats:
+                import pandas as pd
+                df = pd.DataFrame(
+                    list(stats['entity_type_distribution'].items()),
+                    columns=['类型', '数量']
                 )
-
-            with col2:
-                st.metric(
-                    "关系数量",
-                    stats.get('relationship_count', 0),
-                    help="实体间的关系总数"
-                )
-
-            with col3:
-                st.metric(
-                    "社区数量",
-                    stats.get('community_count', 0),
-                    help="检测到的社区数量"
-                )
-
-            with col4:
-                st.metric(
-                    "文档数量",
-                    stats.get('document_count', 0),
-                    help="已导入的文档数量"
-                )
-
-            st.markdown("---")
-
-            # 详细统计
-            col1, col2 = st.columns(2)
-
-            with col1:
-                st.markdown("### 📊 实体类型分布")
-                if 'entity_type_distribution' in stats:
-                    import pandas as pd
-                    df = pd.DataFrame(
-                        list(stats['entity_type_distribution'].items()),
-                        columns=['类型', '数量']
-                    )
-                    st.bar_chart(df.set_index('类型'))
-                else:
-                    st.info("暂无数据")
-
-            with col2:
-                st.markdown("### 🔗 关系类型分布")
-                if 'relationship_type_distribution' in stats:
-                    import pandas as pd
-                    df = pd.DataFrame(
-                        list(stats['relationship_type_distribution'].items()),
-                        columns=['类型', '数量']
-                    )
-                    st.bar_chart(df.set_index('类型'))
-                else:
-                    st.info("暂无数据")
-
-            st.markdown("---")
-
-            # 最近更新
-            st.markdown("### 🕒 最近更新")
-            if 'last_build_time' in stats:
-                last_build = datetime.fromisoformat(stats['last_build_time'])
-                st.info(f"📅 最后构建时间: {last_build.strftime('%Y-%m-%d %H:%M:%S')}")
+                st.bar_chart(df.set_index('类型'))
             else:
-                st.warning("暂无构建记录")
+                st.info("暂无数据")
 
+        with col2:
+            st.markdown("### 🔗 关系类型分布")
+            if 'relationship_type_distribution' in stats:
+                import pandas as pd
+                df = pd.DataFrame(
+                    list(stats['relationship_type_distribution'].items()),
+                    columns=['类型', '数量']
+                )
+                st.bar_chart(df.set_index('类型'))
+            else:
+                st.info("暂无数据")
+
+        st.markdown("---")
+
+        # 最近更新
+        st.markdown("### 🕒 最近更新")
+        if 'last_build_time' in stats:
+            last_build = datetime.fromisoformat(stats['last_build_time'])
+            st.info(f"📅 最后构建时间: {last_build.strftime('%Y-%m-%d %H:%M:%S')}")
         else:
-            st.warning("⚠️ 无法获取图谱统计信息")
-            st.info("💡 请先构建知识图谱")
+            st.warning("暂无构建记录")
 
     # 帮助信息
     with st.expander("❓ 使用说明"):

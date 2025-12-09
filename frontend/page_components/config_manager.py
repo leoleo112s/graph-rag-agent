@@ -131,7 +131,7 @@ def render_bridge_editor(config: Dict):
                         "描述",
                         value=bridge['description'],
                         key=f"bridge_desc_{idx}",
-                        height=60,
+                        height=80,
                         disabled=True
                     )
 
@@ -205,14 +205,14 @@ def render_domain_editor(config: Dict):
                         "描述",
                         value=domain['description'],
                         key=f"domain_desc_{idx}",
-                        height=60,
+                        height=80,
                         disabled=True
                     )
                     st.text_area(
                         "触发条件",
                         value=domain['trigger_condition'],
                         key=f"domain_trigger_{idx}",
-                        height=60,
+                        height=80,
                         disabled=True
                     )
 

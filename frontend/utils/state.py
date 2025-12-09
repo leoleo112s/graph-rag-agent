@@ -1,5 +1,8 @@
 import streamlit as st
 import uuid
+import json
+import os
+from pathlib import Path
 from frontend_config.settings import (
     DEFAULT_KG_SETTINGS,
     DEFAULT_AGENT_TYPE,
@@ -10,12 +13,38 @@ from frontend_config.settings import (
     DEFAULT_CHAIN_EXPLORATION,
 )
 
+# 对话历史保存目录
+CHAT_HISTORY_DIR = Path("./cache/chat_history")
+CHAT_HISTORY_DIR.mkdir(parents=True, exist_ok=True)
+
+def save_chat_history(session_id: str, messages: list):
+    """保存对话历史到本地文件"""
+    try:
+        history_file = CHAT_HISTORY_DIR / f"{session_id}.json"
+        with open(history_file, 'w', encoding='utf-8') as f:
+            json.dump(messages, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"保存对话历史失败: {e}")
+
+def load_chat_history(session_id: str) -> list:
+    """从本地文件加载对话历史"""
+    try:
+        history_file = CHAT_HISTORY_DIR / f"{session_id}.json"
+        if history_file.exists():
+            with open(history_file, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception as e:
+        print(f"加载对话历史失败: {e}")
+    return []
+
 def init_session_state():
     """初始化会话状态变量"""
     if 'session_id' not in st.session_state:
         st.session_state.session_id = str(uuid.uuid4())
     if 'messages' not in st.session_state:
-        st.session_state.messages = []
+        # 尝试从持久化存储加载历史对话
+        loaded_messages = load_chat_history(st.session_state.session_id)
+        st.session_state.messages = loaded_messages if loaded_messages else []
     if 'debug_mode' not in st.session_state:
         st.session_state.debug_mode = DEFAULT_DEBUG_MODE
     if 'execution_log' not in st.session_state:
