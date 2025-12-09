@@ -246,17 +246,28 @@ def build_manager_page():
             st.info("💡 构建过程可能需要几分钟到几十分钟，请耐心等待")
             st.session_state.build_just_started = False
 
-        # 自动刷新
-        auto_refresh = st.checkbox("🔄 自动刷新 (每5秒)", value=False)
+        # 自动刷新选项
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            auto_refresh = st.checkbox("🔄 自动刷新 (每5秒)", value=False,
+                                      help="启用后将自动刷新构建状态，构建期间建议开启")
+        with col2:
+            if st.button("🔄 立即刷新"):
+                st.rerun()
 
         if auto_refresh:
-            # 添加自动刷新逻辑
-            placeholder = st.empty()
-            for i in range(5, 0, -1):
-                placeholder.text(f"⏱️ {i} 秒后刷新...")
-                time.sleep(1)
-            placeholder.empty()
-            st.rerun()
+            # 获取当前状态，如果不是running就停止自动刷新
+            current_status = get_build_status()
+            if current_status and current_status.get('status') == 'running':
+                # 添加自动刷新逻辑
+                placeholder = st.empty()
+                for i in range(5, 0, -1):
+                    placeholder.info(f"⏱️ 构建进行中... {i} 秒后自动刷新")
+                    time.sleep(1)
+                placeholder.empty()
+                st.rerun()
+            else:
+                st.info("💡 构建已完成或未运行，已停止自动刷新")
 
         # 获取构建状态
         status = get_build_status()
@@ -291,16 +302,52 @@ def build_manager_page():
 
         # 状态正常，显示详细信息
         if status:
+            # 检测构建完成（状态从 running 变为 completed）
+            previous_status = st.session_state.get('previous_build_status', 'unknown')
+            current_status = status.get('status', 'unknown')
+
+            # 保存当前状态供下次比较
+            st.session_state.previous_build_status = current_status
+
+            # 如果刚刚完成构建，显示醒目提示
+            if previous_status == 'running' and current_status == 'completed':
+                st.balloons()
+                st.success("🎉 构建已完成！知识图谱构建成功！")
+                st.info("💡 现在可以在「💬 智能问答」中开始提问了")
+                # 播放提示音（使用浏览器API）
+                st.markdown("""
+                <script>
+                // 播放系统提示音
+                if (window.speechSynthesis) {
+                    const utterance = new SpeechSynthesisUtterance("构建已完成");
+                    utterance.lang = 'zh-CN';
+                    utterance.rate = 1.5;
+                    window.speechSynthesis.speak(utterance);
+                }
+                </script>
+                """, unsafe_allow_html=True)
+
             # 显示状态指示器
             status_text = status.get('status', 'unknown')
             if status_text == 'running':
                 st.success("🟢 构建进行中")
+                st.caption("💡 提示：可以勾选「自动刷新」来实时监控进度")
             elif status_text == 'completed':
-                st.info("🔵 构建已完成")
+                st.success("✅ 构建已完成")
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    st.info("💡 知识图谱已成功构建，可以开始查询了")
+                with col2:
+                    if st.button("💬 去提问", type="primary"):
+                        st.session_state.page_switch = "💬 智能问答"
+                        st.rerun()
             elif status_text == 'idle':
                 st.info("⚪ 空闲状态")
             elif status_text == 'failed':
                 st.error("🔴 构建失败")
+                error_msg = status.get('error', '未知错误')
+                with st.expander("📋 查看错误详情"):
+                    st.code(error_msg, language='text')
 
             # 进度条
             progress = status.get('progress', 0)
