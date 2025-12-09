@@ -272,7 +272,7 @@ def ai_config_wizard_page():
             if st.button("🔄 检查文档", type="primary"):
                 # 检查是否有文档
                 try:
-                    response = requests.get(f"{API_URL}/files/list")
+                    response = requests.get(f"{API_URL}/admin/files/list")
                     response.raise_for_status()
                     data = response.json()
                     files = data.get("files", [])
