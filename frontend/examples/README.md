@@ -1,18 +1,34 @@
 # 图谱构建进度监控 - 前端示例
 
-本目录包含三种前端技术栈的 WebSocket 进度监控实现示例。
+本目录包含两种实时通信方案（WebSocket 和 SSE）的多种前端实现示例。
 
 ## 📁 文件说明
 
-| 文件 | 技术栈 | 说明 |
-|------|--------|------|
-| `websocket_progress_monitor.html` | 原生 HTML/JS | 纯前端实现，直接在浏览器中打开即可使用 |
-| `react_progress_monitor.jsx` | React | React 组件，需要集成到 React 项目中 |
-| `vue_progress_monitor.vue` | Vue 3 | Vue 3 组件，需要集成到 Vue 项目中 |
+| 文件 | 技术栈 | 通信方式 | 说明 |
+|------|--------|----------|------|
+| `websocket_progress_monitor.html` | 原生 HTML/JS | WebSocket | 双向通信，功能最全 |
+| `sse_progress_monitor.html` | 原生 HTML/JS | SSE | 单向推送，更简单轻量 |
+| `react_progress_monitor.jsx` | React | WebSocket | React 组件示例 |
+| `vue_progress_monitor.vue` | Vue 3 | WebSocket | Vue 3 组件示例 |
+
+### 🆚 WebSocket vs SSE
+
+| 特性 | WebSocket | SSE |
+|------|-----------|-----|
+| 通信方向 | 双向 | 单向（服务器→客户端） |
+| 协议 | ws:// / wss:// | HTTP |
+| 自动重连 | 需要手动实现 | 浏览器内置 |
+| 浏览器支持 | 所有现代浏览器 | 所有现代浏览器 |
+| 适用场景 | 需要双向交互 | 只需接收推送 |
+| 实现复杂度 | 稍复杂 | 简单 |
+
+**推荐使用场景**：
+- 只需监控进度 → **使用 SSE**（更简单）
+- 需要控制构建（暂停/恢复）→ 使用 WebSocket
 
 ## 🚀 快速开始
 
-### 方式 1: 使用 HTML 版本（最简单）
+### 方式 1: 使用 SSE 版本（**推荐，最简单**）
 
 1. **启动后端服务**：
    ```bash
@@ -20,17 +36,40 @@
    python main.py
    ```
 
-2. **打开 HTML 文件**：
+2. **打开 SSE HTML 文件**：
    ```bash
    # 在浏览器中打开
-   open frontend/examples/websocket_progress_monitor.html
+   open frontend/examples/sse_progress_monitor.html
    # 或直接双击文件
+   ```
+
+3. **使用步骤**：
+   - 点击「连接 SSE」按钮
+   - 点击「触发构建」按钮开始构建
+   - 实时查看进度条和日志更新
+   - SSE 会自动重连，无需手动处理
+
+**优点**：基于 HTTP，浏览器自动重连，代码更简单
+
+### 方式 2: 使用 WebSocket 版本
+
+1. **启动后端服务**：
+   ```bash
+   cd server/
+   python main.py
+   ```
+
+2. **打开 WebSocket HTML 文件**：
+   ```bash
+   open frontend/examples/websocket_progress_monitor.html
    ```
 
 3. **使用步骤**：
    - 点击「连接 WebSocket」按钮
    - 点击「触发构建」按钮开始构建
    - 实时查看进度条和日志更新
+
+**优点**：双向通信，可扩展控制功能（暂停/恢复）
 
 ### 方式 2: 使用 React 版本
 
