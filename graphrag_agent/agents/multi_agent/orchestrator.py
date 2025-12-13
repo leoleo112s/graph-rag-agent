@@ -43,6 +43,18 @@ class OrchestratorConfig(BaseModel):
         default=True,
         description="Planner未返回执行信号时是否视为失败",
     )
+    enable_fast_path: bool = Field(
+        default=True,
+        description="是否启用简单查询的快速通道（跳过 Planner）",
+    )
+    fast_path_max_length: int = Field(
+        default=30,
+        description="快速通道的查询最大长度（字符数）",
+    )
+    fast_path_keywords: List[str] = Field(
+        default_factory=lambda: ["对比", "分析", "详细", "深入", "研究", "解释", "为什么"],
+        description="包含这些关键词的查询不走快速通道",
+    )
 
 
 class OrchestratorMetrics(BaseModel):
@@ -105,6 +117,135 @@ class MultiAgentOrchestrator:
         self._reporter = reporter
         self.config = config or OrchestratorConfig()
 
+    def _is_simple_query(self, query: str) -> bool:
+        """
+        判断是否为简单查询，可以走快速通道（跳过 Planner 的多次 LLM 调用）
+
+        策略：
+        1. 查询长度较短（小于配置的最大长度）
+        2. 不包含复杂分析关键词（对比、分析、详细等）
+
+        Args:
+            query: 用户输入的查询文本
+
+        Returns:
+            True 表示可以走快速通道
+        """
+        if not self.config.enable_fast_path:
+            return False
+
+        # 长度检查
+        if len(query) > self.config.fast_path_max_length:
+            return False
+
+        # 关键词检查
+        query_lower = query.lower()
+        for keyword in self.config.fast_path_keywords:
+            if keyword in query_lower:
+                _LOGGER.debug("查询包含复杂关键词 '%s'，不走快速通道", keyword)
+                return False
+
+        # 简单查询的特征：通常是事实性问题
+        _LOGGER.debug("检测到简单查询，符合快速通道条件")
+        return True
+
+    def _execute_fast_path(
+        self,
+        state: PlanExecuteState,
+        metrics: OrchestratorMetrics,
+        report_type: Optional[str] = None,
+    ) -> OrchestratorResult:
+        """
+        快速通道：简单查询直接检索，跳过 Planner 的 3 次 LLM 调用
+
+        流程：
+        1. 直接构造一个简单的检索任务（local_search 或 naive_search）
+        2. 执行检索任务
+        3. 可选：生成简单的报告（或直接返回检索结果）
+
+        Args:
+            state: 当前状态
+            metrics: 性能指标
+            report_type: 报告类型
+
+        Returns:
+            编排结果
+        """
+        from graphrag_agent.agents.multi_agent.core.plan_spec import (
+            PlanExecutionSignal,
+            TaskNode,
+        )
+
+        errors: List[str] = []
+
+        # 跳过 Planner，直接构造简单的检索任务
+        fast_task = TaskNode(
+            task_id="fast_retrieval_1",
+            task_type="local_search",  # 使用本地搜索（或 naive_search）
+            description=f"快速检索回答查询：{state.input}",
+            parameters={"query": state.input},
+            priority=1,
+            depends_on=[],
+        )
+
+        signal = PlanExecutionSignal(
+            tasks=[fast_task.model_dump()],
+            execution_mode="sequential",
+        )
+
+        # 规划阶段耗时为 0（跳过）
+        metrics.planning_seconds = 0.0
+
+        # --- 执行阶段 ---
+        execution_records: List[ExecutionRecord] = []
+        exec_start = time.perf_counter()
+        try:
+            execution_records = self._worker.execute_plan(state, signal)
+        except Exception as exc:  # noqa: BLE001
+            _LOGGER.exception("快速通道执行失败: %s", exc)
+            errors.append(f"快速通道执行失败: {exc}")
+        finally:
+            metrics.execution_seconds = time.perf_counter() - exec_start
+
+        self._print_execution_summary(execution_records, state)
+
+        # --- 报告生成（可选）---
+        report_result: Optional[ReportResult] = None
+        # 对于简单查询，可以选择不生成完整报告，直接返回检索结果
+        # 如果需要报告，可以解除以下注释：
+        # if self.config.auto_generate_report and not errors:
+        #     report_start = time.perf_counter()
+        #     try:
+        #         report_result = self._reporter.generate_report(
+        #             state,
+        #             report_type=report_type or "short_answer",
+        #         )
+        #         if report_result is not None:
+        #             self._print_report_summary(report_result)
+        #     except Exception as exc:  # noqa: BLE001
+        #         _LOGGER.exception("报告生成失败: %s", exc)
+        #         errors.append(f"报告生成失败: {exc}")
+        #     finally:
+        #         metrics.reporting_seconds = time.perf_counter() - report_start
+
+        # 确定最终状态
+        status = "completed" if not errors else "failed"
+        state.update_timestamp()
+
+        _LOGGER.info(
+            "🚀 快速通道完成 | 耗时: %.2fs (节省 Planner 时间)",
+            metrics.execution_seconds,
+        )
+
+        return OrchestratorResult(
+            status=status,
+            planner=None,  # 快速通道跳过 Planner
+            execution_records=execution_records,
+            report=report_result,
+            errors=errors,
+            metrics=metrics,
+        )
+
     def run(
         self,
         state: PlanExecuteState,
@@ -114,10 +255,18 @@ class MultiAgentOrchestrator:
     ) -> OrchestratorResult:
         """
         执行完整的 Plan-Execute-Report 流程
+
+        对于简单查询，会自动走快速通道，跳过 Planner 的多次 LLM 调用。
         """
         errors: List[str] = []
         metrics = OrchestratorMetrics()
 
+        # ========== 快速通道：简单查询优化 ==========
+        if self._is_simple_query(state.input):
+            _LOGGER.info("🚀 进入快速通道：简单查询模式（跳过 Planner）")
+            return self._execute_fast_path(state, metrics, report_type)
+
+        # ========== 正常流程：Plan-Execute-Report ==========
         # --- Plan ---
         plan_start = time.perf_counter()
         try:
