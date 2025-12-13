@@ -800,13 +800,61 @@ class BaseAgent(ABC):
             return True
         
         return self.cache_manager.validate_answer(query, answer, validator, thread_id=thread_id)
-    
+
+    def configure(self, config: Dict[str, Any]) -> None:
+        """
+        配置Agent的运行时参数（多态接口）
+
+        默认实现不做任何操作，子类可以重写以处理特定配置
+
+        Args:
+            config: 配置字典，可能包含：
+                - use_deeper_tool: bool
+                - show_thinking: bool
+                - 其他Agent特定参数
+        """
+        pass
+
+    def ask_with_thinking(self, query: str, thread_id: str = "default") -> Dict:
+        """
+        提问并返回带思考过程的答案（多态接口）
+
+        默认实现简单调用 ask_with_trace()
+        子类可以重写以提供更详细的思考过程
+
+        Args:
+            query: 用户问题
+            thread_id: 会话ID
+
+        Returns:
+            Dict: 包含答案和相关信息的字典
+        """
+        result = self.ask_with_trace(query, thread_id)
+        return {
+            "answer": result.get("answer", ""),
+            "thinking_process": "",
+            "retrieved_info": [],
+            "reference": {},
+            "execution_logs": result.get("execution_log", [])
+        }
+
+    def supports_kg_extraction(self) -> bool:
+        """
+        返回该Agent是否支持知识图谱数据提取（多态接口）
+
+        默认返回 True，子类可以重写以禁用KG提取
+
+        Returns:
+            bool: 是否支持KG提取
+        """
+        return True
+
     def close(self):
         """关闭资源"""
         # 确保所有延迟写入的缓存项都被保存
         if hasattr(self.cache_manager.storage, '_flush_write_queue'):
             self.cache_manager.storage._flush_write_queue()
-            
+
         # 同样确保全局缓存的写入被保存
         if hasattr(self.global_cache_manager.storage, '_flush_write_queue'):
             self.global_cache_manager.storage._flush_write_queue()

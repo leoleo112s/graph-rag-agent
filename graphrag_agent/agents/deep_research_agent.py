@@ -1,4 +1,4 @@
-from typing import List, Dict, AsyncGenerator, Optional
+from typing import List, Dict, AsyncGenerator, Optional, Any
 from langchain_core.messages import AIMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -580,26 +580,26 @@ class DeepResearchAgent(BaseAgent):
     def is_deeper_tool(self, use_deeper=True):
         """
         切换是否使用增强版研究工具
-        
+
         参数:
             use_deeper: 是否使用增强版
-            
+
         返回:
             str: 状态消息
         """
         # 切换工具
         self.use_deeper_tool = use_deeper
-        
+
         if use_deeper:
             # 切换到增强版
             try:
                 self.research_tool = DeeperResearchTool()
-                
+
                 # 加载额外工具
                 self.exploration_tool = self.research_tool.get_exploration_tool()
                 self.reasoning_analysis_tool = self.research_tool.get_reasoning_analysis_tool()
                 self.stream_tool = self.research_tool.get_stream_tool()
-                
+
                 # 重新设置工具
                 self._tools = self._setup_tools()
                 return "已切换到增强版研究工具，启用知识图谱探索和推理链分析功能"
@@ -617,7 +617,31 @@ class DeepResearchAgent(BaseAgent):
             # 重新设置工具
             self._tools = self._setup_tools()
             return "已切换到标准版研究工具，部分高级功能将不可用"
-            
+
+    def configure(self, config: Dict[str, Any]) -> None:
+        """
+        配置DeepResearchAgent的运行时参数（重写父类方法）
+
+        Args:
+            config: 配置字典，支持：
+                - use_deeper_tool: bool - 是否使用增强版研究工具
+                - show_thinking: bool - 是否显示思考过程
+        """
+        if "use_deeper_tool" in config:
+            self.is_deeper_tool(config["use_deeper_tool"])
+
+        if "show_thinking" in config:
+            self.show_thinking = config["show_thinking"]
+
+    def supports_kg_extraction(self) -> bool:
+        """
+        DeepResearchAgent不支持知识图谱数据提取（重写父类方法）
+
+        Returns:
+            bool: False - 深度研究Agent禁用KG提取
+        """
+        return False
+
     def close(self):
         """关闭资源"""
         # 调用父类方法
