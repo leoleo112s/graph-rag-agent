@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from . import chat, feedback, knowledge_graph, source, admin
+from . import chat, feedback, knowledge_graph, source, admin, build
 
 # 创建总路由器
 api_router = APIRouter()
@@ -10,5 +10,6 @@ api_router.include_router(feedback.router, tags=["反馈"])
 api_router.include_router(knowledge_graph.router, tags=["知识图谱"])
 api_router.include_router(source.router, tags=["源内容"])
 api_router.include_router(admin.router, tags=["管理"])
+api_router.include_router(build.router, tags=["图谱构建"])
 
 __all__ = ['api_router']

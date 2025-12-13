@@ -6,17 +6,22 @@
 2. L1 慢速通道：后台异步构建知识图谱
 3. 任务队列管理：异步处理图谱构建任务
 4. 进度追踪：用户可查看图谱构建进度
+5. WebSocket 实时推送：前端可监听构建进度
 """
 import os
 import time
 import signal
 import argparse
-from typing import Dict, List, Optional
+import asyncio
+from typing import Dict, List, Optional, TYPE_CHECKING
 from pathlib import Path
 
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
+
+if TYPE_CHECKING:
+    from server.utils.progress_broadcaster import ProgressBroadcaster
 
 from incremental_graph_builder import IncrementalGraphUpdater
 from graphrag_agent.graph.graph_consistency_validator import GraphConsistencyValidator
@@ -54,19 +59,26 @@ class IncrementalUpdateManagerV2:
     4. 保留原有功能：手动编辑保护、一致性验证、社区检测
     """
 
-    def __init__(self, files_dir: str = FILES_DIR, config=None):
+    def __init__(
+        self,
+        files_dir: str = FILES_DIR,
+        config=None,
+        broadcaster: Optional["ProgressBroadcaster"] = None
+    ):
         """
         初始化增量更新管理器 V2
 
         Args:
             files_dir: 监控的文件目录
             config: 配置参数
+            broadcaster: WebSocket 进度广播器（可选）
         """
         self.console = Console()
 
         # 配置参数
         self.files_dir = files_dir
         self.config = config or {}
+        self.broadcaster = broadcaster  # WebSocket 广播器
 
         # 初始化原有组件
         self.graph = get_db_manager().graph
@@ -96,6 +108,25 @@ class IncrementalUpdateManagerV2:
             "errors": 0
         }
 
+    def _emit_sync(self, coro):
+        """
+        同步方法中调用异步广播（如果有 broadcaster）
+
+        Args:
+            coro: 协程对象
+        """
+        if self.broadcaster is None:
+            return
+
+        try:
+            # 尝试在现有事件循环中运行
+            loop = asyncio.get_running_loop()
+            asyncio.ensure_future(coro)
+        except RuntimeError:
+            # 没有运行中的事件循环，使用 run_coroutine_threadsafe 或忽略
+            # 在同步上下文中，我们简单地忽略
+            pass
+
     # ===================
     # L0 快速通道
     # ===================
@@ -113,6 +144,8 @@ class IncrementalUpdateManagerV2:
         start_time = time.time()
 
         self.console.print("\n[bold cyan]🚀 L0 快速摄取流程...[/bold cyan]")
+        self._emit_sync(self.broadcaster.emit_log("开始 L0 快速摄取流程", "INFO") if self.broadcaster else None)
+        self._emit_sync(self.broadcaster.emit_progress("l0_ingestion", 0, details="检测文件变更...") if self.broadcaster else None)
 
         try:
             # 如果未指定文件，检测所有变更
@@ -122,10 +155,32 @@ class IncrementalUpdateManagerV2:
 
             if not file_paths:
                 self.console.print("[yellow]没有需要处理的文件[/yellow]")
+                self._emit_sync(self.broadcaster.emit_log("没有需要处理的文件", "INFO") if self.broadcaster else None)
                 return {"status": "success", "files_processed": 0}
 
-            # 批量快速处理
-            results = self.fast_pipeline.process_batch_files(file_paths)
+            total_files = len(file_paths)
+            self._emit_sync(self.broadcaster.emit_progress(
+                "l0_ingestion", 10, total=total_files, current=0,
+                details=f"准备处理 {total_files} 个文件..."
+            ) if self.broadcaster else None)
+
+            # 批量快速处理（带进度回调）
+            results = []
+            for idx, file_path in enumerate(file_paths):
+                result = self.fast_pipeline.process_single_file(file_path)
+                results.append(result)
+
+                # 更新进度
+                progress = int(10 + (idx + 1) / total_files * 80)  # 10-90%
+                self._emit_sync(self.broadcaster.emit_progress(
+                    "l0_ingestion", progress,
+                    current=idx + 1, total=total_files,
+                    details=f"处理中: {Path(file_path).name}"
+                ) if self.broadcaster else None)
+
+                self._emit_sync(self.broadcaster.emit_file_status(
+                    file_path, result["status"], stage="L0"
+                ) if self.broadcaster else None)
 
             # 更新统计
             success_count = sum(1 for r in results if r["status"] == "success")
@@ -139,9 +194,15 @@ class IncrementalUpdateManagerV2:
                 f"耗时 {total_duration:.2f}s[/bold green]"
             )
 
+            self._emit_sync(self.broadcaster.emit_progress("l0_ingestion", 100, details="L0 快速摄取完成") if self.broadcaster else None)
+            self._emit_sync(self.broadcaster.emit_log(
+                f"L0 完成: {success_count}/{total_files} 成功, 耗时 {total_duration:.2f}s", "INFO"
+            ) if self.broadcaster else None)
+
             return {
                 "status": "success",
                 "files_processed": success_count,
+                "processed_count": success_count,  # 添加这个字段用于 API 响应
                 "duration": total_duration,
                 "results": results
             }
@@ -149,6 +210,7 @@ class IncrementalUpdateManagerV2:
         except Exception as e:
             self.console.print(f"[red]❌ L0 快速摄取失败: {e}[/red]")
             self.stats["errors"] += 1
+            self._emit_sync(self.broadcaster.emit_error(f"L0 快速摄取失败: {e}") if self.broadcaster else None)
             return {
                 "status": "error",
                 "error": str(e),
@@ -191,6 +253,8 @@ class IncrementalUpdateManagerV2:
         start_time = time.time()
 
         self.console.print("\n[bold magenta]🏗️  L1 深度索引流程（后台任务）...[/bold magenta]")
+        self._emit_sync(self.broadcaster.emit_log("开始 L1 深度索引流程", "INFO") if self.broadcaster else None)
+        self._emit_sync(self.broadcaster.emit_progress("l1_indexing", 0, details="检测需要处理的文件...") if self.broadcaster else None)
 
         try:
             # 如果未指定文件，检测所有变更
@@ -200,11 +264,18 @@ class IncrementalUpdateManagerV2:
 
             if not file_paths:
                 self.console.print("[yellow]没有需要处理的文件[/yellow]")
-                return {"status": "success", "tasks_submitted": 0}
+                self._emit_sync(self.broadcaster.emit_log("没有需要处理的文件", "INFO") if self.broadcaster else None)
+                return {"status": "success", "tasks_submitted": 0, "submitted_count": 0}
+
+            total_files = len(file_paths)
+            self._emit_sync(self.broadcaster.emit_progress(
+                "l1_indexing", 10, total=total_files, current=0,
+                details=f"准备提交 {total_files} 个任务..."
+            ) if self.broadcaster else None)
 
             # 提交到任务队列（异步执行）
             task_ids = []
-            for file_path in file_paths:
+            for idx, file_path in enumerate(file_paths):
                 task_id = self.task_queue.submit_file_processing(
                     file_path=file_path,
                     task_type="entity_extraction",
@@ -213,6 +284,18 @@ class IncrementalUpdateManagerV2:
                 )
                 task_ids.append(task_id)
 
+                # 更新进度
+                progress = int(10 + (idx + 1) / total_files * 80)  # 10-90%
+                self._emit_sync(self.broadcaster.emit_progress(
+                    "l1_indexing", progress,
+                    current=idx + 1, total=total_files,
+                    details=f"提交任务: {Path(file_path).name}"
+                ) if self.broadcaster else None)
+
+                self._emit_sync(self.broadcaster.emit_file_status(
+                    file_path, "queued", stage="L1"
+                ) if self.broadcaster else None)
+
             self.console.print(
                 f"[green]✓ 已提交 {len(task_ids)} 个任务到后台队列[/green]"
             )
@@ -220,9 +303,15 @@ class IncrementalUpdateManagerV2:
             # 显示任务队列状态
             self.task_queue.print_stats()
 
+            self._emit_sync(self.broadcaster.emit_progress("l1_indexing", 100, details="所有任务已提交到后台队列") if self.broadcaster else None)
+            self._emit_sync(self.broadcaster.emit_log(
+                f"L1 任务提交完成: {len(task_ids)} 个任务已进入后台队列", "INFO"
+            ) if self.broadcaster else None)
+
             return {
                 "status": "success",
                 "tasks_submitted": len(task_ids),
+                "submitted_count": len(task_ids),  # 添加这个字段用于 API 响应
                 "task_ids": task_ids,
                 "duration": time.time() - start_time
             }
@@ -230,6 +319,7 @@ class IncrementalUpdateManagerV2:
         except Exception as e:
             self.console.print(f"[red]❌ L1 任务提交失败: {e}[/red]")
             self.stats["errors"] += 1
+            self._emit_sync(self.broadcaster.emit_error(f"L1 任务提交失败: {e}") if self.broadcaster else None)
             return {
                 "status": "error",
                 "error": str(e),

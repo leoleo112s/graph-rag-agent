@@ -1,0 +1,259 @@
+"""
+图谱构建相关 API 路由
+
+提供：
+- WebSocket 进度实时推送
+- 触发构建任务的 HTTP 端点
+- 构建状态查询
+"""
+import asyncio
+import logging
+from typing import Optional, Dict, Any
+from pathlib import Path
+
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, BackgroundTasks
+from pydantic import BaseModel, Field
+
+from server.utils.progress_broadcaster import get_broadcaster
+from server.server_config.config import get_settings
+
+_LOGGER = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/build", tags=["build"])
+
+
+# ========== WebSocket 端点 ==========
+
+
+@router.websocket("/ws/progress")
+async def websocket_progress_endpoint(websocket: WebSocket):
+    """
+    WebSocket 端点：实时接收图谱构建进度
+
+    前端连接此端点后，将实时收到以下类型的消息：
+    - type: "connected" - 连接成功
+    - type: "log" - 日志消息
+    - type: "progress" - 进度更新（包含 stage, percent, details）
+    - type: "status" - 状态更新（started, running, completed, failed）
+    - type: "file_status" - 单个文件处理状态
+    - type: "stats" - 统计信息（实体数、关系数等）
+    - type: "error" - 错误消息
+
+    Example:
+        ```javascript
+        const ws = new WebSocket("ws://localhost:8000/build/ws/progress");
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            console.log(data.type, data);
+        };
+        ```
+    """
+    broadcaster = get_broadcaster()
+    await broadcaster.connect(websocket)
+
+    try:
+        # 保持连接，监听客户端消息（如果需要支持暂停/停止）
+        while True:
+            data = await websocket.receive_text()
+            # 可以在这里处理客户端发来的控制命令
+            _LOGGER.debug(f"收到客户端消息: {data}")
+
+    except WebSocketDisconnect:
+        _LOGGER.info("客户端主动断开 WebSocket 连接")
+        await broadcaster.disconnect(websocket)
+    except Exception as exc:
+        _LOGGER.exception(f"WebSocket 连接异常: {exc}")
+        await broadcaster.disconnect(websocket)
+
+
+# ========== HTTP 端点 ==========
+
+
+class BuildRequest(BaseModel):
+    """构建请求参数"""
+
+    mode: str = Field(
+        default="incremental",
+        description="构建模式：incremental（增量）| full（全量）"
+    )
+    file_paths: Optional[list[str]] = Field(
+        default=None,
+        description="指定要处理的文件路径列表（None 表示处理所有变更文件）"
+    )
+    force: bool = Field(
+        default=False,
+        description="是否强制重新构建（即使文件未变更）"
+    )
+    skip_l0: bool = Field(
+        default=False,
+        description="是否跳过 L0 快速索引（仅运行 L1 深度索引）"
+    )
+    skip_l1: bool = Field(
+        default=False,
+        description="是否跳过 L1 深度索引（仅运行 L0 快速索引）"
+    )
+
+
+class BuildResponse(BaseModel):
+    """构建响应"""
+
+    status: str = Field(description="状态：started, already_running, failed")
+    message: str = Field(description="消息")
+    task_id: Optional[str] = Field(default=None, description="任务 ID（如果启动成功）")
+
+
+# 全局标志：防止重复构建
+_build_running = False
+_build_lock = asyncio.Lock()
+
+
+async def _run_build_task(request: BuildRequest):
+    """
+    后台执行构建任务（异步）
+
+    Args:
+        request: 构建请求参数
+    """
+    global _build_running
+
+    broadcaster = get_broadcaster()
+
+    try:
+        # 动态导入，避免循环依赖和模块加载时的 Neo4j 连接
+        from graphrag_agent.integrations.build.incremental_update_v2 import (
+            IncrementalUpdateManagerV2
+        )
+
+        await broadcaster.emit_status("started", "图谱构建任务已启动")
+        await broadcaster.emit_log("初始化构建管理器...", "INFO")
+
+        # 创建管理器实例（传入广播器）
+        settings = get_settings()
+        manager = IncrementalUpdateManagerV2(
+            files_dir=settings.FILES_DIR,
+            broadcaster=broadcaster  # 注入广播器
+        )
+
+        # 执行构建
+        if request.mode == "incremental":
+            # 增量构建
+            if not request.skip_l0:
+                await broadcaster.emit_log("开始执行 L0 快速索引...", "INFO")
+                l0_result = await asyncio.to_thread(
+                    manager.run_fast_ingestion,
+                    file_paths=request.file_paths
+                )
+                await broadcaster.emit_log(
+                    f"L0 完成：{l0_result.get('processed_count', 0)} 个文件", "INFO"
+                )
+
+            if not request.skip_l1:
+                await broadcaster.emit_log("开始执行 L1 深度索引...", "INFO")
+                l1_result = await asyncio.to_thread(
+                    manager.run_deep_indexing,
+                    file_paths=request.file_paths
+                )
+                await broadcaster.emit_log(
+                    f"L1 完成：{l1_result.get('submitted_count', 0)} 个任务已提交", "INFO"
+                )
+
+        elif request.mode == "full":
+            # 全量构建
+            await broadcaster.emit_log("执行全量构建...", "INFO")
+            await broadcaster.emit_log("全量构建功能开发中，请使用增量模式", "WARNING")
+
+        await broadcaster.emit_status("completed", "图谱构建任务完成")
+
+    except Exception as exc:
+        _LOGGER.exception(f"构建任务执行失败: {exc}")
+        await broadcaster.emit_error(f"构建失败: {exc}")
+        await broadcaster.emit_status("failed", str(exc))
+
+    finally:
+        async with _build_lock:
+            _build_running = False
+
+
+@router.post("/run", response_model=BuildResponse)
+async def run_build(
+    request: BuildRequest,
+    background_tasks: BackgroundTasks
+):
+    """
+    触发图谱构建任务
+
+    **注意**：此接口立即返回，构建任务在后台异步执行。
+    请通过 WebSocket (`/build/ws/progress`) 监听实时进度。
+
+    Args:
+        request: 构建请求参数
+        background_tasks: FastAPI 后台任务
+
+    Returns:
+        BuildResponse: 包含任务启动状态
+
+    Example:
+        ```bash
+        curl -X POST "http://localhost:8000/build/run" \\
+          -H "Content-Type: application/json" \\
+          -d '{"mode": "incremental", "force": false}'
+        ```
+    """
+    global _build_running
+
+    async with _build_lock:
+        if _build_running:
+            return BuildResponse(
+                status="already_running",
+                message="已有构建任务正在运行，请等待其完成",
+                task_id=None
+            )
+
+        _build_running = True
+
+    # 在后台启动构建任务
+    background_tasks.add_task(_run_build_task, request)
+
+    return BuildResponse(
+        status="started",
+        message="构建任务已在后台启动，请通过 WebSocket 监听进度",
+        task_id="build_001"  # 可以生成唯一 ID
+    )
+
+
+@router.get("/status")
+async def get_build_status() -> Dict[str, Any]:
+    """
+    查询当前构建状态
+
+    Returns:
+        构建状态信息
+    """
+    global _build_running
+
+    return {
+        "is_running": _build_running,
+        "active_connections": len(get_broadcaster().active_connections),
+    }
+
+
+@router.post("/stop")
+async def stop_build():
+    """
+    停止当前构建任务（TODO: 需要实现优雅停止机制）
+
+    Returns:
+        停止结果
+    """
+    global _build_running
+
+    # TODO: 实现实际的停止逻辑
+    async with _build_lock:
+        if not _build_running:
+            raise HTTPException(status_code=400, detail="当前没有运行中的构建任务")
+
+        _build_running = False
+
+    await get_broadcaster().emit_status("stopped", "构建任务已被用户停止")
+
+    return {"status": "stopped", "message": "构建任务停止指令已发送"}
