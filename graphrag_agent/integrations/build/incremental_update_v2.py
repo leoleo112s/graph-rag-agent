@@ -358,6 +358,56 @@ class IncrementalUpdateManagerV2:
     # 辅助功能
     # ===================
 
+    def resolve_entities(
+        self,
+        threshold: float = 0.9,
+        entity_type: Optional[str] = None
+    ) -> Dict:
+        """
+        执行实体对齐（合并相似实体）
+
+        Args:
+            threshold: 相似度阈值（0-1），默认 0.9
+            entity_type: 指定实体类型（None 表示所有类型）
+
+        Returns:
+            Dict: 对齐结果
+        """
+        from graphrag_agent.graph.processing import EntityResolver
+
+        self.console.print(f"[bold cyan]执行实体对齐（阈值: {threshold}）...[/bold cyan]")
+
+        try:
+            resolver = EntityResolver(threshold=threshold)
+            result = resolver.resolve_entities(entity_type=entity_type)
+
+            if result.get("status") == "success":
+                merged_count = result.get("merged_count", 0)
+                total_entities = result.get("total_entities", 0)
+
+                self.console.print(
+                    f"[green]✅ 实体对齐完成：{merged_count} 组相似实体已合并，"
+                    f"共处理 {total_entities} 个实体[/green]"
+                )
+
+                # 发送进度更新
+                self._emit_sync(self.broadcaster.emit_log(
+                    f"实体对齐完成：合并 {merged_count} 组相似实体", "INFO"
+                ) if self.broadcaster else None)
+
+                return result
+            else:
+                self.console.print("[yellow]实体对齐未成功[/yellow]")
+                return result
+
+        except Exception as e:
+            self.console.print(f"[red]❌ 执行实体对齐时出错: {e}[/red]")
+            self.stats["errors"] += 1
+            self._emit_sync(self.broadcaster.emit_error(
+                f"实体对齐失败: {e}"
+            ) if self.broadcaster else None)
+            return {"status": "error", "error": str(e)}
+
     def detect_communities(self) -> Dict:
         """
         执行社区检测和摘要生成
