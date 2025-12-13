@@ -9,6 +9,10 @@ import asyncio
 from services.agent_service import agent_manager
 from services.kg_service import extract_kg_from_message
 from utils.concurrent import chat_manager, feedback_manager
+from utils.semantic_cache import get_semantic_cache
+
+# 导入 embeddings 模型（用于语义缓存）
+from graphrag_agent.models.get_models import get_embeddings_model
 
 
 async def process_chat(message: str, session_id: str, debug: bool = False, agent_type: str = "hybrid_agent", 
@@ -42,7 +46,7 @@ async def process_chat(message: str, session_id: str, debug: bool = False, agent
     try:
         # 更新操作时间戳
         chat_manager.update_timestamp(lock_key)
-        
+
         # 获取指定的agent
         try:
             selected_agent = agent_manager.get_agent(agent_type, session_id)
@@ -53,7 +57,51 @@ async def process_chat(message: str, session_id: str, debug: bool = False, agent
             })
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
-        
+
+        # ========== 语义缓存检查 ==========
+        # 1. 计算查询的向量表示
+        try:
+            start_semantic = time.time()
+            embeddings_model = get_embeddings_model()
+            query_embedding = embeddings_model.embed_query(message)
+
+            # 2. 检查语义缓存
+            semantic_cache = get_semantic_cache(threshold=0.95, max_size=1000)
+            cached_response = semantic_cache.get(query_embedding)
+
+            if cached_response:
+                print(f"✅ 语义缓存命中！耗时: {time.time() - start_semantic:.4f}s")
+
+                # 调试模式需要提供额外信息
+                if debug:
+                    mock_log = [{
+                        "node": "semantic_cache_hit",
+                        "timestamp": time.time(),
+                        "input": message,
+                        "output": f"语义缓存命中（相似度 ≥ 0.95），跳过 Agent 执行"
+                    }]
+
+                    # 使用多态接口判断是否支持KG提取
+                    kg_data = {"nodes": [], "links": []}
+                    if selected_agent.supports_kg_extraction():
+                        try:
+                            kg_data = extract_kg_from_message(cached_response)
+                        except:
+                            kg_data = {"nodes": [], "links": []}
+
+                    return {
+                        "answer": cached_response,
+                        "execution_log": mock_log,
+                        "kg_data": kg_data,
+                        "cache_source": "semantic"
+                    }
+                else:
+                    return {"answer": cached_response, "cache_source": "semantic"}
+        except Exception as e:
+            # 语义缓存失败不影响主流程
+            print(f"语义缓存检查失败（继续正常流程）: {e}")
+
+        # ========== Agent 快速缓存检查 ==========
         # 首先尝试快速路径 - 跳过完整处理
         try:
             start_fast = time.time()
@@ -151,6 +199,21 @@ async def process_chat(message: str, session_id: str, debug: bool = False, agent
             if execution_logs:
                 response["execution_logs"] = execution_logs
 
+            # ========== 写入语义缓存 ==========
+            try:
+                semantic_cache.add(
+                    query_embedding,
+                    answer_content,
+                    metadata={
+                        "session_id": session_id,
+                        "agent_type": agent_type,
+                        "query": message
+                    }
+                )
+                print(f"已将响应写入语义缓存")
+            except Exception as e:
+                print(f"写入语义缓存失败（不影响返回结果）: {e}")
+
             return response
         else:
             # 标准模式 - 所有Agent都使用统一的ask接口
@@ -160,6 +223,22 @@ async def process_chat(message: str, session_id: str, debug: bool = False, agent
                 thread_id=session_id,
                 show_thinking=show_thinking  # 保持接口兼容，但仅DeepResearchAgent使用
             )
+
+            # ========== 写入语义缓存 ==========
+            try:
+                semantic_cache.add(
+                    query_embedding,
+                    answer,
+                    metadata={
+                        "session_id": session_id,
+                        "agent_type": agent_type,
+                        "query": message
+                    }
+                )
+                print(f"已将响应写入语义缓存")
+            except Exception as e:
+                print(f"写入语义缓存失败（不影响返回结果）: {e}")
+
             return {"answer": answer}
     except Exception as e:
         error_msg = str(e)
@@ -220,7 +299,7 @@ async def process_chat_stream(
     try:
         # 更新操作时间戳
         chat_manager.update_timestamp(lock_key)
-        
+
         # 获取指定的agent
         try:
             selected_agent = agent_manager.get_agent(agent_type, session_id)
@@ -232,7 +311,45 @@ async def process_chat_stream(
         except ValueError as e:
             yield json.dumps({"status": "error", "message": str(e)})
             return
-        
+
+        # ========== 语义缓存检查 ==========
+        query_embedding = None  # 保存用于后续写入缓存
+        try:
+            start_semantic = time.time()
+            embeddings_model = get_embeddings_model()
+            query_embedding = embeddings_model.embed_query(message)
+
+            # 检查语义缓存
+            semantic_cache = get_semantic_cache(threshold=0.95, max_size=1000)
+            cached_response = semantic_cache.get(query_embedding)
+
+            if cached_response:
+                print(f"✅ 语义缓存命中（流式）！耗时: {time.time() - start_semantic:.4f}s")
+
+                # 如果是调试模式，先发送执行日志
+                if debug:
+                    mock_log = {
+                        "node": "semantic_cache_hit",
+                        "timestamp": time.time(),
+                        "input": message,
+                        "output": "语义缓存命中（相似度 ≥ 0.95），跳过 Agent 执行"
+                    }
+                    yield {"execution_log": mock_log}
+
+                # 模拟流式输出缓存的响应
+                chunk_size = 10
+                for i in range(0, len(cached_response), chunk_size):
+                    chunk = cached_response[i:i+chunk_size]
+                    yield json.dumps({"status": "token", "content": chunk})
+                    await asyncio.sleep(0.01)  # 小延迟模拟流式输出
+
+                yield json.dumps({"status": "done", "cache_source": "semantic"})
+                return
+        except Exception as e:
+            # 语义缓存失败不影响主流程
+            print(f"语义缓存检查失败（继续正常流程）: {e}")
+
+        # ========== Agent 快速缓存检查 ==========
         # 首先尝试快速路径缓存
         try:
             start_fast = time.time()
@@ -259,6 +376,9 @@ async def process_chat_stream(
         # 保存执行轨迹（针对调试模式）
         execution_log = []
 
+        # 用于收集完整的答案（写入语义缓存）
+        full_answer = []
+
         # 使用统一的流式接口（所有Agent都支持ask_stream）
         # show_thinking已通过configure()传递，由Agent内部处理
         if debug:
@@ -282,6 +402,9 @@ async def process_chat_stream(
                 chunk = answer[i:i+chunk_size]
                 yield json.dumps({"status": "token", "content": chunk})
                 await asyncio.sleep(0.01)  # 小延迟模拟流式输出
+
+            # 保存完整答案用于语义缓存
+            full_answer.append(answer)
         else:
             # 非Debug模式：直接使用流式接口
             thinking_step = False
@@ -302,6 +425,8 @@ async def process_chat_stream(
                         thinking_step = False
                         yield json.dumps({"status": "answer_start"})
 
+                    # 收集答案用于语义缓存
+                    full_answer.append(chunk)
                     yield json.dumps({"status": "token", "content": chunk})
 
             # 发送完成消息
@@ -309,6 +434,24 @@ async def process_chat_stream(
                 yield json.dumps({"status": "done", "thinking_content": thinking_content})
             else:
                 yield json.dumps({"status": "done"})
+
+        # ========== 写入语义缓存 ==========
+        if query_embedding is not None and full_answer:
+            try:
+                complete_answer = "".join(full_answer)
+                semantic_cache.add(
+                    query_embedding,
+                    complete_answer,
+                    metadata={
+                        "session_id": session_id,
+                        "agent_type": agent_type,
+                        "query": message,
+                        "streaming": True
+                    }
+                )
+                print(f"已将流式响应写入语义缓存（长度: {len(complete_answer)}）")
+            except Exception as e:
+                print(f"写入语义缓存失败（不影响返回结果）: {e}")
 
         return
             
