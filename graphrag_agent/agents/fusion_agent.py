@@ -36,14 +36,14 @@ class FusionGraphRAGAgent:
         self._flush_threshold = AGENT_SETTINGS["fusion_stream_flush_threshold"]
         self._default_recursion_limit = AGENT_SETTINGS["default_recursion_limit"]
 
-    def ask(self, query: str, thread_id: str = "default", recursion_limit: Optional[int] = None) -> str:
+    def ask(self, query: str, thread_id: str = "default", recursion_limit: Optional[int] = None, **kwargs) -> str:
         return self._execute(query, thread_id)[0]
 
-    def ask_with_trace(self, query: str, thread_id: str = "default", recursion_limit: Optional[int] = None) -> Dict[str, Any]:
+    def ask_with_trace(self, query: str, thread_id: str = "default", recursion_limit: Optional[int] = None, **kwargs) -> Dict[str, Any]:
         answer, payload = self._execute(query, thread_id)
         return {"answer": answer, "payload": payload}
 
-    async def ask_stream(self, query: str, thread_id: str = "default", recursion_limit: Optional[int] = None) -> AsyncGenerator[str, None]:
+    async def ask_stream(self, query: str, thread_id: str = "default", recursion_limit: Optional[int] = None, **kwargs) -> AsyncGenerator[str, None]:
         cached = self._read_cache(query, thread_id)
         if cached is None:
             cached, _ = await asyncio.to_thread(self._execute, query, thread_id)

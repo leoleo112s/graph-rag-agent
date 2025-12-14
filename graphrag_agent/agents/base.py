@@ -464,8 +464,16 @@ class BaseAgent(ABC):
                 "execution_log": self.execution_log + [{"node": "error", "timestamp": time.time(), "input": query, "output": str(e)}]
             }
         
-    def ask(self, query: str, thread_id: str = "default", recursion_limit: Optional[int] = None):
-        """向Agent提问"""
+    def ask(self, query: str, thread_id: str = "default", recursion_limit: Optional[int] = None, **kwargs):
+        """
+        向Agent提问
+
+        参数:
+            query: 用户问题
+            thread_id: 会话ID
+            recursion_limit: 递归限制
+            **kwargs: 额外参数（如 show_thinking 等），用于支持灵活的接口调用
+        """
         overall_start = time.time()
         
         # 确保查询字符串是干净的
@@ -522,15 +530,16 @@ class BaseAgent(ABC):
             print(f"处理查询时出错: {e} ({error_time:.4f}s)")
             return f"抱歉，处理您的问题时遇到了错误。请稍后再试或换一种提问方式。错误详情: {str(e)}"
     
-    async def ask_stream(self, query: str, thread_id: str = "default", recursion_limit: Optional[int] = None) -> AsyncGenerator[str, None]:
+    async def ask_stream(self, query: str, thread_id: str = "default", recursion_limit: Optional[int] = None, **kwargs) -> AsyncGenerator[str, None]:
         """
         向Agent提问，返回流式响应
-        
+
         参数:
             query: 用户问题
             thread_id: 会话ID
             recursion_limit: 递归限制
-                
+            **kwargs: 额外参数（如 show_thinking 等），用于支持灵活的接口调用
+
         返回:
             AsyncGenerator[str, None]: 流式响应生成器
         """
@@ -815,7 +824,7 @@ class BaseAgent(ABC):
         """
         pass
 
-    def ask_with_thinking(self, query: str, thread_id: str = "default") -> Dict:
+    def ask_with_thinking(self, query: str, thread_id: str = "default", **kwargs) -> Dict:
         """
         提问并返回带思考过程的答案（多态接口）
 
@@ -825,6 +834,7 @@ class BaseAgent(ABC):
         Args:
             query: 用户问题
             thread_id: 会话ID
+            **kwargs: 额外参数，用于支持灵活的接口调用
 
         Returns:
             Dict: 包含答案和相关信息的字典

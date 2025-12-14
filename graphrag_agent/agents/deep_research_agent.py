@@ -224,18 +224,19 @@ class DeepResearchAgent(BaseAgent):
             error_msg = f"处理思考过程时出错: {str(e)}"
             return {"messages": [AIMessage(content=error_msg)]}
     
-    def ask(self, query: str, thread_id: str = "default", recursion_limit: Optional[int] = None, 
-            show_thinking: bool = False, exploration_mode: bool = False):
+    def ask(self, query: str, thread_id: str = "default", recursion_limit: Optional[int] = None,
+            show_thinking: bool = False, exploration_mode: bool = False, **kwargs):
         """
         向Agent提问，可选显示思考过程
-        
+
         参数:
             query: 用户问题
             thread_id: 会话ID
             recursion_limit: 递归限制
             show_thinking: 是否显示思考过程
             exploration_mode: 是否使用知识图谱探索模式
-                
+            **kwargs: 额外参数，用于支持灵活的接口调用
+
         返回:
             str: 生成的回答或包含思考过程的字典
         """
@@ -256,14 +257,15 @@ class DeepResearchAgent(BaseAgent):
             # 重置状态
             self.show_thinking = old_thinking
     
-    def ask_with_thinking(self, query: str, thread_id: str = "default", community_aware: bool = True):
+    def ask_with_thinking(self, query: str, thread_id: str = "default", community_aware: bool = True, **kwargs):
         """
         提问并返回带思考过程的答案
-        
+
         参数:
             query: 用户问题
             thread_id: 会话ID
             community_aware: 是否启用社区感知
+            **kwargs: 额外参数，用于支持灵活的接口调用
             
         返回:
             dict: 包含思考过程和答案的字典
@@ -294,17 +296,18 @@ class DeepResearchAgent(BaseAgent):
                 
             return result
     
-    async def ask_stream(self, query: str, thread_id: str = "default", 
-                         recursion_limit: Optional[int] = None, show_thinking: bool = False) -> AsyncGenerator[str, None]:
+    async def ask_stream(self, query: str, thread_id: str = "default",
+                         recursion_limit: Optional[int] = None, show_thinking: bool = False, **kwargs) -> AsyncGenerator[str, None]:
         """
         向Agent提问，返回流式响应
-        
+
         参数:
             query: 用户问题
             thread_id: 会话ID
             recursion_limit: 递归限制
             show_thinking: 是否显示思考过程
-            
+            **kwargs: 额外参数，用于支持灵活的接口调用
+
         返回:
             AsyncGenerator: 流式响应内容
         """
