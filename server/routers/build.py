@@ -259,8 +259,8 @@ async def _run_build_task(request: BuildRequest):
                     log="开始 L0 快速索引"
                 )
 
-                l0_result = await asyncio.to_thread(
-                    manager.run_fast_ingestion,
+                # 直接 await，因为 manager 方法已经是 async 的了
+                l0_result = await manager.run_fast_ingestion(
                     file_paths=request.file_paths
                 )
 
@@ -283,8 +283,8 @@ async def _run_build_task(request: BuildRequest):
                     log="开始 L1 深度索引"
                 )
 
-                l1_result = await asyncio.to_thread(
-                    manager.run_deep_indexing,
+                # 直接 await，因为 manager 方法已经是 async 的了
+                l1_result = await manager.run_deep_indexing(
                     file_paths=request.file_paths
                 )
 
