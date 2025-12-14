@@ -23,7 +23,7 @@ from rich.table import Table
 if TYPE_CHECKING:
     from server.utils.progress_broadcaster import ProgressBroadcaster
 
-from incremental_graph_builder import IncrementalGraphUpdater
+from .incremental_graph_builder import IncrementalGraphUpdater
 from graphrag_agent.graph.graph_consistency_validator import GraphConsistencyValidator
 from graphrag_agent.integrations.build.incremental.manual_edit_manager import ManualEditManager
 from graphrag_agent.community import CommunityDetectorFactory, CommunitySummarizerFactory
