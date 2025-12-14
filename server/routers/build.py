@@ -16,9 +16,9 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Ba
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from server.utils.progress_broadcaster import get_broadcaster
-from server.utils.progress_manager import get_progress_manager
-from server.server_config.config import get_settings
+from utils.progress_broadcaster import get_broadcaster
+from utils.progress_manager import get_progress_manager
+from graphrag_agent.config.settings import FILES_DIR
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -242,9 +242,8 @@ async def _run_build_task(request: BuildRequest):
         )
 
         # 创建管理器实例（传入广播器）
-        settings = get_settings()
         manager = IncrementalUpdateManagerV2(
-            files_dir=settings.FILES_DIR,
+            files_dir=FILES_DIR,
             broadcaster=broadcaster  # 注入广播器
         )
 
