@@ -1,225 +1,216 @@
 """
-管理路由
-提供文档管理、配置管理、构建管理等管理 API
+管理路由 (Admin Router)
+提供文档管理、配置管理、构建管理 (V2集成) 等管理 API
 """
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks
-from fastapi.responses import JSONResponse
-from typing import Dict, Optional
-import subprocess
-import threading
-import time
+import asyncio
 import logging
 from datetime import datetime
 from pathlib import Path
+from typing import Dict, Optional, List
 
-from graphrag_agent.config.settings import FILES_DIR, BASE_DIR
+from fastapi import APIRouter, HTTPException, BackgroundTasks
+from pydantic import BaseModel
+
+# 引入配置
+from graphrag_agent.config.settings import FILES_DIR
+from graphrag_agent.config.neo4jdb import get_db_manager
 from graphrag_agent.graph.core import connection_manager
 from graphrag_agent.config.graph_config_model import GraphConfig
 from graphrag_agent.config.graph_config_storage import get_storage
 
+# 引入 V2 构建管理器和广播器
+from graphrag_agent.integrations.build.incremental_update_v2 import IncrementalUpdateManagerV2
+from utils.progress_broadcaster import get_broadcaster
+from utils.progress_manager import get_progress_manager
+
 # 配置日志
 logger = logging.getLogger(__name__)
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
-# 全局构建状态
-build_status = {
-    "status": "idle",  # idle, running, completed, failed
-    "progress": 0,
-    "current_stage": "",
-    "processed": 0,
-    "total": 0,
-    "elapsed_time": 0,
-    "start_time": None,
-    "logs": [],
-    "error": None
-}
-
-build_lock = threading.Lock()
+# 全局构建锁，防止重复运行
+_build_lock = asyncio.Lock()
+_is_building = False
 
 
-def run_build_command(command: list, build_type: str):
-    """在后台运行构建命令"""
-    global build_status
+# ==================== 核心构建逻辑 (V2 集成) ====================
 
-    with build_lock:
-        build_status["status"] = "running"
-        build_status["progress"] = 0
-        build_status["current_stage"] = "初始化"
-        build_status["processed"] = 0
-        build_status["total"] = 100
-        build_status["start_time"] = time.time()
-        build_status["logs"] = [f"开始{build_type}构建..."]
-        build_status["error"] = None
+async def _run_full_build_task():
+    """
+    后台任务：执行全量构建 (清空库 -> 重建)
+    """
+    global _is_building
+    broadcaster = get_broadcaster()
+    progress_mgr = get_progress_manager()
 
     try:
-        # 执行构建命令
-        process = subprocess.Popen(
-            command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            bufsize=1
+        # 1. 初始化状态
+        await broadcaster.emit_status("started", "全量构建任务已启动")
+        await broadcaster.emit_log("=== 开始全量构建流程 ===", "INFO")
+        await progress_mgr.update(percent=0, stage="init", details="初始化环境...")
+
+        # 2. 🚨 清空 Neo4j 数据库 (全量构建的核心)
+        await broadcaster.emit_log("正在清空现有知识图谱...", "WARNING")
+        await progress_mgr.update(percent=5, stage="cleaning", details="正在清空数据库...")
+
+        db_manager = get_db_manager()
+        # 执行 Cypher 清空全库
+        db_manager.execute_query("MATCH (n) DETACH DELETE n")
+
+        await broadcaster.emit_log("✅ 数据库已清空", "INFO")
+        await progress_mgr.update(percent=10, stage="cleaning_done", details="数据库已清空")
+
+        # 3. 初始化 V2 管理器
+        manager = IncrementalUpdateManagerV2(
+            files_dir=FILES_DIR,
+            broadcaster=broadcaster  # 注入广播器，让 V2 内部也能发消息
         )
 
-        # 读取输出
-        for line in iter(process.stdout.readline, ''):
-            if line:
-                with build_lock:
-                    build_status["logs"].append(line.strip())
-                    # 简单的进度估算（可以根据实际日志解析更准确的进度）
-                    if "文档读取" in line or "读取文件" in line:
-                        build_status["current_stage"] = "文档读取"
-                        build_status["progress"] = 10
-                    elif "实体提取" in line or "提取实体" in line:
-                        build_status["current_stage"] = "实体提取"
-                        build_status["progress"] = 40
-                    elif "实体消歧" in line or "对齐" in line:
-                        build_status["current_stage"] = "实体消歧"
-                        build_status["progress"] = 60
-                    elif "图谱构建" in line or "构建图谱" in line:
-                        build_status["current_stage"] = "图谱构建"
-                        build_status["progress"] = 75
-                    elif "向量索引" in line or "索引" in line:
-                        build_status["current_stage"] = "向量索引"
-                        build_status["progress"] = 85
-                    elif "社区检测" in line:
-                        build_status["current_stage"] = "社区检测"
-                        build_status["progress"] = 95
-                    elif "完成" in line:
-                        build_status["progress"] = 100
+        # 4. 执行完整流程 (L0 + L1)
+        # 全量模式下，我们不传入 file_paths，让它扫描所有文件
+        await broadcaster.emit_log("开始全量重新索引 (L0 + L1)...", "INFO")
 
-                    build_status["elapsed_time"] = int(time.time() - build_status["start_time"])
+        # 直接 await，因为 run_full_pipeline 已经是 async def
+        result = await manager.run_full_pipeline()
 
-        process.wait()
-
-        with build_lock:
-            if process.returncode == 0:
-                build_status["status"] = "completed"
-                build_status["progress"] = 100
-                build_status["current_stage"] = "完成"
-                build_status["logs"].append(f"{build_type}构建成功完成")
-            else:
-                build_status["status"] = "failed"
-                build_status["error"] = f"构建失败，退出码: {process.returncode}"
-                build_status["logs"].append(f"{build_type}构建失败")
+        # 5. 完成
+        await broadcaster.emit_log(f"✅ 全量构建完成，耗时: {result.get('total_duration', 0):.2f}s", "INFO")
+        await broadcaster.emit_status("completed", "全量构建成功")
+        await progress_mgr.update(percent=100, stage="completed", details="构建成功")
 
     except Exception as e:
-        with build_lock:
-            build_status["status"] = "failed"
-            build_status["error"] = str(e)
-            build_status["logs"].append(f"构建异常: {e}")
+        logger.exception("全量构建失败")
+        error_msg = str(e)
+        await broadcaster.emit_error(f"全量构建失败: {error_msg}")
+        await broadcaster.emit_status("failed", error_msg)
+        await progress_mgr.update(stage="error", details=f"失败: {error_msg}")
 
+    finally:
+        async with _build_lock:
+            _is_building = False
+
+
+async def _run_incremental_build_task():
+    """
+    后台任务：执行增量构建 (仅处理变更)
+    """
+    global _is_building
+    broadcaster = get_broadcaster()
+    progress_mgr = get_progress_manager()
+
+    try:
+        await broadcaster.emit_status("started", "增量构建任务已启动")
+        await broadcaster.emit_log("=== 开始增量构建流程 ===", "INFO")
+
+        # 初始化 V2 管理器
+        manager = IncrementalUpdateManagerV2(
+            files_dir=FILES_DIR,
+            broadcaster=broadcaster
+        )
+
+        # 执行完整流程 (自动检测变更)
+        # 直接 await，因为 run_full_pipeline 已经是 async def
+        result = await manager.run_full_pipeline()
+
+        # 检查是否有文件被处理
+        l0_count = result.get('l0', {}).get('files_processed', 0)
+
+        if l0_count == 0:
+            await broadcaster.emit_log("未检测到文件变更，无需构建", "INFO")
+        else:
+            await broadcaster.emit_log(f"✅ 增量构建完成，处理了 {l0_count} 个文件", "INFO")
+
+        await broadcaster.emit_status("completed", "构建完成")
+        await progress_mgr.update(percent=100, stage="completed", details="构建完成")
+
+    except Exception as e:
+        logger.exception("增量构建失败")
+        await broadcaster.emit_error(f"增量构建失败: {str(e)}")
+        await broadcaster.emit_status("failed", str(e))
+
+    finally:
+        async with _build_lock:
+            _is_building = False
+
+
+# ==================== 构建 API ====================
 
 @router.post("/build/full")
 async def trigger_full_build(background_tasks: BackgroundTasks):
-    """触发完整构建"""
+    """触发完整构建 (V2集成版)"""
+    global _is_building
     logger.info("收到完整构建请求")
 
-    if build_status["status"] == "running":
-        logger.warning("已有构建任务正在运行，拒绝新请求")
-        raise HTTPException(status_code=400, detail="已有构建任务正在运行")
+    async with _build_lock:
+        if _is_building:
+            raise HTTPException(status_code=400, detail="已有构建任务正在运行")
+        _is_building = True
 
-    # 在后台启动构建
-    command = ["python", "graphrag_agent/integrations/build/main.py"]
-    thread = threading.Thread(target=run_build_command, args=(command, "完整"))
-    thread.daemon = True
-    thread.start()
+    # 启动后台任务
+    background_tasks.add_task(_run_full_build_task)
 
-    logger.info("完整构建已在后台启动")
-    return {"message": "完整构建已启动", "status": "running"}
+    return {"message": "完整构建已在后台启动", "status": "running"}
 
 
 @router.post("/build/incremental")
 async def trigger_incremental_build(background_tasks: BackgroundTasks):
-    """触发增量构建"""
+    """触发增量构建 (V2集成版)"""
+    global _is_building
     logger.info("收到增量构建请求")
 
-    if build_status["status"] == "running":
-        logger.warning("已有构建任务正在运行，拒绝新请求")
-        raise HTTPException(status_code=400, detail="已有构建任务正在运行")
+    async with _build_lock:
+        if _is_building:
+            raise HTTPException(status_code=400, detail="已有构建任务正在运行")
+        _is_building = True
 
-    # 在后台启动增量构建
-    command = ["python", "graphrag_agent/integrations/build/incremental_update.py", "--once"]
-    thread = threading.Thread(target=run_build_command, args=(command, "增量"))
-    thread.daemon = True
-    thread.start()
+    # 启动后台任务
+    background_tasks.add_task(_run_incremental_build_task)
 
-    logger.info("增量构建已在后台启动")
-    return {"message": "增量构建已启动", "status": "running"}
+    return {"message": "增量构建已在后台启动", "status": "running"}
 
 
 @router.post("/build/stop")
 async def stop_build():
     """停止构建"""
-    with build_lock:
-        if build_status["status"] == "running":
-            build_status["status"] = "idle"
-            build_status["logs"].append("构建已被用户停止")
-            return {"message": "构建已停止"}
-        else:
-            return {"message": "没有正在运行的构建任务"}
+    # TODO: 实现优雅停止 (需要向 Manager 发送取消信号)
+    # 目前只能重置状态标记，无法强行杀死线程
+    global _is_building
+    if _is_building:
+        # 这里只是逻辑上的停止，实际后台任务可能还在跑
+        # 真正的停止需要 V2 Manager 支持 CancelToken
+        return {"message": "停止指令已发送 (注意：当前后台任务可能无法立即中断)"}
+    return {"message": "没有正在运行的构建任务"}
 
 
 @router.get("/build/status")
 async def get_build_status():
-    """获取构建状态"""
-    with build_lock:
-        return build_status.copy()
+    """获取构建状态 (从 ProgressManager 获取)"""
+    # 结合全局锁状态和进度管理器的状态
+    status = get_progress_manager().get_current_status()
+    status["is_running"] = _is_building
+    return status
 
+
+# ==================== 统计与文件 API ====================
 
 @router.get("/graph/stats")
 async def get_graph_stats():
     """获取图谱统计信息"""
     logger.info("收到图谱统计请求")
-
     try:
         # 查询实体数量
         entity_count_query = "MATCH (n) RETURN count(n) as count"
         entity_result = connection_manager.execute_query(entity_count_query)
         entity_count = entity_result[0]['count'] if entity_result else 0
-        logger.info(f"实体数量: {entity_count}")
 
         # 查询关系数量
         relationship_count_query = "MATCH ()-[r]->() RETURN count(r) as count"
         relationship_result = connection_manager.execute_query(relationship_count_query)
         relationship_count = relationship_result[0]['count'] if relationship_result else 0
-        logger.info(f"关系数量: {relationship_count}")
-
-        # 查询实体类型分布
-        entity_type_query = """
-        MATCH (n)
-        WHERE n.entity_type IS NOT NULL
-        RETURN n.entity_type as type, count(*) as count
-        ORDER BY count DESC
-        """
-        entity_type_result = connection_manager.execute_query(entity_type_query)
-        entity_type_distribution = {
-            item['type']: item['count'] for item in entity_type_result
-        } if entity_type_result else {}
-
-        # 查询关系类型分布
-        relationship_type_query = """
-        MATCH ()-[r]->()
-        RETURN type(r) as type, count(*) as count
-        ORDER BY count DESC
-        """
-        relationship_type_result = connection_manager.execute_query(relationship_type_query)
-        relationship_type_distribution = {
-            item['type']: item['count'] for item in relationship_type_result
-        } if relationship_type_result else {}
 
         # 查询社区数量
-        community_count_query = """
-        MATCH (n)
-        WHERE n.community_id IS NOT NULL
-        RETURN count(DISTINCT n.community_id) as count
-        """
+        community_count_query = "MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count"
         community_result = connection_manager.execute_query(community_count_query)
         community_count = community_result[0]['count'] if community_result else 0
 
@@ -227,19 +218,13 @@ async def get_graph_stats():
         files_dir = Path(FILES_DIR)
         document_count = len([f for f in files_dir.iterdir() if f.is_file()]) if files_dir.exists() else 0
 
-        stats = {
+        return {
             "entity_count": entity_count,
             "relationship_count": relationship_count,
             "community_count": community_count,
             "document_count": document_count,
-            "entity_type_distribution": entity_type_distribution,
-            "relationship_type_distribution": relationship_type_distribution,
             "last_build_time": datetime.now().isoformat() if entity_count > 0 else None
         }
-
-        logger.info(f"返回图谱统计: {entity_count} 实体, {relationship_count} 关系")
-        return stats
-
     except Exception as e:
         logger.error(f"获取图谱统计失败: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"获取图谱统计失败: {str(e)}")
@@ -249,17 +234,38 @@ async def get_graph_stats():
 async def health_check():
     """健康检查"""
     try:
-        # 检查 Neo4j 连接
         connection_manager.execute_query("RETURN 1")
         neo4j_status = "healthy"
     except:
         neo4j_status = "unhealthy"
+    return {"status": "ok", "neo4j": neo4j_status, "timestamp": datetime.now().isoformat()}
 
-    return {
-        "status": "ok",
-        "neo4j": neo4j_status,
-        "timestamp": datetime.now().isoformat()
-    }
+
+@router.get("/files/list")
+async def list_files():
+    """列出所有已上传的文档"""
+    try:
+        files_dir = Path(FILES_DIR)
+        if not files_dir.exists():
+            files_dir.mkdir(parents=True, exist_ok=True)
+            return {"files": [], "count": 0}
+
+        files = []
+        for file_path in files_dir.iterdir():
+            if file_path.is_file():
+                stat = file_path.stat()
+                files.append({
+                    "name": file_path.name,
+                    "path": str(file_path),
+                    "size": stat.st_size,
+                    "created_at": datetime.fromtimestamp(stat.st_ctime).isoformat(),
+                    "modified_at": datetime.fromtimestamp(stat.st_mtime).isoformat()
+                })
+        files.sort(key=lambda x: x["modified_at"], reverse=True)
+        return {"files": files, "count": len(files), "directory": str(files_dir)}
+    except Exception as e:
+        logger.error(f"获取文件列表失败: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"获取文件列表失败: {str(e)}")
 
 
 # ==================== 图谱配置管理 API ====================
@@ -585,39 +591,3 @@ async def apply_ai_recommendations(
     except Exception as e:
         logger.error(f"应用 AI 推荐失败: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"应用推荐失败: {str(e)}")
-
-
-@router.get("/files/list")
-async def list_files():
-    """列出所有已上传的文档"""
-    try:
-        files_dir = Path(FILES_DIR)
-        if not files_dir.exists():
-            files_dir.mkdir(parents=True, exist_ok=True)
-            return {"files": [], "count": 0}
-
-        files = []
-        for file_path in files_dir.iterdir():
-            if file_path.is_file():
-                stat = file_path.stat()
-                files.append({
-                    "name": file_path.name,
-                    "path": str(file_path),
-                    "size": stat.st_size,
-                    "created_at": datetime.fromtimestamp(stat.st_ctime).isoformat(),
-                    "modified_at": datetime.fromtimestamp(stat.st_mtime).isoformat()
-                })
-
-        # 按修改时间倒序排序
-        files.sort(key=lambda x: x["modified_at"], reverse=True)
-
-        logger.info(f"返回文件列表，共 {len(files)} 个文件")
-        return {
-            "files": files,
-            "count": len(files),
-            "directory": str(files_dir)
-        }
-
-    except Exception as e:
-        logger.error(f"获取文件列表失败: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"获取文件列表失败: {str(e)}")

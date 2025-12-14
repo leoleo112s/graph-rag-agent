@@ -568,7 +568,7 @@ class IncrementalUpdateManagerV2:
     # 完整流程
     # ===================
 
-    def run_full_pipeline(self, file_paths: Optional[List[str]] = None) -> Dict:
+    async def run_full_pipeline(self, file_paths: Optional[List[str]] = None) -> Dict:
         """
         执行完整的增量更新流程（L0 + L1）
 
@@ -586,11 +586,11 @@ class IncrementalUpdateManagerV2:
 
         try:
             # 步骤 1: L0 快速摄取
-            l0_result = self.run_fast_ingestion(file_paths)
+            l0_result = await self.run_fast_ingestion(file_paths)
             results["l0"] = l0_result
 
             # 步骤 2: L1 任务提交
-            l1_result = self.run_deep_indexing(file_paths)
+            l1_result = await self.run_deep_indexing(file_paths)
             results["l1"] = l1_result
 
             # 步骤 3: 验证图谱一致性（仅在有变更时）
