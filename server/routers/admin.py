@@ -5,11 +5,12 @@
 
 import asyncio
 import logging
+import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Any
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Body
 from pydantic import BaseModel
 
 # 引入配置
@@ -33,112 +34,134 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 _build_lock = asyncio.Lock()
 _is_building = False
 
+# ==================== 🟢 关键：配置格式转换辅助函数 ====================
+
+def _process_config_for_pipeline(raw_config: Optional[Dict]) -> Dict:
+    """
+    将前端复杂的图谱配置（Domain/Bridge结构）
+    转换为 Pipeline 能理解的扁平化配置（entity_types, relationship_types）
+    """
+    if not raw_config:
+        return {}
+
+    print(f"DEBUG: [Admin] 正在解析配置... 项目: {raw_config.get('project_name')}")
+
+    # 1. 提取实体类型
+    entities = set()
+    # 兼容旧格式（直接在根目录）
+    if raw_config.get("entity_types"):
+        entities.update(raw_config["entity_types"])
+    
+    # 处理新格式（从 domain_definitions 里提取）
+    domains = raw_config.get("domain_definitions", [])
+    for domain in domains:
+        schema = domain.get("schema", {})
+        if schema.get("entities"):
+            entities.update(schema["entities"])
+    
+    # 2. 提取关系类型
+    relations = set()
+    if raw_config.get("relationship_types"):
+        relations.update(raw_config["relationship_types"])
+        
+    for domain in domains:
+        schema = domain.get("schema", {})
+        if schema.get("relations"):
+            relations.update(schema["relations"])
+
+    # 3. 构造结果
+    result = {}
+    if entities:
+        result["entity_types"] = list(entities)
+        print(f"DEBUG: [Admin] 提取到 {len(entities)} 种实体类型: {list(entities)[:5]}...")
+    
+    if relations:
+        result["relationship_types"] = list(relations)
+        print(f"DEBUG: [Admin] 提取到 {len(relations)} 种关系类型")
+        
+    return result
 
 # ==================== 核心构建逻辑 (V2 集成) ====================
 
-async def _run_full_build_task():
-    """
-    后台任务：执行全量构建 (清空库 -> 重建)
-    """
+def _run_full_build_task(task_id: str, config: Optional[Dict] = None):
+    """后台执行全量构建任务"""
     global _is_building
-    broadcaster = get_broadcaster()
-    progress_mgr = get_progress_manager()
-
+    # 获取全局状态引用 (注意：这里假设 main.py 或其他地方定义了 build_status，
+    # 但为了安全，我们通过 progress_manager 更新)
+    pm = get_progress_manager()
+    
     try:
-        # 1. 初始化状态
-        await broadcaster.emit_status("started", "全量构建任务已启动")
-        await broadcaster.emit_log("=== 开始全量构建流程 ===", "INFO")
-        await progress_mgr.update(percent=0, stage="init", details="初始化环境...")
+        # 🟢 1. 处理配置格式
+        pipeline_config = _process_config_for_pipeline(config)
 
-        # 2. 🚨 清空 Neo4j 数据库 (全量构建的核心)
-        await broadcaster.emit_log("正在清空现有知识图谱...", "WARNING")
-        await progress_mgr.update(percent=5, stage="cleaning", details="正在清空数据库...")
-
-        db_manager = get_db_manager()
-        # 执行 Cypher 清空全库
-        db_manager.execute_query("MATCH (n) DETACH DELETE n")
-
-        await broadcaster.emit_log("✅ 数据库已清空", "INFO")
-        await progress_mgr.update(percent=10, stage="cleaning_done", details="数据库已清空")
-
-        # 3. 初始化 V2 管理器
-        manager = IncrementalUpdateManagerV2(
-            files_dir=FILES_DIR,
-            broadcaster=broadcaster  # 注入广播器，让 V2 内部也能发消息
-        )
-
-        # 4. 执行完整流程 (L0 + L1)
-        # 全量模式下，我们不传入 file_paths，让它扫描所有文件
-        await broadcaster.emit_log("开始全量重新索引 (L0 + L1)...", "INFO")
-
-        # 直接 await，因为 run_full_pipeline 已经是 async def
-        result = await manager.run_full_pipeline()
-
-        # 5. 完成
-        await broadcaster.emit_log(f"✅ 全量构建完成，耗时: {result.get('total_duration', 0):.2f}s", "INFO")
-        await broadcaster.emit_status("completed", "全量构建成功")
-        await progress_mgr.update(percent=100, stage="completed", details="构建成功")
-
-    except Exception as e:
-        logger.exception("全量构建失败")
-        error_msg = str(e)
-        await broadcaster.emit_error(f"全量构建失败: {error_msg}")
-        await broadcaster.emit_status("failed", error_msg)
-        await progress_mgr.update(stage="error", details=f"失败: {error_msg}")
-
-    finally:
-        async with _build_lock:
-            _is_building = False
-
-
-async def _run_incremental_build_task():
-    """
-    后台任务：执行增量构建 (仅处理变更)
-    """
-    global _is_building
-    broadcaster = get_broadcaster()
-    progress_mgr = get_progress_manager()
-
-    try:
-        await broadcaster.emit_status("started", "增量构建任务已启动")
-        await broadcaster.emit_log("=== 开始增量构建流程 ===", "INFO")
-
-        # 初始化 V2 管理器
-        manager = IncrementalUpdateManagerV2(
-            files_dir=FILES_DIR,
-            broadcaster=broadcaster
-        )
-
-        # 执行完整流程 (自动检测变更)
-        # 直接 await，因为 run_full_pipeline 已经是 async def
-        result = await manager.run_full_pipeline()
-
-        # 检查是否有文件被处理
+        # 🟢 2. 初始化管理器 (传入处理后的配置)
+        manager = IncrementalUpdateManagerV2(config=pipeline_config)
+        
+        # 3. 执行构建
+        print(f">>> [后台任务] 开始执行全量构建: {task_id}")
+        
+        # 使用 asyncio.run 运行异步管道
+        result = asyncio.run(manager.run_full_pipeline())
+        
+        # 4. 更新状态
         l0_count = result.get('l0', {}).get('files_processed', 0)
-
-        if l0_count == 0:
-            await broadcaster.emit_log("未检测到文件变更，无需构建", "INFO")
-        else:
-            await broadcaster.emit_log(f"✅ 增量构建完成，处理了 {l0_count} 个文件", "INFO")
-
-        await broadcaster.emit_status("completed", "构建完成")
-        await progress_mgr.update(percent=100, stage="completed", details="构建完成")
+        l1_count = result.get('l1', {}).get('submitted_count', 0)
+        
+        msg = f"全量构建完成: 处理 {l0_count} 个文件, 提交 {l1_count} 个图谱任务"
+        pm.update_status("completed", 100, msg)
 
     except Exception as e:
-        logger.exception("增量构建失败")
-        await broadcaster.emit_error(f"增量构建失败: {str(e)}")
-        await broadcaster.emit_status("failed", str(e))
-
+        print(f">>> [后台任务] ❌ 全量构建发生异常！")
+        import traceback
+        traceback.print_exc()
+        pm.update_status("failed", 0, str(e))
     finally:
-        async with _build_lock:
-            _is_building = False
+        # 释放锁状态 (虽然这只是内存标记，重启会重置)
+        global _is_building
+        _is_building = False
+
+
+def _run_incremental_build_task(task_id: str, config: Optional[Dict] = None):
+    """后台执行增量构建任务"""
+    global _is_building
+    pm = get_progress_manager()
+    
+    try:
+        # 🟢 1. 处理配置格式
+        pipeline_config = _process_config_for_pipeline(config)
+
+        # 🟢 2. 初始化管理器
+        manager = IncrementalUpdateManagerV2(config=pipeline_config)
+        
+        # 3. 执行构建
+        print(f">>> [后台任务] 开始执行增量构建: {task_id}")
+        result = asyncio.run(manager.run_full_pipeline()) 
+        
+        # 4. 更新状态
+        l0_count = result.get('l0', {}).get('files_processed', 0)
+        l1_count = result.get('l1', {}).get('submitted_count', 0)
+        
+        msg = f"增量构建完成: 处理 {l0_count} 个文件, 提交 {l1_count} 个图谱任务"
+        pm.update_status("completed", 100, msg)
+        
+    except Exception as e:
+        print(f">>> [后台任务] ❌ 增量构建发生异常！")
+        import traceback
+        traceback.print_exc()
+        pm.update_status("failed", 0, str(e))
+    finally:
+        global _is_building
+        _is_building = False
 
 
 # ==================== 构建 API ====================
 
 @router.post("/build/full")
-async def trigger_full_build(background_tasks: BackgroundTasks):
-    """触发完整构建 (V2集成版)"""
+async def trigger_full_build(
+    background_tasks: BackgroundTasks,
+    config: Dict = Body(default=None)  # 🟢 接收前端传来的 JSON 配置
+):
+    """触发完整构建 (V2集成版，支持动态配置)"""
     global _is_building
     logger.info("收到完整构建请求")
 
@@ -147,15 +170,19 @@ async def trigger_full_build(background_tasks: BackgroundTasks):
             raise HTTPException(status_code=400, detail="已有构建任务正在运行")
         _is_building = True
 
-    # 启动后台任务
-    background_tasks.add_task(_run_full_build_task)
+    task_id = str(uuid.uuid4())
+    # 启动后台任务 (🟢 将 config 传递给任务)
+    background_tasks.add_task(_run_full_build_task, task_id, config)
 
-    return {"message": "完整构建已在后台启动", "status": "running"}
+    return {"message": "完整构建已在后台启动", "status": "running", "task_id": task_id}
 
 
 @router.post("/build/incremental")
-async def trigger_incremental_build(background_tasks: BackgroundTasks):
-    """触发增量构建 (V2集成版)"""
+async def trigger_incremental_build(
+    background_tasks: BackgroundTasks,
+    config: Dict = Body(default=None)  # 🟢 接收前端传来的 JSON 配置
+):
+    """触发增量构建 (V2集成版，支持动态配置)"""
     global _is_building
     logger.info("收到增量构建请求")
 
@@ -164,31 +191,31 @@ async def trigger_incremental_build(background_tasks: BackgroundTasks):
             raise HTTPException(status_code=400, detail="已有构建任务正在运行")
         _is_building = True
 
-    # 启动后台任务
-    background_tasks.add_task(_run_incremental_build_task)
+    task_id = str(uuid.uuid4())
+    # 启动后台任务 (🟢 将 config 传递给任务)
+    background_tasks.add_task(_run_incremental_build_task, task_id, config)
 
-    return {"message": "增量构建已在后台启动", "status": "running"}
+    return {"message": "增量构建已在后台启动", "status": "running", "task_id": task_id}
 
 
 @router.post("/build/stop")
 async def stop_build():
     """停止构建"""
-    # TODO: 实现优雅停止 (需要向 Manager 发送取消信号)
-    # 目前只能重置状态标记，无法强行杀死线程
     global _is_building
     if _is_building:
-        # 这里只是逻辑上的停止，实际后台任务可能还在跑
-        # 真正的停止需要 V2 Manager 支持 CancelToken
+        # 逻辑停止
+        # _is_building = False # 暂时不强制重置，等待任务自然结束或超时
         return {"message": "停止指令已发送 (注意：当前后台任务可能无法立即中断)"}
     return {"message": "没有正在运行的构建任务"}
 
 
 @router.get("/build/status")
 async def get_build_status():
-    """获取构建状态 (从 ProgressManager 获取)"""
-    # 结合全局锁状态和进度管理器的状态
+    """获取构建状态"""
     status = get_progress_manager().get_current_status()
-    status["is_running"] = _is_building
+    # 确保 status 包含 is_running 字段
+    if "is_running" not in status:
+        status["is_running"] = _is_building
     return status
 
 
