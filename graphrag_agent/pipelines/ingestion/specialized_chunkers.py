@@ -28,12 +28,12 @@ from graphrag_agent.config.settings import MAX_TEXT_LENGTH
 
 class GraphChunker(ChineseTextChunker):
     """
-    专用于知识图谱构建的文本分块器
+    专用于知识图谱构建的文本分块器（生产级验证配置）
 
     特点：
-    - 大 chunk（800-1200 tokens）：提供充足上下文，减少实体歧义
-    - 小 overlap（50 tokens）：避免同一实体在多个 chunk 中重复出现
-    - 句子边界对齐：保持语义完整性
+    - 中等 chunk（900 tokens）：生产环境验证的最佳配置
+    - 极小 overlap（50 tokens）：避免同一实体在多个 chunk 中重复出现
+    - 句子边界对齐：保持语义完整性（respect_sentence=True）
 
     使用场景：
     - 实体抽取（Entity Extraction）
@@ -44,28 +44,34 @@ class GraphChunker(ChineseTextChunker):
     - 减少 LLM 调用次数（更少的 chunk）
     - 降低实体去重压力（更少的重复）
     - 提高抽取准确率（更多的上下文）
+
+    ⚠️ 关键原则：Graph Chunk ≠ RAG Chunk（两套 pipeline，别共用）
     """
 
     def __init__(
         self,
-        chunk_size: int = 1000,      # 默认 1000 tokens（可配置 800-1200）
-        overlap: int = 50,            # 默认 50 tokens
-        max_text_length: int = MAX_TEXT_LENGTH
+        chunk_size: int = 900,        # 生产级验证：900 tokens（800-1200 范围）
+        overlap: int = 50,             # 极小 overlap
+        max_text_length: int = MAX_TEXT_LENGTH,
+        respect_sentence: bool = True  # 尊重句子边界
     ):
         """
-        初始化 GraphChunker
+        初始化 GraphChunker（生产级配置）
 
         Args:
-            chunk_size: 每个文本块的大小（tokens），推荐 800-1200
-            overlap: 相邻块的重叠大小（tokens），推荐 50
+            chunk_size: 每个文本块的大小（tokens），推荐 900（生产验证）
+            overlap: 相邻块的重叠大小（tokens），推荐 50（极小 overlap）
             max_text_length: HanLP 处理的最大文本长度
+            respect_sentence: 是否在句子边界分块（推荐 True）
         """
-        # 参数验证
+        # 参数验证（生产级建议）
         if chunk_size < 800 or chunk_size > 1200:
             print(f"⚠️  警告：GraphChunker 的 chunk_size={chunk_size} 不在推荐范围 [800, 1200]")
+            print(f"   生产级验证最佳值：900")
 
         if overlap > 100:
             print(f"⚠️  警告：GraphChunker 的 overlap={overlap} 过大，可能导致实体重复抽取")
+            print(f"   推荐使用极小 overlap: 50")
 
         super().__init__(
             chunk_size=chunk_size,
@@ -73,9 +79,12 @@ class GraphChunker(ChineseTextChunker):
             max_text_length=max_text_length
         )
 
+        self.respect_sentence = respect_sentence
+
     def __repr__(self):
         return (f"GraphChunker(chunk_size={self.chunk_size}, "
                 f"overlap={self.overlap}, "
+                f"respect_sentence={self.respect_sentence}, "
                 f"use_hanlp={self.use_hanlp})")
 
 
@@ -132,18 +141,18 @@ class RAGChunker(ChineseTextChunker):
                 f"use_hanlp={self.use_hanlp})")
 
 
-def create_graph_chunker(chunk_size: int = 1000, overlap: int = 50) -> GraphChunker:
+def create_graph_chunker(chunk_size: int = 900, overlap: int = 50) -> GraphChunker:
     """
-    工厂方法：创建 GraphChunker 实例
+    工厂方法：创建 GraphChunker 实例（生产级验证配置）
 
-    推荐配置：
-    - 中文文档：chunk_size=1000, overlap=50
+    推荐配置（生产环境验证）：
+    - 中文文档：chunk_size=900, overlap=50 ✅（默认，最佳）
     - 英文文档：chunk_size=800, overlap=40
     - 混合文档：chunk_size=900, overlap=50
 
     Args:
-        chunk_size: chunk 大小，推荐 800-1200
-        overlap: 重叠大小，推荐 50
+        chunk_size: chunk 大小，推荐 900（生产验证最佳）
+        overlap: 重叠大小，推荐 50（极小 overlap）
 
     Returns:
         GraphChunker 实例

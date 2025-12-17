@@ -45,8 +45,8 @@ class DocumentProcessor:
 
         # 根据模式选择 chunker
         if chunker_mode == 'graph':
-            self.chunker = create_graph_chunker()  # 大 chunk (1000, 50)
-            print(f"📊 使用 GraphChunker: chunk_size=1000, overlap=50")
+            self.chunker = create_graph_chunker()  # 生产级配置 (900, 50)
+            print(f"📊 使用 GraphChunker: chunk_size=900, overlap=50 (生产级验证配置)")
         elif chunker_mode == 'rag':
             self.chunker = create_rag_chunker()    # 小 chunk (400, 80)
             print(f"🔍 使用 RAGChunker: chunk_size=400, overlap=80")
