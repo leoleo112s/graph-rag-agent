@@ -62,9 +62,22 @@ This is a GraphRAG + Deep Search implementation with multi-agent collaboration s
   - Calls `KnowledgeGraphBuilder` → `IndexCommunityBuilder` → `ChunkIndexBuilder`
   - Must run in this order; chunk index depends on entity index
 
-- **`graphrag_agent/integrations/build/incremental_update.py`**: Incremental updates
+- **`graphrag_agent/integrations/build/incremental_update.py`**: Incremental updates (V1)
   - `--once`: Single incremental build
   - `--daemon`: Background daemon for periodic updates
+
+- **`graphrag_agent/integrations/build/incremental_update_v2.py`**: Incremental updates (V2 - Recommended)
+  - **L0/L1 Split Architecture**: Fast ingestion + background graph building
+  - **L0 Fast Lane**: File searchable within 10 seconds (text chunking + vectorization)
+  - **L1 Slow Lane**: Background entity extraction + graph construction via task queue
+  - **Real-time Progress**: WebSocket broadcasting of build progress and file status
+  - **Zero Wait Experience**: Users can search immediately after upload
+  - Usage:
+    - `--mode full`: Complete pipeline (L0 + L1)
+    - `--mode l0`: Fast ingestion only
+    - `--mode l1`: Submit graph building tasks only
+    - `--file <path>`: Process single file
+    - `--status`: Display queue status
 
 ## Configuration
 
@@ -127,14 +140,32 @@ docker run --name one-api -d --restart always \
 # Full build (must run in this order)
 python graphrag_agent/integrations/build/main.py
 
-# Incremental update (single run)
+# Incremental update V1 (single run)
 python graphrag_agent/integrations/build/incremental_update.py --once
 
-# Incremental update (daemon mode)
+# Incremental update V1 (daemon mode)
 python graphrag_agent/integrations/build/incremental_update.py --daemon
+
+# Incremental update V2 (recommended - L0/L1 split architecture)
+# Complete pipeline (L0 + L1)
+python graphrag_agent/integrations/build/incremental_update_v2.py --mode full
+
+# Fast ingestion only (L0)
+python graphrag_agent/integrations/build/incremental_update_v2.py --mode l0
+
+# Graph building only (L1)
+python graphrag_agent/integrations/build/incremental_update_v2.py --mode l1
+
+# Process single file
+python graphrag_agent/integrations/build/incremental_update_v2.py --file /path/to/file.pdf
+
+# Check queue status
+python graphrag_agent/integrations/build/incremental_update_v2.py --status
 ```
 
 **IMPORTANT**: Entity index must exist before chunk index. If running individual steps, complete entity indexing before chunk indexing to avoid errors.
+
+**V2 vs V1**: V2 uses L0/L1 split - users can search immediately after L0 (< 10s), while graph construction happens in background (L1). V1 requires waiting for complete build.
 
 ### Testing
 ```bash
