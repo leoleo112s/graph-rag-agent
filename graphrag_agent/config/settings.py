@@ -100,6 +100,21 @@ OVERLAP = _get_env_int("CHUNK_OVERLAP", 100) or 100  # 分块重叠长度
 MAX_TEXT_LENGTH = _get_env_int("MAX_TEXT_LENGTH", 500000) or 500000  # 最大文本长度
 similarity_threshold = _get_env_float("SIMILARITY_THRESHOLD", 0.9) or 0.9  # 向量相似度阈值
 
+# ===== Vector Index 配置（全局唯一） =====
+
+# Vector index names（全系统唯一，用于 Neo4j Vector Index）
+CHUNK_VECTOR_INDEX = os.getenv("CHUNK_VECTOR_INDEX", "chunk_embedding_index")
+ENTITY_VECTOR_INDEX = os.getenv("ENTITY_VECTOR_INDEX", "entity_embedding_index")
+
+# Embedding dimension（必须和模型一致）
+# text-embedding-3-large: 1536 维
+# text-embedding-3-small: 512 维
+# text-embedding-ada-002: 1536 维
+EMBEDDING_DIM = _get_env_int("EMBEDDING_DIM", 1536) or 1536
+
+# Vector similarity function: cosine / euclidean / dot_product
+VECTOR_SIMILARITY_FUNCTION = os.getenv("VECTOR_SIMILARITY_FUNCTION", "cosine")
+
 # ===== 回答生成配置 =====
 
 response_type = os.getenv("RESPONSE_TYPE", "多个段落")  # 默认回答形式
