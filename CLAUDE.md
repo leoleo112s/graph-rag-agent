@@ -31,6 +31,8 @@ This is a GraphRAG + Deep Search implementation with multi-agent collaboration s
   - `local_search.py`: Entity-centric search with neighborhood exploration
   - `global_search.py`: Community-level search
   - `tool/`: NaiveSearchTool, DeepResearchTool, reasoning components
+  - `response_models.py`: Unified return structure (SearchResponse, ResponseBuilder)
+  - `neo4j_vector_search.py`: Neo4j native vector search (engineering-level practice)
 
 - **cache_manager/**: Two-tier caching (session-aware + global)
   - `backends/`: Hybrid memory/disk storage
@@ -220,6 +222,104 @@ To test agents, comment out unwanted agents in test scripts to avoid long runtim
 - **Deep Research**: Chain of Exploration on knowledge graph with evidence tracking
 
 Search tools are registered via `graphrag_agent/search/tool_registry.py` and consumed by agents.
+
+### Unified Return Structure (Engineering-level Practice)
+
+All search tools now follow a standardized return structure defined in `graphrag_agent/search/response_models.py`:
+
+**Architecture:**
+```
+Tool (returns dict) → Agent (dict→prompt→LLM) → Frontend (shows answer)
+```
+
+**Return Format:**
+```python
+{
+  "answer": str,                    # LLM generated answer
+  "references": {                   # Referenced resources
+    "chunks": List[str],            # Chunk IDs
+    "entities": List[str],          # Entity IDs
+    "communities": List[str],       # Community IDs
+    "relationships": List[str]      # Relationship IDs
+  },
+  "meta": {                         # Metadata
+    "retriever": str,               # naive | graph | hybrid | deep_research
+    "search_time": float,           # Search time (seconds)
+    "llm_time": float,              # LLM generation time
+    "total_time": float,            # Total time
+    "scores": List[float],          # Similarity scores
+    "top_k": int,                   # Number of retrieved docs
+    "cache_hit": bool,              # Cache hit status
+    "timestamp": str                # ISO timestamp
+  }
+}
+```
+
+**Key Components:**
+- `SearchResponse`: Pydantic model for type-safe responses
+- `ResponseBuilder`: Utility class to construct standardized responses
+- `create_error_response()`: Unified error handling
+
+**Benefits:**
+- Type-safe return values with Pydantic validation
+- No more manual JSON string concatenation
+- Frontend doesn't need to parse unreliable LLM-generated JSON
+- Performance metrics automatically tracked
+- Consistent error handling across all retrievers
+
+**Usage Example:**
+```python
+from graphrag_agent.search.response_models import ResponseBuilder
+
+builder = ResponseBuilder(retriever_name="naive")
+builder.add_chunks(chunk_ids)
+builder.add_scores(scores)
+builder.set_timing(search_time=0.5, llm_time=1.2)
+return builder.build_dict(answer=answer)
+```
+
+See `graphrag_agent/search/RESPONSE_FORMAT.md` for detailed documentation and migration guide.
+
+### Neo4j Native Vector Search (Engineering-level Practice)
+
+The system uses Neo4j's native vector search API (`db.index.vector.queryNodes`) instead of client-side similarity computation:
+
+**Key Components:**
+- `Neo4jVectorSearch` class in `graphrag_agent/search/neo4j_vector_search.py`
+- Explicit vector index creation via `CREATE VECTOR INDEX`
+- Global index configuration in `graphrag_agent/config/settings.py`
+
+**Configuration:**
+```python
+# In settings.py or .env
+CHUNK_VECTOR_INDEX = "chunk_embedding_index"
+ENTITY_VECTOR_INDEX = "entity_embedding_index"
+EMBEDDING_DIM = 1536  # Must match embedding model
+VECTOR_SIMILARITY_FUNCTION = "cosine"  # cosine | euclidean | dot_product
+```
+
+**Benefits:**
+- 10-100x performance improvement (server-side computation)
+- Searches entire dataset (not limited to LIMIT 100)
+- Reduced network transfer
+- Leverages Neo4j's optimized vector indexing
+
+**Before (❌ Client-side):**
+```python
+# Fetch limited candidates
+chunks = graph.query("MATCH (c:__Chunk__) ... LIMIT 100")
+# Compute similarity in Python
+scored = VectorUtils.rank_by_similarity(query_embedding, chunks)
+```
+
+**After (✅ Server-side):**
+```python
+# Neo4j native vector search
+results = vector_search.search_chunks(
+    query_embedding=query_embedding,
+    top_k=10
+)
+```
 
 ## Known Issues & Compatibility
 

@@ -9,6 +9,7 @@ from graphrag_agent.config.prompts import NAIVE_PROMPT, NAIVE_SEARCH_QUERY_PROMP
 from graphrag_agent.config.settings import response_type, naive_description, NAIVE_SEARCH_TOP_K
 from graphrag_agent.search.tool.base import BaseSearchTool
 from graphrag_agent.search.neo4j_vector_search import Neo4jVectorSearch
+from graphrag_agent.search.response_models import ResponseBuilder, create_error_response
 
 
 class NaiveSearchTool(BaseSearchTool):
@@ -51,31 +52,42 @@ class NaiveSearchTool(BaseSearchTool):
         """
         return {"low_level": [], "high_level": []}
     
-    def search(self, query_input: Any) -> str:
+    def search(self, query_input: Any) -> Dict[str, Any]:
         """
-        执行Naive RAG搜索 - 纯向量搜索
-        
+        执行Naive RAG搜索 - 纯向量搜索（工程级实践）
+
         参数:
             query_input: 用户查询或包含查询的字典
-            
+
         返回:
-            str: 基于检索结果生成的回答
+            Dict[str, Any]: 标准化的响应结构
+                - answer: 生成的回答
+                - references: 引用的资源 (chunks, entities等)
+                - meta: 元数据 (retriever类型、性能指标等)
         """
         overall_start = time.time()
-        
+
         # 解析输入
         if isinstance(query_input, dict) and "query" in query_input:
             query = query_input["query"]
         else:
             query = str(query_input)
-        
+
+        # 初始化响应构建器
+        builder = ResponseBuilder(retriever_name="naive")
+
         # 检查缓存
         cache_key = f"naive:{query}"
         cached_result = self.cache_manager.get(cache_key)
         if cached_result:
             print(f"缓存命中: {query[:30]}...")
-            return cached_result
-        
+            # 缓存的结果应该已经是标准格式
+            if isinstance(cached_result, dict) and "answer" in cached_result:
+                return cached_result
+            # 兼容旧格式缓存（纯文本）
+            builder.set_cache_hit(True)
+            return builder.build_dict(answer=str(cached_result))
+
         try:
             # 生成查询的嵌入向量
             search_start = time.time()
@@ -91,73 +103,111 @@ class NaiveSearchTool(BaseSearchTool):
 
             search_time = time.time() - search_start
             self.performance_metrics["query_time"] = search_time
-            
+
             if not results:
-                return f"没有找到与'{query}'相关的信息。\n\n{{'data': {{'Chunks':[] }} }}"
-            
-            # 格式化检索到的文档片段
-            chunks_content = []
+                no_result_response = builder.set_timing(
+                    search_time=search_time,
+                    total_time=time.time() - overall_start
+                ).build_dict(answer=f"没有找到与'{query}'相关的信息。")
+
+                # 缓存空结果
+                self.cache_manager.set(cache_key, no_result_response)
+                return no_result_response
+
+            # 提取结果数据
             chunk_ids = []
-            
+            chunks_content = []
+            scores = []
+
             for item in results:
                 chunk_id = item.get("id", "unknown")
                 text = item.get("text", "")
-                
+                score = item.get("score", 0.0)
+
                 if text:
                     chunks_content.append(f"Chunk ID: {chunk_id}\n{text}")
                     chunk_ids.append(chunk_id)
-            
+                    scores.append(score)
+
             context = "\n\n---\n\n".join(chunks_content)
-            
+
+            # 添加引用信息到构建器
+            builder.add_chunks(chunk_ids)
+            builder.add_scores(scores)
+            builder.set_top_k(self.top_k)
+
             # 生成回答
             llm_start = time.time()
-            
+
             answer = self.query_chain.invoke({
                 "query": query,
                 "context": context,
                 "response_type": response_type
             })
-            
+
             llm_time = time.time() - llm_start
             self.performance_metrics["llm_time"] = llm_time
-            
-            # 确保回答中包含Chunk ID
-            if "{'data': {'Chunks':" not in answer:
-                # 添加引用信息
-                chunk_references = ", ".join([f"'{id}'" for id in chunk_ids[:5]])
-                answer += f"\n\n{{'data': {{'Chunks':[{chunk_references}] }} }}"
-            
-            # 缓存结果
-            self.cache_manager.set(cache_key, answer)
-            
-            # 记录总耗时
+
+            # 记录性能指标
             total_time = time.time() - overall_start
             self.performance_metrics["total_time"] = total_time
-            
-            return answer
-            
+
+            builder.set_timing(
+                search_time=search_time,
+                llm_time=llm_time,
+                total_time=total_time
+            )
+
+            # 构建标准响应
+            response = builder.build_dict(answer=answer)
+
+            # 缓存结果
+            self.cache_manager.set(cache_key, response)
+
+            return response
+
         except Exception as e:
             error_msg = f"搜索过程中出现错误: {str(e)}"
             print(error_msg)
-            return f"搜索过程中出错: {str(e)}\n\n{{'data': {{'Chunks':[] }} }}"
+            return create_error_response(
+                retriever_name="naive",
+                error_message=str(e),
+                error_type="search_error"
+            )
     
     def get_tool(self) -> BaseTool:
         """
-        获取搜索工具
-        
+        获取搜索工具（工程级实践）
+
         返回:
             BaseTool: 搜索工具实例
+                - _run() 返回 JSON 字符串（标准化的 SearchResponse）
+                - Agent 需要解析 JSON 获取 dict，然后使用其中的数据
         """
+        import json
+
         class NaiveRetrievalTool(BaseTool):
             name : str= "naive_retriever"
             description : str = naive_description
-            
+
             def _run(self_tool, query: Any) -> str:
-                return self.search(query)
-            
+                """
+                执行搜索并返回 JSON 字符串
+
+                返回格式：
+                {
+                  "answer": "...",
+                  "references": {"chunks": [...], ...},
+                  "meta": {...}
+                }
+                """
+                response_dict = self.search(query)
+                # 将 dict 序列化为 JSON 字符串（LangChain BaseTool 要求返回 str）
+                return json.dumps(response_dict, ensure_ascii=False, indent=2)
+
             def _arun(self_tool, query: Any) -> str:
                 raise NotImplementedError("异步执行未实现")
-        
+
         return NaiveRetrievalTool()
     
     def close(self):
