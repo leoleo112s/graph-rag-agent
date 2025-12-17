@@ -1,6 +1,5 @@
 from typing import List, Dict, Any
 import time
-import numpy as np
 
 from langchain_core.tools import BaseTool
 from langchain_core.prompts import ChatPromptTemplate
@@ -9,7 +8,7 @@ from langchain_core.output_parsers import StrOutputParser
 from graphrag_agent.config.prompts import NAIVE_PROMPT, NAIVE_SEARCH_QUERY_PROMPT
 from graphrag_agent.config.settings import response_type, naive_description, NAIVE_SEARCH_TOP_K
 from graphrag_agent.search.tool.base import BaseSearchTool
-from graphrag_agent.search.utils import VectorUtils
+from graphrag_agent.search.neo4j_vector_search import Neo4jVectorSearch
 
 
 class NaiveSearchTool(BaseSearchTool):
@@ -19,10 +18,13 @@ class NaiveSearchTool(BaseSearchTool):
         """初始化Naive搜索工具"""
         # 调用父类构造函数
         super().__init__(cache_dir="./cache/naive_search")
-        
+
         # 搜索参数设置
         self.top_k = NAIVE_SEARCH_TOP_K  # 检索的最大文档数量
-        
+
+        # 初始化 Neo4j 原生向量搜索（工程级实践）
+        self.vector_search = Neo4jVectorSearch()
+
         # 设置处理链
         self._setup_chains()
         
@@ -40,42 +42,14 @@ class NaiveSearchTool(BaseSearchTool):
     def extract_keywords(self, query: str) -> Dict[str, List[str]]:
         """
         从查询中提取关键词（naive rag不需要复杂的关键词提取）
-        
+
         参数:
             query: 查询字符串
-            
+
         返回:
             Dict[str, List[str]]: 空的关键词字典
         """
         return {"low_level": [], "high_level": []}
-    
-    def _cosine_similarity(self, vec1, vec2):
-        """
-        计算两个向量的余弦相似度
-        
-        参数:
-            vec1: 第一个向量
-            vec2: 第二个向量
-            
-        返回:
-            float: 相似度值
-        """
-        # 确保向量是numpy数组
-        if not isinstance(vec1, np.ndarray):
-            vec1 = np.array(vec1)
-        if not isinstance(vec2, np.ndarray):
-            vec2 = np.array(vec2)
-            
-        # 计算余弦相似度
-        dot_product = np.dot(vec1, vec2)
-        norm_a = np.linalg.norm(vec1)
-        norm_b = np.linalg.norm(vec2)
-        
-        # 避免被零除
-        if norm_a == 0 or norm_b == 0:
-            return 0
-            
-        return dot_product / (norm_a * norm_b)
     
     def search(self, query_input: Any) -> str:
         """
@@ -106,26 +80,15 @@ class NaiveSearchTool(BaseSearchTool):
             # 生成查询的嵌入向量
             search_start = time.time()
             query_embedding = self.embeddings.embed_query(query)
-            
-            # 获取带embedding的Chunk节点
-            chunks_with_embedding = self.graph.query("""
-            MATCH (c:__Chunk__)
-            WHERE c.embedding IS NOT NULL
-            RETURN c.id AS id, c.text AS text, c.embedding AS embedding
-            LIMIT 100  // 获取候选集
-            """)
-            
-            # 使用工具类对候选集进行排序
-            scored_chunks = VectorUtils.rank_by_similarity(
-                query_embedding,
-                chunks_with_embedding,
-                "embedding",
-                self.top_k
+
+            # ✅ 使用 Neo4j 原生 vector search（工程级实践）
+            # 直接在服务端完成向量搜索和排序，避免客户端计算
+            results = self.vector_search.search_chunks(
+                query_embedding=query_embedding,
+                top_k=self.top_k,
+                return_properties=["id", "text", "fileName"]
             )
-            
-            # 取top_k个结果
-            results = scored_chunks[:self.top_k]
-            
+
             search_time = time.time() - search_start
             self.performance_metrics["query_time"] = search_time
             
