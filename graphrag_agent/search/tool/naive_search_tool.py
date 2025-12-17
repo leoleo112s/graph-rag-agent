@@ -181,29 +181,31 @@ class NaiveSearchTool(BaseSearchTool):
 
         返回:
             BaseTool: 搜索工具实例
-                - _run() 返回 JSON 字符串（标准化的 SearchResponse）
-                - Agent 需要解析 JSON 获取 dict，然后使用其中的数据
+                - _run() 返回纯文本 answer（Agent 可直接使用）
+                - 内部使用结构化 dict，但对外只返回 answer 字段
         """
-        import json
-
         class NaiveRetrievalTool(BaseTool):
             name : str= "naive_retriever"
             description : str = naive_description
 
             def _run(self_tool, query: Any) -> str:
                 """
-                执行搜索并返回 JSON 字符串
+                执行搜索并返回纯文本 answer
 
-                返回格式：
-                {
-                  "answer": "...",
-                  "references": {"chunks": [...], ...},
-                  "meta": {...}
-                }
+                工程级实践：
+                1. 内部 search() 返回结构化 dict（类型安全、便于扩展）
+                2. 对外 _run() 返回纯文本 answer（Agent 直接使用，无需解析）
+
+                这样避免了：
+                - Agent 层解析 JSON 失败
+                - 类型错误（expected str instance, dict found）
+                - LLM 生成的 JSON 格式不正确
                 """
                 response_dict = self.search(query)
-                # 将 dict 序列化为 JSON 字符串（LangChain BaseTool 要求返回 str）
-                return json.dumps(response_dict, ensure_ascii=False, indent=2)
+
+                # ✅ 只返回 answer 纯文本（Agent 可直接使用）
+                # 结构化数据（references, meta）保留在内部，供后续扩展使用
+                return response_dict.get("answer", "搜索失败：未返回有效答案")
 
             def _arun(self_tool, query: Any) -> str:
                 raise NotImplementedError("异步执行未实现")

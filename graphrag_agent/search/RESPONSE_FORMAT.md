@@ -123,25 +123,54 @@ except Exception as e:
     )
 ```
 
-### 3. Agent 中使用
+### 3. Tool._run() 接口设计
 
 ```python
-# Agent 调用 Tool
-tool_result_json = self.tool._run(query)  # 返回 JSON 字符串
+def get_tool(self) -> BaseTool:
+    class NaiveRetrievalTool(BaseTool):
+        def _run(self, query: str) -> str:
+            # 内部使用结构化 dict
+            response_dict = self.search(query)
 
-# 解析 JSON
-import json
-response_dict = json.loads(tool_result_json)
-
-# 提取数据构建 prompt
-answer = response_dict["answer"]
-chunks = response_dict["references"]["chunks"]
-retriever_type = response_dict["meta"]["retriever"]
-
-# 使用这些数据构建 prompt 或直接返回 answer
+            # ✅ 对外只返回 answer 纯文本
+            # Agent 可以直接使用，无需解析 JSON
+            return response_dict.get("answer", "搜索失败")
 ```
 
-### 4. Frontend 中使用
+**关键设计原则：**
+- **内部**：`search()` 返回结构化 dict（类型安全、便于测试和扩展）
+- **对外**：`_run()` 返回纯文本 answer（避免 Agent 层类型错误）
+
+这样避免了：
+- ❌ `sequence item 0: expected str instance, dict found`
+- ❌ Agent 解析 JSON 失败
+- ❌ LLM 生成的 JSON 格式不正确
+
+### 4. Agent 中使用
+
+```python
+# Agent 调用 Tool（现在返回纯文本）
+answer_text = self.tool._run(query)  # 返回纯文本，可直接使用
+
+# 无需解析 JSON，直接使用
+print(answer_text)
+```
+
+### 5. 需要访问结构化数据时
+
+如果 Agent 需要访问 references 或 meta 信息：
+
+```python
+# 直接调用 search() 方法（返回完整 dict）
+response_dict = self.naive_tool.search(query)
+
+# 访问所有字段
+answer = response_dict["answer"]
+chunks = response_dict["references"]["chunks"]
+search_time = response_dict["meta"]["search_time"]
+```
+
+### 6. Frontend 中使用
 
 ```python
 # Frontend 直接展示 answer
