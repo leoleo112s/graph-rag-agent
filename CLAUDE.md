@@ -342,6 +342,78 @@ response = requests.post(
 )
 ```
 
+## Chunking Strategy (Solving Entity Explosion)
+
+### Problem: Entity/Relationship Explosion
+
+**Symptoms**: 19 files producing 2544 entities and 11832 relationships - far beyond reasonable scale.
+
+**Root Cause**:
+- Token-level chunking with heavy overlap (chunk_size=500, overlap=100)
+- Same entity appears in 10+ chunks → extracted 10+ times
+- Insufficient deduplication → entity/relationship explosion
+
+### Solution: Dual-Chunker Strategy
+
+The system now supports **two specialized chunkers** for different purposes:
+
+#### 1. GraphChunker (for Entity Extraction)
+- **Config**: chunk_size=1000, overlap=50
+- **Purpose**: Knowledge graph construction
+- **Benefits**:
+  - More context → better entity recognition
+  - Fewer chunks → fewer LLM calls
+  - Less redundancy → reduced deduplication pressure
+
+**Usage**:
+```python
+from graphrag_agent.pipelines.ingestion.document_processor import DocumentProcessor
+
+processor = DocumentProcessor(
+    directory_path="./files",
+    chunker_mode='graph'  # Use GraphChunker
+)
+```
+
+#### 2. RAGChunker (for Vector Search)
+- **Config**: chunk_size=400, overlap=80
+- **Purpose**: Semantic retrieval
+- **Benefits**:
+  - Fine-grained matching → more relevant results
+  - Faster queries → smaller vector index
+  - Better precision → focused semantic understanding
+
+**Usage**:
+```python
+processor = DocumentProcessor(
+    directory_path="./files",
+    chunker_mode='rag'  # Use RAGChunker
+)
+```
+
+### Entity Extraction Constraints
+
+Added **hard constraint** in extraction prompt (`graph_prompts.py`):
+```
+⚠️ Only extract entities that appear ≥2 times in the text
+- Appear 1 time → Skip (likely noise)
+- Appear ≥2 times → Extract (indicates importance)
+```
+
+**Purpose**: Filter noise entities and focus on core concepts.
+
+### Expected Improvements
+
+| Metric | Old (500/100) | New (1000/50) | Improvement |
+|--------|--------------|--------------|-------------|
+| Chunks | ~2000 | ~500 | -75% |
+| Entities | 2544 | ~600 (expected) | -76% |
+| Relationships | 11832 | ~2500 (expected) | -79% |
+| LLM Calls | ~2000 | ~500 | -75% |
+| Build Time | T | ~0.4T | -60% |
+
+See `graphrag_agent/pipelines/ingestion/CHUNKING_STRATEGY.md` for detailed documentation.
+
 ## Development Guidelines
 
 ### File Registry

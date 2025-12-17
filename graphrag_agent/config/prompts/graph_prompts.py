@@ -5,23 +5,33 @@
 """
 
 system_template_build_graph = """
--目标- 
-给定相关的文本文档和实体类型列表，从文本中识别出这些类型的所有实体以及所识别实体之间的所有关系。 
--步骤- 
-1.识别所有实体。对于每个已识别的实体，提取以下信息： 
--entity_name：实体名称，大写 
+-目标-
+给定相关的文本文档和实体类型列表，从文本中识别出这些类型的所有实体以及所识别实体之间的所有关系。
+
+-重要约束（防止实体爆炸）-
+⚠️ **硬约束**：只抽取在文本中**明确出现 ≥2 次**的实体
+- 出现 1 次的实体 → 跳过（可能是噪音或不重要）
+- 出现 ≥2 次的实体 → 抽取（说明有重要性）
+- 这个约束适用于实体名称、概念或同义词的重复出现
+
+-步骤-
+1.识别所有实体。对于每个已识别的实体，提取以下信息：
+-entity_name：实体名称，大写
 -entity_type：以下类型之一：[{entity_types}]
--entity_description：对实体属性和活动的综合描述 
+-entity_description：对实体属性和活动的综合描述
+⚠️ **频率检查**：确保该实体在文本中出现 ≥2 次，否则跳过
 将每个实体格式化为("entity"{tuple_delimiter}<entity_name>{tuple_delimiter}<entity_type>{tuple_delimiter}<entity_description>
-2.从步骤1中识别的实体中，识别彼此*明显相关*的所有实体配对(source_entity, target_entity)。 
-对于每对相关实体，提取以下信息： 
--source_entity：源实体的名称，如步骤1中所标识的 
+
+2.从步骤1中识别的实体中，识别彼此*明显相关*的所有实体配对(source_entity, target_entity)。
+对于每对相关实体，提取以下信息：
+-source_entity：源实体的名称，如步骤1中所标识的
 -target_entity：目标实体的名称，如步骤1中所标识的
--relationship_type：以下类型之一：[{relationship_types}]，当不能归类为上述列表中前面的类型时，归类为最后的一类“其它”
--relationship_description：解释为什么你认为源实体和目标实体是相互关联的 
--relationship_strength：一个数字评分，表示源实体和目标实体之间关系的强度 
-将每个关系格式化为("relationship"{tuple_delimiter}<source_entity>{tuple_delimiter}<target_entity>{tuple_delimiter}<relationship_type>{tuple_delimiter}<relationship_description>{tuple_delimiter}<relationship_strength>) 
-3.实体和关系的所有属性用中文输出，步骤1和2中识别的所有实体和关系输出为一个列表。使用**{record_delimiter}**作为列表分隔符。 
+-relationship_type：以下类型之一：[{relationship_types}]，当不能归类为上述列表中前面的类型时，归类为最后的一类"其它"
+-relationship_description：解释为什么你认为源实体和目标实体是相互关联的
+-relationship_strength：一个数字评分，表示源实体和目标实体之间关系的强度
+将每个关系格式化为("relationship"{tuple_delimiter}<source_entity>{tuple_delimiter}<target_entity>{tuple_delimiter}<relationship_type>{tuple_delimiter}<relationship_description>{tuple_delimiter}<relationship_strength>)
+
+3.实体和关系的所有属性用中文输出，步骤1和2中识别的所有实体和关系输出为一个列表。使用**{record_delimiter}**作为列表分隔符。
 4.完成后，输出{completion_delimiter}
 
 ###################### 
