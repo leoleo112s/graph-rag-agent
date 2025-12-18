@@ -1,5 +1,6 @@
 from typing import Annotated, Sequence, TypedDict, List, Dict, Any, AsyncGenerator, Optional
 from abc import ABC, abstractmethod
+import json
 from langchain_core.messages import BaseMessage, HumanMessage
 from langgraph.graph import END, StateGraph, START
 from langgraph.prebuilt import ToolNode, tools_condition
@@ -72,7 +73,28 @@ class BaseAgent(ABC):
         
         # 设置工作流图
         self._setup_graph()
-    
+
+    @staticmethod
+    def _extract_tool_text(result: Any) -> str:
+        """从工具返回中提取文本，保证ToolMessage接收字符串。"""
+        if isinstance(result, dict):
+            for key in ("answer", "final_answer", "response", "output", "summary"):
+                value = result.get(key)
+                if isinstance(value, str) and value.strip():
+                    return value
+            intermediate = result.get("intermediate_results")
+            if isinstance(intermediate, list):
+                return "\n".join(str(item) for item in intermediate)
+            try:
+                return json.dumps(result, ensure_ascii=False)
+            except Exception:
+                return str(result)
+        if isinstance(result, list):
+            return "\n".join(str(item) for item in result)
+        if result is None:
+            return ""
+        return str(result)
+
     @abstractmethod
     def _setup_tools(self) -> List:
         """设置工具，子类必须实现"""

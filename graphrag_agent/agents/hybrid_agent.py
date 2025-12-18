@@ -359,15 +359,16 @@ class HybridAgent(BaseAgent):
             # 如果仍然没有查询，尝试使用最简单的提取
             if not query and hasattr(last_message, 'content'):
                 query = last_message.content
-                
+            
             # 执行搜索
             tool_result = self.search_tool.search(query)
+            tool_text = self._extract_tool_text(tool_result)
             
             # 返回正确格式的工具消息
             return {
                 "messages": [
                     ToolMessage(
-                        content=tool_result,
+                        content=tool_text,
                         tool_call_id=tool_id,
                         name=tool_name
                     )

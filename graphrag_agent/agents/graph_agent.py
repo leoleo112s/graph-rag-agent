@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Dict
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -33,24 +33,9 @@ class GraphAgent(BaseAgent):
         
         # 设置缓存目录
         self.cache_dir = "./cache/graph_agent"
-        
+
         # 调用父类构造函数
         super().__init__(cache_dir=self.cache_dir)
-
-    @staticmethod
-    def _extract_tool_text(result: Any) -> str:
-        """从可能的结构化返回中提取可写入消息的文本。"""
-        if isinstance(result, dict):
-            for key in ("answer", "final_answer", "response", "output", "summary"):
-                value = result.get(key)
-                if isinstance(value, str) and value.strip():
-                    return value
-            intermediate = result.get("intermediate_results")
-            if isinstance(intermediate, list):
-                return "\n".join(str(item) for item in intermediate)
-        if isinstance(result, list):
-            return "\n".join(str(item) for item in result)
-        return str(result) if result is not None else ""
 
     def _setup_tools(self) -> List:
         """设置工具"""
