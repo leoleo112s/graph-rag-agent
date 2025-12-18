@@ -16,6 +16,7 @@ from graphrag_agent.search.tool.deeper_research_tool import DeeperResearchTool
 from graphrag_agent.search.tool.deep_research_tool import DeepResearchTool 
 
 from graphrag_agent.agents.base import BaseAgent
+from graphrag_agent.utils.retrieval_normalize import normalize_retrieval_output
 
 
 class DeepResearchAgent(BaseAgent):
@@ -129,10 +130,11 @@ class DeepResearchAgent(BaseAgent):
         
         # 安全地获取问题和检索结果
         try:
-            # 原始问题在倒数第三个消息
-            question = messages[-3].content if len(messages) >= 3 else "未找到问题"
-            # 检索结果在最后一个消息
-            retrieval_result = messages[-1].content if messages[-1] else "未找到相关信息"
+            raw_question = messages[-3] if len(messages) >= 3 else None
+            raw_retrieval = messages[-1] if messages else None
+            # 规范化为字符串，防止后续 prompt 拼接报类型错误
+            question = normalize_retrieval_output(raw_question) or "未找到问题"
+            retrieval_result = normalize_retrieval_output(raw_retrieval) or "未找到相关信息"
         except Exception as e:
             return {"messages": [AIMessage(content=f"生成回答时出错: {str(e)}")]}
 
@@ -158,10 +160,12 @@ class DeepResearchAgent(BaseAgent):
             return {"messages": [AIMessage(content=cached_result)]}
 
         # 处理流式输出的情况 - 生成器或字典结果
-        if isinstance(retrieval_result, (AsyncGenerator, Dict)) and not isinstance(retrieval_result, str):
+        raw_retrieval = locals().get("raw_retrieval")
+
+        if isinstance(raw_retrieval, (AsyncGenerator, Dict)) and not isinstance(raw_retrieval, str):
             # 如果结果是字典且包含'answer'字段，提取答案
-            if isinstance(retrieval_result, dict) and 'answer' in retrieval_result:
-                answer = retrieval_result['answer']
+            if isinstance(raw_retrieval, dict) and 'answer' in raw_retrieval:
+                answer = raw_retrieval['answer']
                 # 根据结果结构处理
                 if '<think>' in answer and '</think>' in answer:
                     # 包含思考过程，提取干净的答案
