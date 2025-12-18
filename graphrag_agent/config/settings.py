@@ -295,7 +295,7 @@ LOCAL_SEARCH_SETTINGS = {
     )
     or 10,
     "top_entities": _get_env_int("LOCAL_SEARCH_TOP_ENTITIES", 10) or 10,
-    "index_name": os.getenv("LOCAL_SEARCH_INDEX_NAME", "vector"),
+    "index_name": os.getenv("LOCAL_SEARCH_INDEX_NAME", CHUNK_VECTOR_INDEX),
 }
 
 GLOBAL_SEARCH_SETTINGS = {
