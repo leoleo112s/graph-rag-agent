@@ -608,4 +608,22 @@ class EntityRelationExtractor:
         🔥 修复：之前是空实现（pass），导致"空跑"
         现在直接调用 process_chunks，复用所有逻辑（包括 Schema-aware routing）
         """
-        return self.process_chunks(file_contents, progress_callback)
+        processed = self.process_chunks(file_contents, progress_callback)
+        if len(processed) != len(file_contents):
+            raise ValueError("process_chunks_batch: 文件数量与输入不一致")
+
+        total_chunks = 0
+        empty_chunks = 0
+        mismatch_files = []
+        for (fname, orig_chunks), (_, proc_chunks) in zip(file_contents, processed):
+            if len(orig_chunks) != len(proc_chunks):
+                mismatch_files.append(fname)
+            total_chunks += len(proc_chunks)
+            empty_chunks += sum(1 for c in proc_chunks if not c)
+
+        if mismatch_files:
+            raise ValueError(f"process_chunks_batch: 块数量不匹配的文件: {mismatch_files}")
+        if total_chunks and (empty_chunks / total_chunks) > 0.2:
+            raise ValueError("process_chunks_batch: 空结果比例超过20%，可能存在抽取异常")
+
+        return processed

@@ -22,6 +22,7 @@ from graphrag_agent.search.tool.global_search_tool import GlobalSearchTool
 
 from graphrag_agent.agents.base import BaseAgent
 from graphrag_agent.utils.retrieval_normalize import normalize_retrieval_output
+from graphrag_agent.utils.tool_invocation import invoke_tool_str
 
 
 class GraphAgent(BaseAgent):
@@ -135,8 +136,7 @@ class GraphAgent(BaseAgent):
             print("文档内容不足，尝试使用本地搜索")
             # 尝试使用local_tool进行更精确搜索
             try:
-                local_result = self.local_tool.search(question)
-                local_text = self._extract_tool_text(local_result)
+                local_text = self._extract_tool_text(invoke_tool_str(self.local_tool, question))
                 if local_text and len(local_text) > 100:
                     # 替换原来的结果
                     messages[-1].content = local_text
@@ -371,8 +371,7 @@ class GraphAgent(BaseAgent):
                 # 如果检索结果不足，尝试使用本地搜索
                 try:
                     yield "**检索内容不足，正在尝试更深入的搜索**...\n\n"
-                    local_result = self.local_tool.search(query)
-                    local_text = self._extract_tool_text(local_result)
+                    local_text = self._extract_tool_text(invoke_tool_str(self.local_tool, query))
                     if local_text and len(local_text) > 100:
                         # 使用本地搜索结果替换
                         workflow_state["messages"][-1] = ToolMessage(
@@ -485,10 +484,10 @@ class GraphAgent(BaseAgent):
             # 执行搜索
             if tool_name == "global_retriever":
                 # 使用全局搜索
-                tool_result = self.global_tool.search(query)
+                tool_result = invoke_tool_str(self.global_tool, query)
             else:
                 # 使用本地搜索
-                tool_result = self.local_tool.search(query)
+                tool_result = invoke_tool_str(self.local_tool, query)
 
             tool_text = self._extract_tool_text(tool_result)
 
@@ -496,10 +495,8 @@ class GraphAgent(BaseAgent):
             if not tool_text or len(tool_text.strip()) < 50:
                 print("搜索结果内容不足，使用备用方法")
                 # 尝试使用另一种搜索方法
-                backup_result = self.local_tool.search(query)
-                backup_text = self._extract_tool_text(backup_result)
+                backup_text = self._extract_tool_text(invoke_tool_str(self.local_tool, query))
                 if backup_text and len(backup_text.strip()) > 50:
-                    tool_result = backup_result
                     tool_text = backup_text
                 else:
                     tool_text = tool_text or backup_text

@@ -363,9 +363,24 @@ class EntityRelationExtractor:
         返回 domain 对应的实体/关系白名单
         """
         config = self._get_graph_config()
-        if config is None or not domain_name:
-            # fallback（传统）
-            return set(self.entity_types) or DEFAULT_ALLOWED_ENTITY_TYPES, set(self.relationship_types) or DEFAULT_ALLOWED_RELATION_TYPES
+        default_schema = None
+        if config and getattr(config, "domain_definitions", None):
+            default_schema = config.domain_definitions[0] if config.domain_definitions else None
+
+        if config is None:
+            return (
+                set(self.entity_types) or DEFAULT_ALLOWED_ENTITY_TYPES,
+                set(self.relationship_types) or DEFAULT_ALLOWED_RELATION_TYPES,
+            )
+
+        if not domain_name and default_schema:
+            ent = set(default_schema.schema.entities or [])
+            rel = set(default_schema.schema.relations or [])
+            if not ent:
+                ent = DEFAULT_ALLOWED_ENTITY_TYPES
+            if not rel:
+                rel = DEFAULT_ALLOWED_RELATION_TYPES
+            return ent, rel
 
         for d in config.domain_definitions:
             if d.domain_name == domain_name:
@@ -378,7 +393,19 @@ class EntityRelationExtractor:
                     rel = DEFAULT_ALLOWED_RELATION_TYPES
                 return ent, rel
 
-        return set(self.entity_types) or DEFAULT_ALLOWED_ENTITY_TYPES, set(self.relationship_types) or DEFAULT_ALLOWED_RELATION_TYPES
+        if default_schema:
+            ent = set(default_schema.schema.entities or [])
+            rel = set(default_schema.schema.relations or [])
+            if not ent:
+                ent = DEFAULT_ALLOWED_ENTITY_TYPES
+            if not rel:
+                rel = DEFAULT_ALLOWED_RELATION_TYPES
+            return ent, rel
+
+        return (
+            set(self.entity_types) or DEFAULT_ALLOWED_ENTITY_TYPES,
+            set(self.relationship_types) or DEFAULT_ALLOWED_RELATION_TYPES,
+        )
 
     # -------------------------
     # output builder（兼容 GraphWriter）
@@ -545,4 +572,22 @@ class EntityRelationExtractor:
         为了稳定 & 保证 chunk 与结果对齐，batch 先退化为 process_chunks。
         你 build_graph 在 chunk>100 时会走 batch，这样不会出现"空跑/结果错位"。
         """
-        return self.process_chunks(file_contents, progress_callback)
+        processed = self.process_chunks(file_contents, progress_callback)
+        if len(processed) != len(file_contents):
+            raise ValueError("process_chunks_batch: 文件数量与输入不一致")
+
+        total_chunks = 0
+        empty_chunks = 0
+        mismatch_files = []
+        for (fname, orig_chunks), (_, proc_chunks) in zip(file_contents, processed):
+            if len(orig_chunks) != len(proc_chunks):
+                mismatch_files.append(fname)
+            total_chunks += len(proc_chunks)
+            empty_chunks += sum(1 for c in proc_chunks if not c)
+
+        if mismatch_files:
+            raise ValueError(f"process_chunks_batch: 块数量不匹配的文件: {mismatch_files}")
+        if total_chunks and (empty_chunks / total_chunks) > 0.2:
+            raise ValueError("process_chunks_batch: 空结果比例超过20%，可能存在抽取异常")
+
+        return processed

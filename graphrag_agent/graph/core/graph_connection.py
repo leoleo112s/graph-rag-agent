@@ -1,6 +1,6 @@
 from typing import Any, Optional
 from graphrag_agent.config.neo4jdb import get_db_manager
-from graphrag_agent.config.settings import CHUNK_VECTOR_INDEX, ENTITY_VECTOR_INDEX
+from graphrag_agent.config.settings import CHUNK_VECTOR_INDEX, ENTITY_VECTOR_INDEX, CLEAN_LEGACY_INDEXES
 
 class GraphConnectionManager:
     """
@@ -121,16 +121,21 @@ class GraphConnectionManager:
             print(f"获取索引列表时出错: {e}")
             print("尝试删除常见的索引名称...")
 
-            # 备用方案：尝试删除常见的索引
+            # 备用方案：尝试删除常见的索引（兼容清理受 CLEAN_LEGACY_INDEXES 控制）
             common_indexes = [
                 CHUNK_VECTOR_INDEX,
                 ENTITY_VECTOR_INDEX,
-                "chunk_embedding",
-                "chunk_vector",
-                "entity_embedding",
-                "entity_vector",
-                "vector",
             ]
+            if CLEAN_LEGACY_INDEXES:
+                common_indexes.extend(
+                    [
+                        "chunk_embedding",
+                        "chunk_vector",
+                        "entity_embedding",
+                        "entity_vector",
+                        "vector",
+                    ]
+                )
 
             for index_name in common_indexes:
                 try:

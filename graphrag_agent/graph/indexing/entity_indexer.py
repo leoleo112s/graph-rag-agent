@@ -10,7 +10,8 @@ from graphrag_agent.config.settings import (
     MAX_WORKERS as DEFAULT_MAX_WORKERS,
     ENTITY_VECTOR_INDEX,
     EMBEDDING_DIM,
-    VECTOR_SIMILARITY_FUNCTION
+    VECTOR_SIMILARITY_FUNCTION,
+    CLEAN_LEGACY_INDEXES,
 )
 
 class EntityIndexManager(BaseIndexer):
@@ -54,9 +55,10 @@ class EntityIndexManager(BaseIndexer):
     def clear_existing_index(self) -> None:
         """清除已存在的实体embedding索引，为了防止有的时候embedding模型的切换问题，这里顺便清下vector索引"""
         connection_manager.drop_index(ENTITY_VECTOR_INDEX)
-        # 兼容历史命名，防止旧索引残留
-        connection_manager.drop_index("entity_embedding")
-        connection_manager.drop_index("vector")
+        if CLEAN_LEGACY_INDEXES:
+            # 兼容历史命名，防止旧索引残留
+            connection_manager.drop_index("entity_embedding")
+            connection_manager.drop_index("vector")
 
     def create_vector_index(self, node_label: str = '__Entity__', embedding_property: str = 'embedding') -> None:
         """
