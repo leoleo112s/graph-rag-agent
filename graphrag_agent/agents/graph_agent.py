@@ -21,6 +21,7 @@ from graphrag_agent.search.tool.local_search_tool import LocalSearchTool
 from graphrag_agent.search.tool.global_search_tool import GlobalSearchTool
 
 from graphrag_agent.agents.base import BaseAgent
+from graphrag_agent.utils.retrieval_normalize import normalize_retrieval_output
 
 
 class GraphAgent(BaseAgent):
@@ -122,8 +123,8 @@ class GraphAgent(BaseAgent):
 
         # 获取问题和文档内容
         try:
-            question = messages[-3].content
-            docs = messages[-1].content
+            question = normalize_retrieval_output(messages[-3] if len(messages) >= 3 else None)
+            docs = normalize_retrieval_output(messages[-1] if messages else None)
         except Exception as e:
             # 如果出错，默认为 generate 模式
             print(f"文档评分出错: {e}")
@@ -172,8 +173,8 @@ class GraphAgent(BaseAgent):
     def _generate_node(self, state):
         """生成回答节点逻辑"""
         messages = state["messages"]
-        question = messages[-3].content
-        docs = messages[-1].content
+        question = normalize_retrieval_output(messages[-3] if len(messages) >= 3 else None)
+        docs = normalize_retrieval_output(messages[-1] if messages else None)
 
         # 首先尝试全局缓存
         global_result = self.global_cache_manager.get(question)
@@ -222,8 +223,8 @@ class GraphAgent(BaseAgent):
     def _reduce_node(self, state):
         """处理全局搜索的Reduce节点逻辑"""
         messages = state["messages"]
-        question = messages[-3].content
-        docs = messages[-1].content
+        question = normalize_retrieval_output(messages[-3] if len(messages) >= 3 else None)
+        docs = normalize_retrieval_output(messages[-1] if messages else None)
 
         # 检查缓存
         cached_result = self.cache_manager.get(f"reduce:{question}")
@@ -260,8 +261,8 @@ class GraphAgent(BaseAgent):
         
         # 安全获取问题和文档内容
         try:
-            question = messages[-3].content if len(messages) >= 3 else "未找到问题"
-            docs = messages[-1].content if messages[-1] else "未找到相关信息"
+            question = normalize_retrieval_output(messages[-3] if len(messages) >= 3 else None) or "未找到问题"
+            docs = normalize_retrieval_output(messages[-1] if messages else None) or "未找到相关信息"
         except Exception as e:
             yield f"**获取问题或文档时出错**: {str(e)}"
             return
