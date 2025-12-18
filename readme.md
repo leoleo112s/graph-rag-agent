@@ -158,6 +158,72 @@ graph-rag-agent/
 
 ### 🚀 性能与优化特性
 
+- **🔥 生产级实体抽取重构**：三板斧质量控制 + Schema-aware Routing
+  - **三板斧质量控制**：
+    - 1️⃣ 实体标准化（normalize）：统一括号、去除空格
+    - 2️⃣ 类型白名单过滤（type whitelist）：只保留配置的实体/关系类型
+    - 3️⃣ 频率过滤（frequency ≥ 2）：实体必须在文本中出现至少2次
+    - 4️⃣ 相似度去重（similarity dedup）：基于 Levenshtein 距离（阈值 0.85）合并相似实体
+  - **Schema-aware Domain Routing**：
+    - 文件级领域识别：LLM 基于 `trigger_condition` 自动分类文档
+    - 动态 Schema 应用：每个领域使用独立的实体/关系白名单
+    - 双模式兼容：无 GraphConfig → 传统全局白名单；有 GraphConfig → 按领域动态 Schema
+  - **JSON 安全解析**（`safe_json_loads`）：
+    - 容忍 LLM 输出多余文本、数组包裹、格式错误
+    - 正则提取 JSON 块作为 fallback
+    - 解析失败返回空结构而非崩溃
+  - **预期效果**：
+    - 实体数量：2544 → ~600（减少 76%）
+    - 关系数量：11832 → ~2500（减少 79%）
+    - LLM 调用：~2000 → ~500（减少 75%）
+    - 构建时间：减少约 60%
+
+- **📏 双 Chunker 策略**：针对不同场景优化分块
+  - **GraphChunker**（用于实体抽取）：
+    - chunk_size=900, overlap=50
+    - 更大上下文 → 更好的实体识别
+    - 更少 chunk → 更少 LLM 调用
+    - 更少重复 → 降低去重压力
+  - **RAGChunker**（用于向量检索）：
+    - chunk_size=400, overlap=80
+    - 更细粒度 → 更精准的语义匹配
+    - 更小片段 → 更快的检索速度
+    - 更多重叠 → 更好的上下文连续性
+  - **使用场景**：
+    - 知识图谱构建时使用 GraphChunker
+    - 向量检索时使用 RAGChunker
+    - 两者互不干扰，各司其职
+
+- **⚡ Neo4j 原生向量搜索**：服务端计算，性能提升 10-100x
+  - 使用 `db.index.vector.queryNodes` API（替代客户端相似度计算）
+  - 显式创建向量索引（`CREATE VECTOR INDEX`）
+  - 支持 cosine/euclidean/dot_product 相似度函数
+  - 全局索引配置（`CHUNK_VECTOR_INDEX`, `ENTITY_VECTOR_INDEX`）
+  - 优势：
+    - 搜索整个数据集（不受 LIMIT 100 限制）
+    - 减少网络传输开销
+    - 利用 Neo4j 优化的向量索引
+
+- **📋 统一返回结构**：工程级实践
+  - 所有搜索工具返回标准化 dict：
+    ```python
+    {
+      "answer": str,           # LLM 生成答案
+      "references": {...},     # 引用资源（chunks/entities/communities/relationships）
+      "meta": {                # 元数据
+        "retriever": str,      # 检索器类型
+        "search_time": float,  # 检索耗时
+        "llm_time": float,     # LLM 耗时
+        "total_time": float,   # 总耗时
+        "cache_hit": bool      # 缓存命中
+      }
+    }
+    ```
+  - Pydantic 类型安全（`SearchResponse` 模型）
+  - `ResponseBuilder` 工具类简化构建
+  - 前端无需解析不可靠的 LLM JSON 输出
+  - 性能指标自动追踪
+
 - **🚀 V2 增量更新引擎**：L0/L1 拆分架构，极速响应
   - **L0 快速通道**：文件上传后 10 秒内可搜索（文本分块 + 向量化）
   - **L1 慢速通道**：后台异步构建知识图谱（实体提取 + 关系构建）
