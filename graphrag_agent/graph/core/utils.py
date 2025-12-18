@@ -1,6 +1,43 @@
 import time
 import hashlib
-from typing import Callable, Dict, List, Any
+from typing import Any, Callable, Dict, List
+
+
+def ensure_vector_index(
+    graph: Any,
+    index_name: str,
+    label: str,
+    property_name: str,
+    dim: int,
+    similarity: str = "cosine",
+) -> None:
+    """Create a Neo4j vector index if it does not already exist.
+
+    Args:
+        graph: Neo4j connection object exposing ``query``.
+        index_name: Name of the vector index.
+        label: Node label to index.
+        property_name: Embedding property name.
+        dim: Embedding dimension.
+        similarity: Similarity function (e.g., ``cosine``).
+    """
+
+    query = f"""
+    CREATE VECTOR INDEX {index_name} IF NOT EXISTS
+    FOR (n:`{label}`)
+    ON (n.{property_name})
+    OPTIONS {{
+      indexConfig: {{
+        `vector.dimensions`: {dim},
+        `vector.similarity_function`: '{similarity}'
+      }}
+    }}
+    """
+    try:
+        graph.query(query)
+    except Exception:
+        # 索引已存在或后端忽略重复创建时不视为错误
+        pass
 
 def timer(func):
     """
