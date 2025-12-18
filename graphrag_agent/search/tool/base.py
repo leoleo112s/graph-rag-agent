@@ -99,15 +99,15 @@ class BaseSearchTool(ABC):
         pass
     
     @abstractmethod
-    def search(self, query: Any) -> str:
+    def search(self, query: Any) -> Any:
         """
         执行搜索
-        
+
         参数:
             query: 查询内容，可以是字符串或包含更多信息的字典
-            
+
         返回:
-            str: 搜索结果
+            Any: 搜索结果（标准化字典或纯文本）
         """
         pass
 

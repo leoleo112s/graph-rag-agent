@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Any
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -36,6 +36,21 @@ class GraphAgent(BaseAgent):
         
         # 调用父类构造函数
         super().__init__(cache_dir=self.cache_dir)
+
+    @staticmethod
+    def _extract_tool_text(result: Any) -> str:
+        """从可能的结构化返回中提取可写入消息的文本。"""
+        if isinstance(result, dict):
+            for key in ("answer", "final_answer", "response", "output", "summary"):
+                value = result.get(key)
+                if isinstance(value, str) and value.strip():
+                    return value
+            intermediate = result.get("intermediate_results")
+            if isinstance(intermediate, list):
+                return "\n".join(str(item) for item in intermediate)
+        if isinstance(result, list):
+            return "\n".join(str(item) for item in result)
+        return str(result) if result is not None else ""
 
     def _setup_tools(self) -> List:
         """设置工具"""
@@ -135,9 +150,10 @@ class GraphAgent(BaseAgent):
             # 尝试使用local_tool进行更精确搜索
             try:
                 local_result = self.local_tool.search(question)
-                if local_result and len(local_result) > 100:
+                local_text = self._extract_tool_text(local_result)
+                if local_text and len(local_text) > 100:
                     # 替换原来的结果
-                    messages[-1].content = local_result
+                    messages[-1].content = local_text
             except Exception as e:
                 print(f"本地搜索失败: {e}")
         
@@ -370,10 +386,11 @@ class GraphAgent(BaseAgent):
                 try:
                     yield "**检索内容不足，正在尝试更深入的搜索**...\n\n"
                     local_result = self.local_tool.search(query)
-                    if local_result and len(local_result) > 100:
+                    local_text = self._extract_tool_text(local_result)
+                    if local_text and len(local_text) > 100:
                         # 使用本地搜索结果替换
                         workflow_state["messages"][-1] = ToolMessage(
-                            content=local_result,
+                            content=local_text,
                             tool_call_id="local_search",
                             name="local_search_tool"
                         )
@@ -486,20 +503,26 @@ class GraphAgent(BaseAgent):
             else:
                 # 使用本地搜索
                 tool_result = self.local_tool.search(query)
-            
+
+            tool_text = self._extract_tool_text(tool_result)
+
             # 检查搜索结果
-            if not tool_result or (isinstance(tool_result, str) and len(tool_result.strip()) < 50):
+            if not tool_text or len(tool_text.strip()) < 50:
                 print("搜索结果内容不足，使用备用方法")
                 # 尝试使用另一种搜索方法
                 backup_result = self.local_tool.search(query)
-                if backup_result and len(backup_result.strip()) > 50:
+                backup_text = self._extract_tool_text(backup_result)
+                if backup_text and len(backup_text.strip()) > 50:
                     tool_result = backup_result
-            
+                    tool_text = backup_text
+                else:
+                    tool_text = tool_text or backup_text
+
             # 返回正确格式的工具消息
             return {
                 "messages": [
                     ToolMessage(
-                        content=tool_result,
+                        content=tool_text,
                         tool_call_id=tool_id,
                         name=tool_name
                     )
