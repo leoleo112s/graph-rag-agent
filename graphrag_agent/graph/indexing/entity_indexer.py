@@ -53,6 +53,8 @@ class EntityIndexManager(BaseIndexer):
         
     def clear_existing_index(self) -> None:
         """清除已存在的实体embedding索引，为了防止有的时候embedding模型的切换问题，这里顺便清下vector索引"""
+        connection_manager.drop_index(ENTITY_VECTOR_INDEX)
+        # 兼容历史命名，防止旧索引残留
         connection_manager.drop_index("entity_embedding")
         connection_manager.drop_index("vector")
 
