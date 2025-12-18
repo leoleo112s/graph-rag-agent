@@ -8,7 +8,11 @@ from graphrag_agent.models.get_models import get_llm_model, get_embeddings_model
 from graphrag_agent.cache_manager.manager import CacheManager, ContextAndKeywordAwareCacheKeyStrategy, MemoryCacheBackend
 from graphrag_agent.config.neo4jdb import get_db_manager
 from graphrag_agent.search.utils import VectorUtils
-from graphrag_agent.config.settings import BASE_SEARCH_CONFIG
+from graphrag_agent.config.settings import (
+    BASE_SEARCH_CONFIG,
+    CHUNK_VECTOR_INDEX,
+    ENTITY_VECTOR_INDEX,
+)
 
 
 class BaseSearchTool(ABC):
@@ -107,13 +111,16 @@ class BaseSearchTool(ABC):
         """
         pass
 
-    def vector_search(self, query: str, limit: int = None) -> List[str]:
+    def vector_search(
+        self, query: str, limit: int = None, index_name: str = CHUNK_VECTOR_INDEX
+    ) -> List[str]:
         """
         基于向量相似度的搜索方法
 
         参数:
             query: 搜索查询
             limit: 最大返回结果数
+            index_name: 使用的向量索引名称
 
         返回:
             List[str]: 匹配实体ID列表
@@ -124,8 +131,8 @@ class BaseSearchTool(ABC):
             query_embedding = self.embeddings.embed_query(query)
 
             # 构建Neo4j向量搜索查询
-            cypher = """
-            CALL db.index.vector.queryNodes('vector', $limit, $embedding)
+            cypher = f"""
+            CALL db.index.vector.queryNodes('{index_name}', $limit, $embedding)
             YIELD node, score
             RETURN node.id AS id, score
             ORDER BY score DESC
@@ -146,7 +153,7 @@ class BaseSearchTool(ABC):
         except Exception as e:
             error_msg = str(e)
             if "vector index" in error_msg.lower() or "does not exist" in error_msg.lower():
-                print(f"⚠️ 向量索引尚未创建。请先构建知识图谱：")
+                print(f"⚠️ 向量索引尚未创建或不可用：{index_name}。请先构建知识图谱：")
                 print("   1. 进入「📚 文档管理」上传文档")
                 print("   2. 进入「🏗️ 构建管理」点击「全量构建」")
                 print("   3. 等待构建完成后再进行查询")
@@ -156,6 +163,19 @@ class BaseSearchTool(ABC):
 
             # 如果向量搜索失败，尝试使用文本搜索作为备用
             return self.text_search(query, limit)
+
+    def entity_vector_search(self, query: str, limit: int = None) -> List[str]:
+        """
+        使用实体向量索引的相似度搜索
+
+        参数:
+            query: 搜索查询
+            limit: 最大返回结果数
+
+        返回:
+            List[str]: 匹配的实体ID列表
+        """
+        return self.vector_search(query, limit, index_name=ENTITY_VECTOR_INDEX)
     
     def text_search(self, query: str, limit: int = None) -> List[str]:
         """
