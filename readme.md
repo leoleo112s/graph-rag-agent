@@ -261,6 +261,34 @@ graph-rag-agent/
 
 请参考：[快速开始文档](./assets/start.md)
 
+### 本地部署（Neo4j Docker + 前后端分进程）
+
+```bash
+# 1) 克隆项目
+git clone https://github.com/1517005260/graph-rag-agent.git
+cd graph-rag-agent
+
+# 2) 启动 Neo4j（Docker）
+docker compose up -d neo4j
+# 或单独启动：docker run -d --name neo4j -p7474:7474 -p7687:7687 -e NEO4J_AUTH=neo4j/test neo4j:5
+
+# 3) 准备 Python 环境
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+pip install -e .
+
+# 4) 配置环境变量
+cp .env.example .env
+# 按需填入 OpenAI/Neo4j 等密钥，确保 CHUNK_VECTOR_INDEX/ENTITY_VECTOR_INDEX 与 Neo4j 中一致
+
+# 5) 启动后端
+uvicorn server.main:app --reload --host 0.0.0.0 --port 8000
+# 可用 /status 检查向量索引是否就绪
+
+# 6) 启动前端（新终端）
+streamlit run frontend/app.py --server.port 8501 --server.address 0.0.0.0
+```
+
 ### 方式二：AI 向导模式（推荐新用户）
 
 **1. 环境准备**
