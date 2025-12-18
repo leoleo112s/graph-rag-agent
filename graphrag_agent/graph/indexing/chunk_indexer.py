@@ -54,6 +54,8 @@ class ChunkIndexManager(BaseIndexer):
         
     def clear_existing_index(self) -> None:
         """清除已存在的普通索引"""
+        connection_manager.drop_index(CHUNK_VECTOR_INDEX)
+        # 兼容历史命名，防止旧索引残留
         connection_manager.drop_index("chunk_embedding")
 
     def create_vector_index(self, node_label: str = '__Chunk__', embedding_property: str = 'embedding') -> None:
