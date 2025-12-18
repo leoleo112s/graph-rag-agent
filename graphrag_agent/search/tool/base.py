@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import time
 
 from langchain_core.tools import BaseTool
@@ -112,7 +112,10 @@ class BaseSearchTool(ABC):
         pass
 
     def vector_search(
-        self, query: str, limit: int = None, index_name: str = CHUNK_VECTOR_INDEX
+        self,
+        query: str,
+        limit: Optional[int] = None,
+        index_name: Optional[str] = None,
     ) -> List[str]:
         """
         基于向量相似度的搜索方法
@@ -127,12 +130,13 @@ class BaseSearchTool(ABC):
         """
         try:
             limit = limit or self.default_vector_limit
+            index_name = index_name or CHUNK_VECTOR_INDEX
             # 生成查询的嵌入向量
             query_embedding = self.embeddings.embed_query(query)
 
             # 构建Neo4j向量搜索查询
-            cypher = f"""
-            CALL db.index.vector.queryNodes('{index_name}', $limit, $embedding)
+            cypher = """
+            CALL db.index.vector.queryNodes($index_name, $limit, $embedding)
             YIELD node, score
             RETURN node.id AS id, score
             ORDER BY score DESC
@@ -141,7 +145,8 @@ class BaseSearchTool(ABC):
             # 执行搜索
             results = self.db_query(cypher, {
                 "embedding": query_embedding,
-                "limit": limit
+                "limit": limit,
+                "index_name": index_name,
             })
 
             # 提取实体ID
