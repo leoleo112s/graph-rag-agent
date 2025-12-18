@@ -129,28 +129,36 @@ def safe_json_loads(text: str) -> Dict:
 # 后处理核心逻辑（生产级）
 # =========================
 
-def post_process_entities(raw_entities: List[Dict]) -> List[Dict]:
+def post_process_entities(raw_entities: List[Dict], allowed_types: set = None) -> List[Dict]:
     """
-    实体后处理（生产级验证）
+    实体后处理（生产级验证 + 动态 Schema）
 
     步骤：
     1. normalize：标准化名称
-    2. type_filter：类型过滤（白名单）
+    2. type_filter：类型过滤（动态白名单）
     3. frequency_filter：频率过滤（≥2 次）
     4. deduplicate：去重（Levenshtein 距离）
+
+    Args:
+        raw_entities: 原始实体列表
+        allowed_types: 允许的实体类型（动态 Schema，默认使用全局白名单）
     """
     if not raw_entities:
         return []
+
+    # 使用动态 Schema 或默认白名单
+    if allowed_types is None:
+        allowed_types = ALLOWED_ENTITY_TYPES
 
     # 1. normalize
     for e in raw_entities:
         if "name" in e:
             e["name"] = normalize_entity_name(e.get("name", ""))
 
-    # 2. type filter（白名单）
+    # 2. type filter（动态白名单）
     entities = [
         e for e in raw_entities
-        if e.get("type") in ALLOWED_ENTITY_TYPES and e.get("name")
+        if e.get("type") in allowed_types and e.get("name")
     ]
 
     # 3. frequency filter（≥2 次）
@@ -166,24 +174,34 @@ def post_process_entities(raw_entities: List[Dict]) -> List[Dict]:
         if not any(is_similar(e["name"], u["name"]) for u in deduped):
             deduped.append(e)
 
-    print(f"✅ 实体后处理：{len(raw_entities)} → {len(deduped)} 个实体")
+    print(f"✅ 实体后处理：{len(raw_entities)} → {len(deduped)} 个实体（Schema: {len(allowed_types)} 类型）")
     return deduped
 
 
 def post_process_relations(
     raw_relations: List[Dict],
-    entities: List[Dict]
+    entities: List[Dict],
+    allowed_relation_types: set = None
 ) -> List[Dict]:
     """
-    关系后处理（生产级验证）
+    关系后处理（生产级验证 + 动态 Schema）
 
     步骤：
-    1. 验证关系类型（白名单）
+    1. 验证关系类型（动态白名单）
     2. 验证 source/target 实体存在
     3. 去重
+
+    Args:
+        raw_relations: 原始关系列表
+        entities: 实体列表
+        allowed_relation_types: 允许的关系类型（动态 Schema，默认使用全局白名单）
     """
     if not raw_relations or not entities:
         return []
+
+    # 使用动态 Schema 或默认白名单
+    if allowed_relation_types is None:
+        allowed_relation_types = ALLOWED_RELATION_TYPES
 
     entity_names = {normalize_entity_name(e["name"]) for e in entities}
     cleaned = []
@@ -194,11 +212,11 @@ def post_process_relations(
         tgt = normalize_entity_name(r.get("target", ""))
         r_type = r.get("type")
 
-        # 验证
+        # 验证（动态白名单）
         if (
             src in entity_names and
             tgt in entity_names and
-            r_type in ALLOWED_RELATION_TYPES
+            r_type in allowed_relation_types
         ):
             key = (src, tgt, r_type)
             if key not in seen:
@@ -209,7 +227,7 @@ def post_process_relations(
                 })
                 seen.add(key)
 
-    print(f"✅ 关系后处理：{len(raw_relations)} → {len(cleaned)} 条关系")
+    print(f"✅ 关系后处理：{len(raw_relations)} → {len(cleaned)} 条关系（Schema: {len(allowed_relation_types)} 类型）")
     return cleaned
 
 
@@ -219,21 +237,24 @@ def post_process_relations(
 
 class EntityRelationExtractor:
     """
-    实体关系提取器（生产级版本）
+    实体关系提取器（生产级版本 + Schema-aware Routing）
 
     特点：
     - 强化版 Prompt（硬约束 + 白名单）
     - JSON 格式输出（可靠解析）
     - 实体后处理（标准化 + 去重 + 频率过滤）
     - 关系后处理（合法性校验）
+    - Schema-aware Routing（文件级 Domain 识别）
+    - 动态 Schema（支持多领域）
     - 保留原有的缓存和并行处理逻辑
     """
 
     def __init__(self, llm, system_template, human_template,
                  entity_types: List[str], relationship_types: List[str],
-                 cache_dir="./cache/graph", max_workers=4, batch_size=5):
+                 cache_dir="./cache/graph", max_workers=4, batch_size=5,
+                 graph_config=None):
         """
-        初始化实体关系提取器
+        初始化实体关系提取器（+ GraphConfig 支持）
 
         Args:
             llm: 语言模型
@@ -244,11 +265,15 @@ class EntityRelationExtractor:
             cache_dir: 缓存目录
             max_workers: 并行工作线程数
             batch_size: 批处理大小
+            graph_config: GraphConfig 实例（可选，用于 Schema-aware routing）
         """
         self.llm = llm
         self.entity_types = entity_types
         self.relationship_types = relationship_types
         self.chat_history = []
+
+        # 🔥 新增：GraphConfig 支持
+        self.graph_config = graph_config
 
         # 设置分隔符（兼容旧格式）
         self.tuple_delimiter = " : "
@@ -327,25 +352,79 @@ class EntityRelationExtractor:
         self.cache_misses += 1
         return None
 
-    @retry(times=3, exceptions=(Exception,), delay=1.0)
-    def _process_single_chunk(self, input_text: str) -> str:
+    def _route_domain(self, filename: str, content: str) -> str:
         """
-        处理单个文本块（生产级重构）
+        路由文档领域（文件级 Domain 识别）
+
+        策略：
+        1. 如果有 GraphConfig，使用 GraphConfig.route_domain()
+        2. 否则返回 "default"（使用全局白名单）
+
+        Args:
+            filename: 文件名
+            content: 文件内容
+
+        Returns:
+            domain: 领域标识（如 "student_policy", "hr_policy", "default"）
+        """
+        if self.graph_config and hasattr(self.graph_config, 'route_domain'):
+            return self.graph_config.route_domain(filename, content)
+        return "default"
+
+    def _get_schema(self, domain: str) -> Tuple[set, set]:
+        """
+        获取领域的 Schema（实体类型 + 关系类型）
+
+        策略：
+        1. 如果有 GraphConfig，使用 GraphConfig.get_schema(domain)
+        2. 否则返回全局白名单
+
+        Args:
+            domain: 领域标识
+
+        Returns:
+            (entity_types, relation_types): 实体类型集合和关系类型集合
+        """
+        if self.graph_config and hasattr(self.graph_config, 'get_schema'):
+            schema = self.graph_config.get_schema(domain)
+            return (
+                set(schema.get("entity_types", ALLOWED_ENTITY_TYPES)),
+                set(schema.get("relation_types", ALLOWED_RELATION_TYPES))
+            )
+        return (ALLOWED_ENTITY_TYPES, ALLOWED_RELATION_TYPES)
+
+    @retry(times=3, exceptions=(Exception,), delay=1.0)
+    def _process_single_chunk(
+        self,
+        input_text: str,
+        domain_entity_types: set = None,
+        domain_relation_types: set = None
+    ) -> str:
+        """
+        处理单个文本块（生产级重构 + Schema-aware）
 
         流程：
         1. 检查缓存
         2. 调用 LLM
         3. 解析 JSON（safe_json_loads）
-        4. 后处理实体和关系
+        4. 后处理实体和关系（使用 domain schema）
         5. 保存缓存
         6. 返回结果
 
         Args:
             input_text: 输入文本
+            domain_entity_types: 领域实体类型（可选，默认使用全局白名单）
+            domain_relation_types: 领域关系类型（可选，默认使用全局白名单）
 
         Returns:
             str: 处理结果（JSON 字符串或兼容格式）
         """
+        # 使用默认 schema（如果未提供）
+        if domain_entity_types is None:
+            domain_entity_types = ALLOWED_ENTITY_TYPES
+        if domain_relation_types is None:
+            domain_relation_types = ALLOWED_RELATION_TYPES
+
         # 生成缓存键
         cache_key = self._generate_cache_key(input_text)
 
@@ -367,18 +446,22 @@ class EntityRelationExtractor:
 
         result = response.content
 
-        # 🔥 生产级后处理（关键改进）
+        # 🔥 生产级后处理（关键改进 + 动态 Schema）
         try:
             # 1. 解析 JSON
             parsed = safe_json_loads(result)
 
-            # 2. 后处理实体
+            # 2. 后处理实体（动态 Schema）
             raw_entities = parsed.get("entities", [])
-            entities = post_process_entities(raw_entities)
+            entities = post_process_entities(raw_entities, allowed_types=domain_entity_types)
 
-            # 3. 后处理关系
+            # 3. 后处理关系（动态 Schema）
             raw_relations = parsed.get("relations", [])
-            relations = post_process_relations(raw_relations, entities)
+            relations = post_process_relations(
+                raw_relations,
+                entities,
+                allowed_relation_types=domain_relation_types
+            )
 
             # 4. 重新构建结果（兼容旧格式）
             result = self._build_compatible_result(entities, relations)
@@ -426,13 +509,38 @@ class EntityRelationExtractor:
     # ========== 以下方法保持不变（并行处理和缓存逻辑）==========
 
     def process_chunks(self, file_contents: List[Tuple], progress_callback=None) -> List[Tuple]:
-        """并行处理所有文件的所有chunks（保持不变）"""
+        """
+        并行处理所有文件的所有chunks（+ Schema-aware routing）
+
+        新增：文件级 Domain Routing（在进入 chunk 循环前）
+        """
         t0 = time.time()
         chunk_index = 0
         total_chunks = sum(len(file_content[2]) for file_content in file_contents)
 
+        # 🔥 Step 3: 文件级 Domain Routing（新增，但不侵入）
+        file_domain_schema = {}
+        for file_content in file_contents:
+            filename = file_content[0]  # file_content: (filename, content, chunks, ...)
+            content = file_content[1]   # 原始文本内容
+
+            # 路由领域
+            domain = self._route_domain(filename, content)
+
+            # 获取该领域的 schema
+            entity_types, relation_types = self._get_schema(domain)
+
+            # 保存到映射表
+            file_domain_schema[filename] = (entity_types, relation_types)
+
+            print(f"📋 文件 '{filename}' → Domain: {domain} (实体类型: {len(entity_types)}, 关系类型: {len(relation_types)})")
+
         for i, file_content in enumerate(file_contents):
+            filename = file_content[0]
             chunks = file_content[2]
+
+            # 🔥 获取该文件的 domain schema
+            domain_entity_types, domain_relation_types = file_domain_schema[filename]
 
             # 预检查缓存命中率
             cache_keys = [self._generate_cache_key(''.join(chunk)) for chunk in chunks]
@@ -441,8 +549,14 @@ class EntityRelationExtractor:
 
             if len(non_cached_indices) > 0:
                 with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+                    # 🔥 传递 domain schema 给 _process_single_chunk
                     future_to_chunk = {
-                        executor.submit(self._process_single_chunk, ''.join(chunks[idx])): idx
+                        executor.submit(
+                            self._process_single_chunk,
+                            ''.join(chunks[idx]),
+                            domain_entity_types,
+                            domain_relation_types
+                        ): idx
                         for idx in non_cached_indices
                     }
 
@@ -462,7 +576,11 @@ class EntityRelationExtractor:
                             while retry_count < 3:
                                 try:
                                     print(f'尝试重试 Chunk {chunk_idx}, 第 {retry_count+1} 次')
-                                    result = self._process_single_chunk(''.join(chunks[chunk_idx]))
+                                    result = self._process_single_chunk(
+                                        ''.join(chunks[chunk_idx]),
+                                        domain_entity_types,
+                                        domain_relation_types
+                                    )
                                     cached_results[cache_keys[chunk_idx]] = result
                                     break
                                 except Exception as retry_exc:
@@ -484,6 +602,10 @@ class EntityRelationExtractor:
         return file_contents
 
     def process_chunks_batch(self, file_contents: List[Tuple], progress_callback=None) -> List[Tuple]:
-        """批量处理chunks（保持不变，但 _process_single_chunk 已升级）"""
-        # 省略重复代码...保持原有实现
-        pass
+        """
+        批量处理chunks（修复硬 Bug）
+
+        🔥 修复：之前是空实现（pass），导致"空跑"
+        现在直接调用 process_chunks，复用所有逻辑（包括 Schema-aware routing）
+        """
+        return self.process_chunks(file_contents, progress_callback)
