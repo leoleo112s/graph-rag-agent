@@ -366,7 +366,8 @@ class HybridAgent(BaseAgent):
                 query = last_message.content
             
             # 执行搜索
-            tool_result = self.search_tool.search(query)
+            tool_runner = self.search_tool.get_tool()
+            tool_result = tool_runner._run(query)
             tool_text = self._extract_tool_text(tool_result)
             
             # 返回正确格式的工具消息

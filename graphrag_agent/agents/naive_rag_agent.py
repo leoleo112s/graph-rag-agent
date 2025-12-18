@@ -135,7 +135,8 @@ class NaiveRagAgent(BaseAgent):
         
         try:
             # 执行Naive搜索
-            search_result = self.search_tool.search(query)
+            search_tool = self.search_tool.get_tool()
+            search_result = search_tool._run(query)
             
             # 分块返回结果
             if search_result:
