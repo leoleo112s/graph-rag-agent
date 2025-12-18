@@ -18,6 +18,7 @@ from graphrag_agent.cache_manager.manager import (
 )
 from graphrag_agent.cache_manager.strategies.global_strategy import GlobalCacheKeyStrategy
 from graphrag_agent.config.settings import AGENT_SETTINGS
+from graphrag_agent.utils.retrieval_normalize import normalize_retrieval_output
 
 class BaseAgent(ABC):
     """Agent 基类，定义通用功能和接口"""
@@ -149,7 +150,7 @@ class BaseAgent(ABC):
         """
         # 获取消息
         messages = inputs.get("messages", [])
-        query = messages[-1].content if messages else ""
+        query = normalize_retrieval_output(messages[-1] if messages else None)
         
         # 构建状态字典
         state = {
@@ -225,7 +226,7 @@ class BaseAgent(ABC):
         
         # 提取关键词优化查询
         if len(messages) > 0 and isinstance(messages[-1], HumanMessage):
-            query = messages[-1].content
+            query = normalize_retrieval_output(messages[-1])
             keywords = self._extract_keywords(query)
             
             # 记录关键词
