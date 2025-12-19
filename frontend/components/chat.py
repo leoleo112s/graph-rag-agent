@@ -351,7 +351,7 @@ def display_chat_interface():
     if not prompt and not chat_disabled:
         prompt = st.chat_input("请输入您的问题...", key="chat_input", disabled=chat_disabled)
     elif chat_disabled:
-        st.chat_input("请输入您的问题...", key="chat_input", disabled=True, placeholder="索引未就绪，无法输入")
+        st.chat_input("索引未就绪，无法输入", key="chat_input", disabled=True)
 
     if chat_disabled:
         return
