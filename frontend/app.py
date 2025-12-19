@@ -1,4 +1,12 @@
+import sys
+from pathlib import Path
+
 import streamlit as st
+
+# Ensure the project root is on sys.path so `graphrag_agent` can be imported
+ROOT_PATH = Path(__file__).resolve().parents[1]
+if str(ROOT_PATH) not in sys.path:
+    sys.path.insert(0, str(ROOT_PATH))
 
 from utils.state import init_session_state
 from components.styles import custom_css
