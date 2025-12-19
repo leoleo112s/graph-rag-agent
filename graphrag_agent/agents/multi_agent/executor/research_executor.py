@@ -28,6 +28,7 @@ from graphrag_agent.agents.multi_agent.executor.base_executor import (
     ExecutorConfig,
     TaskExecutionResult,
 )
+from graphrag_agent.utils.tool_invocation import invoke_tool_structured
 from graphrag_agent.agents.multi_agent.tools.evidence_tracker import get_evidence_tracker
 from graphrag_agent.search.tool_registry import TOOL_REGISTRY
 
@@ -66,7 +67,7 @@ class ResearchExecutor(BaseExecutor):
         result_payload: Any = None
 
         try:
-            result_payload = tool.search(payload)
+            result_payload = invoke_tool_structured(tool, payload)
         except Exception as exc:  # noqa: BLE001
             success = False
             error_message = str(exc)

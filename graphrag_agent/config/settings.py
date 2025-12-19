@@ -105,6 +105,7 @@ similarity_threshold = _get_env_float("SIMILARITY_THRESHOLD", 0.9) or 0.9  # 向
 # Vector index names（全系统唯一，用于 Neo4j Vector Index）
 CHUNK_VECTOR_INDEX = os.getenv("CHUNK_VECTOR_INDEX", "chunk_embedding_index")
 ENTITY_VECTOR_INDEX = os.getenv("ENTITY_VECTOR_INDEX", "entity_embedding_index")
+CLEAN_LEGACY_INDEXES = _get_env_bool("CLEAN_LEGACY_INDEXES", False)
 
 # Embedding dimension（必须和模型一致）
 # text-embedding-3-large: 1536 维
