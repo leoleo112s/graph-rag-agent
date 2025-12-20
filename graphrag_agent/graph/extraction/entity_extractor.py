@@ -87,44 +87,35 @@ def normalize_entity_name(name: str) -> str:
 def is_similar(a: str, b: str, threshold: float) -> bool:
     return SequenceMatcher(None, a, b).ratio() >= threshold
 
-def safe_json_loads(text: str) -> Dict[str, Any]:
+def _extract_json_dict(text: str) -> Optional[Dict[str, Any]]:
     """
-    安全 JSON 解析：兼容 LLM 输出多余文本/数组包裹/解析失败回空结构
+    从 LLM 输出中提取 JSON dict。兼容 ```json fence、前后解释文字。
+
+    尝试策略：
+    1. 去除 ```json ... ``` fence
+    2. 截取第一个 {...}，避免前后有解释
+    3. 解析为 dict
     """
     if not text:
-        return {"entities": [], "relations": []}
+        return None
+
+    t = text.strip()
+
+    # 去掉 ```json ... ``` / ``` ... ```
+    t = re.sub(r"^\s*```(?:json)?\s*", "", t, flags=re.IGNORECASE)
+    t = re.sub(r"\s*```\s*$", "", t)
+
+    # 截取第一个 {...}，避免前后有解释
+    m = re.search(r"\{.*\}", t, flags=re.DOTALL)
+    if not m:
+        return None
+    t = m.group(0)
 
     try:
-        obj = json.loads(text)
-        # 有些模型会输出 list，取第一个 dict
-        if isinstance(obj, list) and obj:
-            if isinstance(obj[0], dict):
-                return obj[0]
-        if isinstance(obj, dict):
-            return obj
-    except json.JSONDecodeError:
-        pass
-
-    # 提取 {...}
-    match = re.search(r"\{[\s\S]*\}", text)
-    if match:
-        try:
-            return json.loads(match.group())
-        except Exception:
-            pass
-
-    # 提取 [...]
-    match = re.search(r"\[[\s\S]*\]", text)
-    if match:
-        try:
-            arr = json.loads(match.group())
-            if isinstance(arr, list) and arr and isinstance(arr[0], dict):
-                return arr[0]
-        except Exception:
-            pass
-
-    print(f"⚠️ JSON 解析失败，原始文本片段：{text[:200]}...")
-    return {"entities": [], "relations": []}
+        obj = json.loads(t)
+        return obj if isinstance(obj, dict) else None
+    except Exception:
+        return None
 
 
 # =========================
@@ -468,8 +459,22 @@ class EntityRelationExtractor:
             "input_text": input_text
         })
 
-        raw = resp.content or ""
-        parsed = safe_json_loads(raw)
+        # 从 AIMessage 获取内容
+        raw = getattr(resp, "content", resp)  # 兼容 AIMessage / str
+
+        # 解析 JSON（使用强化版解析器）
+        parsed = _extract_json_dict(raw)
+        if parsed is None:
+            # 打印原始内容前 300 字符用于调试
+            print(f"⚠️ JSON parse failed, raw head: {repr(str(raw)[:300])}")
+            parsed = {
+                "entities": [],
+                "relations": [],
+                "relationships": [],
+                "domains": [],
+                "bridges": [],
+                "raw": str(raw)
+            }
 
         raw_entities = parsed.get("entities", []) or []
         raw_relations = parsed.get("relations", []) or []
