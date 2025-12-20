@@ -9,7 +9,7 @@ from rich.table import Table
 from rich.panel import Panel
 from rich.text import Text
 
-from graphrag_agent.models.get_models import get_llm_model, get_embeddings_model
+from graphrag_agent.models.get_models import get_llm_model
 from graphrag_agent.config.prompts import (
     system_template_build_graph,
     human_template_build_graph
@@ -24,7 +24,7 @@ from graphrag_agent.config.settings import (
     MAX_WORKERS, BATCH_SIZE,
 )
 from graphrag_agent.config.neo4jdb import get_db_manager
-from graphrag_agent.pipelines.ingestion.document_processor import DocumentProcessor
+# from graphrag_agent.pipelines.ingestion.document_processor import DocumentProcessor
 from graphrag_agent.graph import GraphStructureBuilder
 from graphrag_agent.graph import GraphWriter
 from graphrag_agent.graph.extraction.extractor_factory import create_entity_extractor
@@ -82,24 +82,38 @@ class KnowledgeGraphBuilder:
         init_start = time.time()
         
         with self._create_progress() as progress:
-            task = progress.add_task("[cyan]初始化组件...", total=4)
+            task = progress.add_task("[cyan]初始化组件...", total=3)
             
             # 初始化模型
+            self.console.print("[debug] init: llm ...")
             self.llm = get_llm_model()
-            self.embeddings = get_embeddings_model()
+            # self.embeddings = get_embeddings_model()
+            self.console.print("[debug] init: llm OK")
             progress.advance(task)
             
             # 初始化图数据库连接
+            self.console.print("[debug] init: db_manager ...")
             db_manager = get_db_manager()
+            self.console.print("[debug] init: db_manager OK")
             self.graph = db_manager.graph
+            self.console.print("[debug] init: graph OK")
             progress.advance(task)
             
+            self.console.print("[debug] init: DocumentProcessor import ...")
+            from graphrag_agent.pipelines.ingestion.document_processor import DocumentProcessor
+            self.console.print("[debug] init: DocumentProcessor import OK")
+
             # 初始化文档处理器
+            self.console.print("[debug] init: DocumentProcessor ...")
             self.document_processor = DocumentProcessor(FILES_DIR, CHUNK_SIZE, OVERLAP)
+            self.console.print("[debug] init: DocumentProcessor OK")
             progress.advance(task)
-            
+            self.console.print("[debug] init: GraphStructureBuilder ...")
             self.struct_builder = GraphStructureBuilder(batch_size=BATCH_SIZE)
+            self.console.print("[debug] init: GraphStructureBuilder OK")
+
             # 使用工厂函数创建实体提取器，自动支持动态配置
+            self.console.print("[debug] init: create_entity_extractor ...")
             self.entity_extractor = create_entity_extractor(
                 llm=self.llm,
                 system_template=system_template_build_graph,
@@ -113,7 +127,7 @@ class KnowledgeGraphBuilder:
             # 输出使用的参数
             self.console.print(f"[blue]并行处理线程数: {MAX_WORKERS}[/blue]")
             self.console.print(f"[blue]数据库批处理大小: {BATCH_SIZE}[/blue]")
-            
+            self.console.print("[debug] init: create_entity_extractor OK")
             progress.advance(task)
         
         self.performance_stats["初始化"] = time.time() - init_start
@@ -210,11 +224,15 @@ class KnowledgeGraphBuilder:
                         chunks = doc["chunks"]
                         if doc.get("chunk_count", 0) > 100:
                             # 对于大文件使用并行处理
+                            workers = int(os.getenv("MAX_WORKERS", str(MAX_WORKERS or 1)))
+                            workers = max(1, workers)
+
                             result = self.struct_builder.parallel_process_chunks(
-                                doc["filename"],
-                                chunks,
-                                max_workers=os.cpu_count() or 4
+                               doc["filename"],
+                               chunks,
+                               max_workers=workers
                             )
+
                         else:
                             # 对于小文件使用标准批处理
                             result = self.struct_builder.create_relation_between_chunks(
@@ -322,7 +340,7 @@ class KnowledgeGraphBuilder:
                 graph_writer = GraphWriter(
                     self.graph, 
                     batch_size=50,
-                    max_workers=os.cpu_count() or 4
+                    max_workers=MAX_WORKERS
                 )
                 graph_writer.process_and_write_graph_documents(graph_writer_data)
                 progress.update(task, completed=1)

@@ -230,3 +230,11 @@ class ChunkIndexBuilder:
             error_text = Text(f"处理过程中出现错误: {str(e)}", style="bold red")
             self.console.print(Panel(error_text, border_style="red"))
             raise
+
+def main():
+    builder = ChunkIndexBuilder()
+    builder.process()
+
+
+if __name__ == "__main__":
+    main()

@@ -136,7 +136,12 @@ class NaiveRagAgent(BaseAgent):
         try:
             # 执行Naive搜索
             search_tool = self.search_tool.get_tool()
-            search_result = search_tool._run(query)
+            search_result = self.search_tool.search(query)
+            # ✅ 兼容标准化响应(dict) 与旧版(str)
+            if isinstance(search_result, dict):
+               search_result = search_result.get("answer", "") or ""
+            else:
+               search_result = str(search_result) if search_result is not None else ""
             
             # 分块返回结果
             if search_result:
