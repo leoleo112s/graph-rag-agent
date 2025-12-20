@@ -521,7 +521,8 @@ class EntityRelationExtractor:
                 "relations": relations,
                 "relationships": relations,  # 兼容字段
                 "domains": parsed.get("domains", []),
-                "bridges": parsed.get("bridges", [])
+                "bridges": parsed.get("bridges", []),
+                "raw": str(raw)  # 保留原始输出用于调试
             }
 
         except Exception as e:
