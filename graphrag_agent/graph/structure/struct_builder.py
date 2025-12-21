@@ -331,20 +331,34 @@ class GraphStructureBuilder:
                     all_results.extend(result["results"])
                 except Exception as e:
                     print(f"处理批次时出错: {e}")
-        
+
+        # [修改] 增加日志：确认是否收集到了数据
+        print(f"DEBUG: 线程池处理结束。收集到 batch_data: {len(all_batch_data)} 条, relationships: {len(all_relationships)} 条")
+
+        if not all_batch_data:
+            print(f"[ERROR] 文件 {file_name} 没有生成任何 chunk 数据，请检查切分逻辑！")
+            return []
+
         # 写入数据库
         print(f"并行处理完成，共 {len(all_batch_data)} 个块，开始写入数据库")
         
         # 按批次写入数据库
         db_batch_size = 500
+        total_batches = (len(all_batch_data) + db_batch_size - 1) // db_batch_size
+
         for i in range(0, len(all_batch_data), db_batch_size):
             batch = all_batch_data[i:i+db_batch_size]
-            rel_batch = [r for r in all_relationships 
+            rel_batch = [r for r in all_relationships
                          if r.get("type") == "FIRST_CHUNK" and any(b["id"] == r["chunk_id"] for b in batch)
                          or r.get("type") == "NEXT_CHUNK" and any(b["id"] == r["current_chunk_id"] for b in batch)]
-            
-            self._create_chunks_and_relationships(file_name, batch, rel_batch)
-            print(f"已写入批次 {i//db_batch_size + 1}/{(len(all_batch_data) + db_batch_size - 1) // db_batch_size}")
+
+            # [修改] 增加 Try-Except 捕获数据库写入错误
+            try:
+                self._create_chunks_and_relationships(file_name, batch, rel_batch)
+                print(f"DEBUG: 成功写入批次 {i//db_batch_size + 1}/{total_batches}")
+            except Exception as e:
+                print(f"[CRITICAL ERROR] 数据库写入失败 (批次 {i}): {str(e)}")
+                # 这里可以选择 raise e 或者 continue，建议先打印出来
         
         end_time = time.time()
         print(f"写入数据库完成，耗时: {end_time - start_time:.2f}秒")
