@@ -645,18 +645,63 @@ class EntityRelationExtractor:
         if len(processed) != len(file_contents):
             raise ValueError("process_chunks_batch: 文件数量与输入不一致")
 
+        # ✅ DEBUG: 打印 processed 的真实形状（临时调试用）
+        if processed:
+            print("DEBUG processed[0] type:", type(processed[0]))
+            try:
+                print("DEBUG processed[0] len:", len(processed[0]))
+            except Exception:
+                pass
+            if isinstance(processed[0], dict):
+                print("DEBUG processed[0] keys:", processed[0].keys())
+
         total_chunks = 0
         empty_chunks = 0
         mismatch_files = []
-        for (fname, orig_chunks), (_, proc_chunks) in zip(file_contents, processed):
+        processed_file_contents = []
+
+        # ✅ 兼容多返回值的写法
+        for fc, pc in zip(file_contents, processed):
+            # ---- normalize file_contents item ----
+            if isinstance(fc, dict):
+                fname = fc.get("filename") or fc.get("fname") or fc.get("file") or ""
+                orig_chunks = fc.get("chunks") or fc.get("orig_chunks") or []
+            else:
+                # 兼容 tuple/list: (fname, orig_chunks, ...)
+                fname = fc[0]
+                orig_chunks = fc[1] if len(fc) > 1 else []
+
+            # ---- normalize processed item ----
+            # extractor/chain 可能返回：
+            #   (fname, proc_chunks, extra...)  或  dict
+            if isinstance(pc, dict):
+                # 常见字段名兜底
+                proc_chunks = (
+                    pc.get("proc_chunks")
+                    or pc.get("processed_chunks")
+                    or pc.get("chunks")
+                    or pc.get("results")
+                    or pc.get("processed")
+                    or []
+                )
+            elif isinstance(pc, (list, tuple)):
+                # 老逻辑：(_, proc_chunks)
+                # 新逻辑：(_, proc_chunks, extra...)  -> 取第 2 个
+                proc_chunks = pc[1] if len(pc) >= 2 else pc
+            else:
+                proc_chunks = pc
+
+            # 验证 chunk 数量匹配
             if len(orig_chunks) != len(proc_chunks):
                 mismatch_files.append(fname)
             total_chunks += len(proc_chunks)
             empty_chunks += sum(1 for c in proc_chunks if not c)
+
+            processed_file_contents.append((fname, orig_chunks, proc_chunks))
 
         if mismatch_files:
             raise ValueError(f"process_chunks_batch: 块数量不匹配的文件: {mismatch_files}")
         if total_chunks and (empty_chunks / total_chunks) > 0.2:
             raise ValueError("process_chunks_batch: 空结果比例超过20%，可能存在抽取异常")
 
-        return processed
+        return processed_file_contents
