@@ -655,6 +655,14 @@ class EntityRelationExtractor:
             if isinstance(processed[0], dict):
                 print("DEBUG processed[0] keys:", processed[0].keys())
 
+            try:
+                print("DEBUG processed[0] repr:", repr(processed[0])[:1500])
+                if isinstance(processed[0], (list, tuple)):
+                    for i, x in enumerate(processed[0]):
+                        print(f"DEBUG processed[0][{i}] type:", type(x), "repr:", repr(x)[:400])
+            except Exception as e:
+                print("DEBUG print processed[0] failed:", repr(e))
+
         total_chunks = 0
         empty_chunks = 0
         mismatch_files = []
