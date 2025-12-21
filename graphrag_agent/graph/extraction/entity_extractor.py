@@ -349,6 +349,18 @@ class EntityRelationExtractor:
         self.cache_misses += 1
         return None
 
+    def _get_graph_config(self):
+        """
+        获取图谱配置（兼容 Factory 注入模式）
+        """
+        # 1. 尝试直接获取 graph_config (如果通过 __init__ 传入)
+        if self.graph_config:
+            return self.graph_config
+        # 2. 尝试从 prompt_builder 获取 (extractor_factory 注入的方式)
+        if hasattr(self, 'prompt_builder') and self.prompt_builder and hasattr(self.prompt_builder, 'config'):
+            return self.prompt_builder.config
+        return None
+
     def _route_domain(self, filename: str, content: str) -> str:
         """
         路由文档领域（文件级 Domain 识别）
