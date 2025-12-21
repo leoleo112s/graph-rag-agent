@@ -282,10 +282,21 @@ class KnowledgeGraphBuilder:
                 # 将处理结果合并回文档数据
                 file_content_map = {}
                 for processed_file in processed_file_contents:
-                    if len(processed_file) >= 4:  # 确保有足够的元素
-                        filename = processed_file[0]
+                    # 兼容不同的返回格式
+                    filename = processed_file[0]
+                    entity_data = []
+
+                    if len(processed_file) == 3:
+                        # 批处理 (process_chunks_batch) 返回: (filename, orig_chunks, proc_chunks)
+                        entity_data = processed_file[2]
+                    elif len(processed_file) >= 4:
+                        # 普通处理 (process_chunks) 返回: [filename, content, chunks, entity_data]
                         entity_data = processed_file[3]
-                        file_content_map[filename] = entity_data
+                    else:
+                        self.console.print(f"[yellow]警告: 文件 {filename} 返回格式异常，长度: {len(processed_file)}[/yellow]")
+                        continue
+
+                    file_content_map[filename] = entity_data
                 
                 # 使用映射将结果放回到原始文档中
                 for doc in self.processed_documents:
