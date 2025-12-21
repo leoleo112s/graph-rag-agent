@@ -317,15 +317,66 @@ class KnowledgeGraphBuilder:
                         # 获取图构建结果（创建的chunk节点列表）
                         graph_result = doc.get("graph_result", [])
                         entity_data = doc.get("entity_data", [])
-                        
+
                         # 确保graph_result和entity_data存在且长度相等
                         if not graph_result:
                             self.console.print(f"[yellow]警告: 文件 {doc['filename']} 的图结构结果缺失[/yellow]")
                             continue
-                            
+
                         if not entity_data or not isinstance(entity_data, list):
                             self.console.print(f"[yellow]警告: 文件 {doc['filename']} 的实体数据缺失或格式不正确[/yellow]")
                             continue
+
+                        # ✅ 兼容性处理：规范化 entity_data 中的每个结果为 dict 格式
+                        normalized_entity_data = []
+                        for res in entity_data:
+                            if isinstance(res, dict):
+                                # ✅ 新格式：dict，直接使用
+                                normalized_entity_data.append(res)
+                            elif isinstance(res, (tuple, list)):
+                                # ⚠️ 老格式：tuple/list，转换为 dict
+                                if len(res) >= 2:
+                                    normalized_entity_data.append({
+                                        "entities": res[0] if len(res) > 0 else [],
+                                        "relations": res[1] if len(res) > 1 else [],
+                                        "relationships": res[1] if len(res) > 1 else [],
+                                        "bridges": res[2] if len(res) > 2 else [],
+                                        "domains": res[3] if len(res) > 3 else [],
+                                        "raw": str(res)
+                                    })
+                                else:
+                                    # 格式不正确，使用空结构
+                                    normalized_entity_data.append({
+                                        "entities": [],
+                                        "relations": [],
+                                        "relationships": [],
+                                        "bridges": [],
+                                        "domains": [],
+                                        "raw": str(res)
+                                    })
+                            elif isinstance(res, str):
+                                # ⚠️ 老格式：string（可能是原始 LLM 输出），转换为 dict
+                                normalized_entity_data.append({
+                                    "entities": [],
+                                    "relations": [],
+                                    "relationships": [],
+                                    "bridges": [],
+                                    "domains": [],
+                                    "raw": res
+                                })
+                            else:
+                                # 未知格式，使用空结构
+                                normalized_entity_data.append({
+                                    "entities": [],
+                                    "relations": [],
+                                    "relationships": [],
+                                    "bridges": [],
+                                    "domains": [],
+                                    "raw": str(res)
+                                })
+
+                        # 使用规范化后的数据
+                        entity_data = normalized_entity_data
                             
                         # 调整数据格式以匹配GraphWriter期望的结构
                         graph_writer_data.append([
