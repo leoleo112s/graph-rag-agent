@@ -634,82 +634,173 @@ class EntityRelationExtractor:
         print(f"所有chunks处理完成, 总耗时: {process_time:.2f}秒, 平均每chunk: {process_time/total_chunks:.2f}秒")
         return file_contents
 
+    def _extract_one_chunk(self, chunk_text: str, allowed_entity_types: set, allowed_relation_types: set) -> Dict[str, Any]:
+        """
+        包装单 chunk 抽取逻辑，供 batch 调用。
+
+        Args:
+            chunk_text: chunk 文本
+            allowed_entity_types: 允许的实体类型集合
+            allowed_relation_types: 允许的关系类型集合
+
+        Returns:
+            Dict: 包含 entities, relations, relationships 等字段的字典
+        """
+        return self._process_single_chunk(chunk_text, allowed_entity_types, allowed_relation_types)
+
     def process_chunks_batch(self, file_contents: List[Tuple], progress_callback=None) -> List[Tuple]:
         """
-        批量处理chunks（修复硬 Bug）
+        Batch 版：保证 chunk 与 LLM 抽取结果严格对齐。
 
-        🔥 修复：之前是空实现（pass），导致"空跑"
-        现在直接调用 process_chunks，复用所有逻辑（包括 Schema-aware routing）
+        Args:
+            file_contents: [ [filename, content, chunks], ... ]
+
+        Returns:
+            [(fname, orig_chunks, proc_chunks), ...]
+              - orig_chunks: List[str]  # 每个 chunk 的原文
+              - proc_chunks: List[Dict]  # 每个 chunk 的抽取结果
         """
-        processed = self.process_chunks(file_contents, progress_callback)
-        if len(processed) != len(file_contents):
-            raise ValueError("process_chunks_batch: 文件数量与输入不一致")
 
-        # ✅ DEBUG: 打印 processed 的真实形状（临时调试用）
-        if processed:
-            print("DEBUG processed[0] type:", type(processed[0]))
-            try:
-                print("DEBUG processed[0] len:", len(processed[0]))
-            except Exception:
-                pass
-            if isinstance(processed[0], dict):
-                print("DEBUG processed[0] keys:", processed[0].keys())
-
-            try:
-                print("DEBUG processed[0] repr:", repr(processed[0])[:1500])
-                if isinstance(processed[0], (list, tuple)):
-                    for i, x in enumerate(processed[0]):
-                        print(f"DEBUG processed[0][{i}] type:", type(x), "repr:", repr(x)[:400])
-            except Exception as e:
-                print("DEBUG print processed[0] failed:", repr(e))
-
-        total_chunks = 0
-        empty_chunks = 0
-        mismatch_files = []
-        processed_file_contents = []
-
-        # ✅ 兼容多返回值的写法
-        for fc, pc in zip(file_contents, processed):
-            # ---- normalize file_contents item ----
+        def _pick_chunks_from_fc(fc):
+            """
+            从 fc 中提取 filename 和 chunk 文本列表。
+            fc 可能是：
+              - dict: {"filename": ..., "chunks": [...]}
+              - tuple/list: [fname, content, chunks] 或其他变体
+            """
             if isinstance(fc, dict):
                 fname = fc.get("filename") or fc.get("fname") or fc.get("file") or ""
-                orig_chunks = fc.get("chunks") or fc.get("orig_chunks") or []
+                chunks = fc.get("chunks") or fc.get("orig_chunks") or []
+                return fname, chunks
+
+            fname = fc[0] if len(fc) > 0 else ""
+
+            # ✅ 优先找"像 chunk 列表"的那个字段：list 且元素是 str/list 且每个元素长度明显>1
+            for idx in range(1, len(fc)):
+                v = fc[idx]
+                if isinstance(v, list) and v:
+                    # chunk 可能是 str 或 list（带分隔符的）
+                    if all(isinstance(x, str) for x in v):
+                        avg_len = sum(len(x) for x in v) / max(1, len(v))
+                        if avg_len >= 20:   # chunk 一般不会是单字
+                            return fname, v
+                    elif all(isinstance(x, list) for x in v):
+                        # chunks 是 [[text, sep1, sep2], ...] 这种格式
+                        # 提取每个 chunk 的文本部分
+                        chunk_texts = []
+                        for chunk_item in v:
+                            if isinstance(chunk_item, list) and len(chunk_item) > 0:
+                                # 取第一个元素作为文本，或者拼接所有元素
+                                text = ''.join(chunk_item) if all(isinstance(x, str) for x in chunk_item) else str(chunk_item[0])
+                                chunk_texts.append(text)
+                            else:
+                                chunk_texts.append(str(chunk_item))
+                        if chunk_texts:
+                            return fname, chunk_texts
+
+            # 如果没找到，返回空
+            return fname, []
+
+        # 1) 提取每个文件的 chunks
+        normalized = []
+        for fc in file_contents:
+            fname, chunks = _pick_chunks_from_fc(fc)
+            normalized.append((fname, chunks))
+
+        bad = [fn for fn, ch in normalized if not ch]
+        if bad:
+            raise ValueError(f"process_chunks_batch: 未能从输入中解析出 chunk 列表，出问题的文件: {bad[:5]} (共{len(bad)}个)")
+
+        # 2) 准备每个文件的 schema（使用 GraphConfig 的 route_domain）
+        file_schema_map: Dict[str, Tuple[set, set]] = {}
+        graph_config = self._get_graph_config()
+
+        for fc in file_contents:
+            filename = fc[0]
+            content = fc[1] if len(fc) > 1 else ""
+
+            if graph_config:
+                domain_name = graph_config.route_domain(filename, content or "")
+                domain_def = graph_config.get_domain(domain_name)
+                if domain_def:
+                    ent_types = set(domain_def.entity_types)
+                    rel_types = set(domain_def.relation_types)
+                else:
+                    ent_types = set(self.entity_types) or DEFAULT_ALLOWED_ENTITY_TYPES
+                    rel_types = set(self.relationship_types) or DEFAULT_ALLOWED_RELATION_TYPES
             else:
-                # 兼容 tuple/list: (fname, orig_chunks, ...)
-                fname = fc[0]
-                orig_chunks = fc[1] if len(fc) > 1 else []
+                ent_types = set(self.entity_types) or DEFAULT_ALLOWED_ENTITY_TYPES
+                rel_types = set(self.relationship_types) or DEFAULT_ALLOWED_RELATION_TYPES
 
-            # ---- normalize processed item ----
-            # extractor/chain 可能返回：
-            #   (fname, proc_chunks, extra...)  或  dict
-            if isinstance(pc, dict):
-                # 常见字段名兜底
-                proc_chunks = (
-                    pc.get("proc_chunks")
-                    or pc.get("processed_chunks")
-                    or pc.get("chunks")
-                    or pc.get("results")
-                    or pc.get("processed")
-                    or []
-                )
-            elif isinstance(pc, (list, tuple)):
-                # 老逻辑：(_, proc_chunks)
-                # 新逻辑：(_, proc_chunks, extra...)  -> 取第 2 个
-                proc_chunks = pc[1] if len(pc) >= 2 else pc
-            else:
-                proc_chunks = pc
+            file_schema_map[filename] = (ent_types, rel_types)
 
-            # 验证 chunk 数量匹配
-            if len(orig_chunks) != len(proc_chunks):
-                mismatch_files.append(fname)
-            total_chunks += len(proc_chunks)
-            empty_chunks += sum(1 for c in proc_chunks if not c)
+        # 3) 扁平化所有 chunks，记录每个文件的范围
+        flat_chunks = []
+        flat_schemas = []
+        spans = []   # (fname, start, end)
+        cursor = 0
 
+        for fname, chunks in normalized:
+            start = cursor
+            allowed_entity_types, allowed_relation_types = file_schema_map.get(
+                fname,
+                (set(self.entity_types) or DEFAULT_ALLOWED_ENTITY_TYPES,
+                 set(self.relationship_types) or DEFAULT_ALLOWED_RELATION_TYPES)
+            )
+
+            for chunk_text in chunks:
+                flat_chunks.append(chunk_text)
+                flat_schemas.append((allowed_entity_types, allowed_relation_types))
+
+            cursor += len(chunks)
+            spans.append((fname, start, cursor))
+
+        # 4) 批量调用 LLM 抽取（使用并发）
+        print(f"开始批量抽取 {len(flat_chunks)} 个 chunks...")
+        llm_results = [None] * len(flat_chunks)
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            futures = {
+                executor.submit(
+                    self._extract_one_chunk,
+                    flat_chunks[idx],
+                    flat_schemas[idx][0],
+                    flat_schemas[idx][1]
+                ): idx
+                for idx in range(len(flat_chunks))
+            }
+
+            completed = 0
+            for fut in concurrent.futures.as_completed(futures):
+                idx = futures[fut]
+                try:
+                    res = fut.result()
+                    llm_results[idx] = res
+                except Exception as e:
+                    print(f'Chunk {idx} 处理异常: {e}')
+                    llm_results[idx] = {
+                        "entities": [],
+                        "relations": [],
+                        "relationships": [],
+                        "domains": [],
+                        "bridges": [],
+                        "raw": ""
+                    }
+
+                completed += 1
+                if progress_callback:
+                    progress_callback(completed)
+
+        if None in llm_results:
+            raise ValueError(f"process_chunks_batch: 部分 chunk 抽取失败")
+
+        print(f"批量抽取完成，共 {len(llm_results)} 个结果")
+
+        # 5) 切片回填到每个文件，保证对齐
+        processed_file_contents = []
+        for fname, start, end in spans:
+            orig_chunks = flat_chunks[start:end]
+            proc_chunks = llm_results[start:end]
             processed_file_contents.append((fname, orig_chunks, proc_chunks))
-
-        if mismatch_files:
-            raise ValueError(f"process_chunks_batch: 块数量不匹配的文件: {mismatch_files}")
-        if total_chunks and (empty_chunks / total_chunks) > 0.2:
-            raise ValueError("process_chunks_batch: 空结果比例超过20%，可能存在抽取异常")
 
         return processed_file_contents
