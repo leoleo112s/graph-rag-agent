@@ -29,6 +29,7 @@ from graphrag_agent.config.neo4jdb import get_db_manager
 from graphrag_agent.graph import GraphStructureBuilder
 from graphrag_agent.graph import GraphWriter
 from graphrag_agent.graph.extraction.extractor_factory import create_entity_extractor
+from graphrag_agent.graph.indexing.embedding_manager import EmbeddingManager
 
 import shutup
 shutup.please()
@@ -62,11 +63,19 @@ class KnowledgeGraphBuilder:
             "文件处理": 0,  # 改为"文件处理"，包含读取和分块
             "图结构构建": 0,
             "实体抽取": 0,
-            "写入数据库": 0
+            "写入数据库": 0,
+            "向量化": 0
         }
         
         # 初始化组件
         self._initialize_components()
+
+        # [新增] 初始化 EmbeddingManager
+        # 注意：这里不需要显式传入 embedding model，Manager 内部会调用 get_embeddings_model
+        self.embedding_manager = EmbeddingManager(
+            batch_size=10,  # 向量化通常比纯文本处理慢，建议批次小一点
+            max_workers=4
+        )
 
     def _create_progress(self):
         """创建进度显示器"""
@@ -409,7 +418,30 @@ class KnowledgeGraphBuilder:
                 progress.update(task, completed=1)
             
             self.performance_stats["写入数据库"] = time.time() - write_start
-            
+
+            # 6. [新增] 生成 Embedding 向量
+            embed_start = time.time()
+            self._display_stage_header("生成向量索引 (Embedding)")
+
+            with self._create_progress() as progress:
+                # 给一个不确定的进度条，因为具体数量由 Manager 内部计算
+                task = progress.add_task("[cyan]正在计算实体和文本块向量...", total=None)
+
+                # 调用 EmbeddingManager 的核心处理流程
+                # 它会自动查找数据库中 embedding 为 null 的节点进行计算
+                embed_stats = self.embedding_manager.process(
+                    entity_limit=10000,
+                    chunk_limit=10000
+                )
+
+                progress.update(task, completed=100, total=100)
+
+            # 记录耗时
+            self.performance_stats["向量化"] = time.time() - embed_start
+
+            # 打印向量化结果
+            self.console.print(f"[blue]向量化统计: {embed_stats}[/blue]")
+
             self.console.print("[green]基础知识图谱构建完成[/green]")
             
             # 显示性能统计
