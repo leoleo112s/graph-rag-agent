@@ -437,16 +437,24 @@ class EntityRelationExtractor:
         input_text: str,
         allowed_entity_types: set,
         allowed_relation_types: set
-    ) -> str:
+    ) -> Dict[str, Any]:
         """
-        单 chunk 抽取：LLM -> JSON -> 后处理 -> 兼容输出
+        单 chunk 抽取：LLM -> JSON -> 后处理 -> 返回 dict
+
+        Returns:
+            Dict: 包含 entities, relations, relationships 等字段的字典
         """
         cache_key = self._generate_cache_key(
             f"{sorted(list(allowed_entity_types))}|{sorted(list(allowed_relation_types))}|{input_text}"
         )
         cached = self._load_from_cache(cache_key)
         if cached:
-            return cached
+            # 确保缓存结果是dict
+            if isinstance(cached, dict):
+                return cached
+            # 兼容旧的字符串缓存格式
+            print(f"⚠️ 缓存格式为字符串，返回空结果")
+            return {"entities": [], "relations": [], "relationships": []}
 
         # 1) 调用 LLM（注意：system_template/human_template 可能会用到 entity_types/relationship_types 占位符）
         resp = self.chain.invoke({
@@ -462,40 +470,63 @@ class EntityRelationExtractor:
         # 从 AIMessage 获取内容
         raw = getattr(resp, "content", resp)  # 兼容 AIMessage / str
 
-        # 解析 JSON（使用强化版解析器）
-        parsed = _extract_json_dict(raw)
-        if parsed is None:
-            # 打印原始内容前 300 字符用于调试
-            print(f"⚠️ JSON parse failed, raw head: {repr(str(raw)[:300])}")
-            parsed = {
-                "entities": [],
-                "relations": [],
-                "relationships": [],
-                "domains": [],
-                "bridges": [],
-                "raw": str(raw)
+        # 初始化默认结果
+        result = {
+            "entities": [],
+            "relations": [],
+            "relationships": [],
+            "domains": [],
+            "bridges": []
+        }
+
+        try:
+            # 解析 JSON（使用强化版解析器）
+            parsed = _extract_json_dict(raw)
+            if parsed is None:
+                # 打印原始内容前 300 字符用于调试
+                print(f"⚠️ JSON parse failed, raw head: {repr(str(raw)[:300])}")
+                parsed = {
+                    "entities": [],
+                    "relations": [],
+                    "relationships": [],
+                    "domains": [],
+                    "bridges": [],
+                    "raw": str(raw)
+                }
+
+            raw_entities = parsed.get("entities", []) or []
+            raw_relations = parsed.get("relations", []) or []
+            # 兼容 relationships 字段
+            if not raw_relations:
+                raw_relations = parsed.get("relationships", []) or []
+
+            # 2) 后处理（白名单来自 domain schema）
+            entities = post_process_entities(
+                raw_entities,
+                allowed_entity_types=allowed_entity_types,
+                min_freq=DEFAULT_MIN_ENTITY_FREQUENCY,
+                similarity_threshold=DEFAULT_NAME_SIMILARITY_THRESHOLD
+            )
+
+            relations = post_process_relations(
+                raw_relations,
+                entities,
+                allowed_relation_types=allowed_relation_types,
+                similarity_threshold=DEFAULT_NAME_SIMILARITY_THRESHOLD
+            )
+
+            # 3) 构建统一的 dict 结果
+            result = {
+                "entities": entities,
+                "relations": relations,
+                "relationships": relations,  # 兼容字段
+                "domains": parsed.get("domains", []),
+                "bridges": parsed.get("bridges", []),
+                "raw": str(raw)  # 保留原始输出用于调试
             }
 
-        raw_entities = parsed.get("entities", []) or []
-        raw_relations = parsed.get("relations", []) or []
-
-        # 2) 后处理（白名单来自 domain schema）
-        entities = post_process_entities(
-            raw_entities,
-            allowed_entity_types=allowed_entity_types,
-            min_freq=DEFAULT_MIN_ENTITY_FREQUENCY,
-            similarity_threshold=DEFAULT_NAME_SIMILARITY_THRESHOLD
-        )
-
-        relations = post_process_relations(
-            raw_relations,
-            entities,
-            allowed_relation_types=allowed_relation_types,
-            similarity_threshold=DEFAULT_NAME_SIMILARITY_THRESHOLD
-        )
-
-        # 3) 兼容输出
-        result = self._build_compatible_result(entities, relations)
+        except Exception as e:
+            print(f"⚠️ 后处理失败，返回空结果: {e}")
 
         self._save_to_cache(cache_key, result)
         return result

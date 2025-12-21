@@ -109,13 +109,13 @@ PRODUCTION_SYSTEM_PROMPT_COMPATIBLE = """
 
 【输出格式】（兼容旧格式）
 实体格式：
-("entity"{tuple_delimiter}<实体名称>{tuple_delimiter}<类型>{tuple_delimiter}<描述>)
+("entity"{{tuple_delimiter}}<实体名称>{{tuple_delimiter}}<类型>{{tuple_delimiter}}<描述>)
 
 关系格式：
-("relationship"{tuple_delimiter}<源实体>{tuple_delimiter}<目标实体>{tuple_delimiter}<关系类型>{tuple_delimiter}<描述>{tuple_delimiter}<强度>)
+("relationship"{{tuple_delimiter}}<源实体>{{tuple_delimiter}}<目标实体>{{tuple_delimiter}}<关系类型>{{tuple_delimiter}}<描述>{{tuple_delimiter}}<强度>)
 
-使用 **{record_delimiter}** 作为列表分隔符。
-完成后输出 {completion_delimiter}
+使用 **{{record_delimiter}}** 作为列表分隔符。
+完成后输出 {{completion_delimiter}}
 """
 
 PRODUCTION_HUMAN_PROMPT_COMPATIBLE = """

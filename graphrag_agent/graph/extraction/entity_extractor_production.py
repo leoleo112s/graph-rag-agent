@@ -396,17 +396,17 @@ class EntityRelationExtractor:
         input_text: str,
         domain_entity_types: set = None,
         domain_relation_types: set = None
-    ) -> str:
+    ) -> Dict:
         """
         处理单个文本块（生产级重构 + Schema-aware）
 
         流程：
         1. 检查缓存
         2. 调用 LLM
-        3. 解析 JSON（safe_json_loads）
+        3. 解析 JSON
         4. 后处理实体和关系（使用 domain schema）
         5. 保存缓存
-        6. 返回结果
+        6. 返回 dict 结果
 
         Args:
             input_text: 输入文本
@@ -414,7 +414,7 @@ class EntityRelationExtractor:
             domain_relation_types: 领域关系类型（可选，默认使用全局白名单）
 
         Returns:
-            str: 处理结果（JSON 字符串或兼容格式）
+            Dict: 包含 entities, relations 等字段的字典
         """
         # 使用默认 schema（如果未提供）
         if domain_entity_types is None:
@@ -428,7 +428,12 @@ class EntityRelationExtractor:
         # 尝试从缓存加载
         cached_result = self._load_from_cache(cache_key)
         if cached_result:
-            return cached_result
+            # 确保缓存结果是dict
+            if isinstance(cached_result, dict):
+                return cached_result
+            # 兼容旧的字符串缓存格式
+            print(f"⚠️ 缓存格式为字符串，返回空结果")
+            return {"entities": [], "relations": [], "relationships": []}
 
         # 未缓存，调用 LLM 处理
         response = self.chain.invoke({
@@ -445,6 +450,14 @@ class EntityRelationExtractor:
         raw = getattr(response, "content", response)  # 兼容 AIMessage / str
 
         # 🔥 生产级后处理（关键改进 + 动态 Schema）
+        result = {
+            "entities": [],
+            "relations": [],
+            "relationships": [],
+            "domains": [],
+            "bridges": []
+        }
+
         try:
             # 1. 解析 JSON（使用强化版解析器）
             parsed = _extract_json_dict(raw)
@@ -466,17 +479,28 @@ class EntityRelationExtractor:
 
             # 3. 后处理关系（动态 Schema）
             raw_relations = parsed.get("relations", [])
+            # 兼容 relationships 字段
+            if not raw_relations:
+                raw_relations = parsed.get("relationships", [])
+
             relations = post_process_relations(
                 raw_relations,
                 entities,
                 allowed_relation_types=domain_relation_types
             )
 
-            # 4. 重新构建结果（兼容旧格式）
-            result = self._build_compatible_result(entities, relations)
+            # 4. 构建统一的 dict 结果
+            result = {
+                "entities": entities,
+                "relations": relations,
+                "relationships": relations,  # 兼容字段
+                "domains": parsed.get("domains", []),
+                "bridges": parsed.get("bridges", []),
+                "raw": str(raw)  # 保留原始输出用于调试
+            }
 
         except Exception as e:
-            print(f"⚠️ 后处理失败，使用原始结果: {e}")
+            print(f"⚠️ 后处理失败，返回空结果: {e}")
 
         # 保存结果到缓存
         self._save_to_cache(cache_key, result)
