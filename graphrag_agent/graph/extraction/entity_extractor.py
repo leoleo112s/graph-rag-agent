@@ -405,6 +405,38 @@ class EntityRelationExtractor:
             )
         return (ALLOWED_ENTITY_TYPES, ALLOWED_RELATION_TYPES)
 
+    def _schema_for_domain(self, domain: str) -> Tuple[set, set]:
+        """
+        根据领域名称获取对应的 Schema（实体类型 + 关系类型）
+
+        策略：
+        1. 如果有 GraphConfig，从 domain_definitions 中查找匹配的领域
+        2. 从 DomainDefinition.schema 获取 entities 和 relations
+        3. 否则返回全局白名单
+
+        Args:
+            domain: 领域标识（如 "规则库", "事实库", "default"）
+
+        Returns:
+            (entity_types, relation_types): 实体类型集合和关系类型集合
+        """
+        config = self._get_graph_config()
+
+        if config and hasattr(config, 'domain_definitions'):
+            # 遍历 domain_definitions 查找匹配的领域
+            for domain_def in config.domain_definitions:
+                if domain_def.domain_name == domain:
+                    # 找到匹配的领域，返回其 schema
+                    entities = set(domain_def.schema.entities) if domain_def.schema.entities else set()
+                    relations = set(domain_def.schema.relations) if domain_def.schema.relations else set()
+                    return (entities, relations)
+
+        # 未找到匹配或无配置，返回全局白名单
+        return (
+            set(self.entity_types) if self.entity_types else ALLOWED_ENTITY_TYPES,
+            set(self.relationship_types) if self.relationship_types else ALLOWED_RELATION_TYPES
+        )
+
     @retry(times=3, exceptions=(Exception,), delay=1.0)
     def _process_single_chunk(
         self,
@@ -743,27 +775,18 @@ class EntityRelationExtractor:
         if bad:
             raise ValueError(f"process_chunks_batch: 未能从输入中解析出 chunk 列表，出问题的文件: {bad[:5]} (共{len(bad)}个)")
 
-        # 2) 准备每个文件的 schema（使用 GraphConfig 的 route_domain）
+        # 2) 准备每个文件的 schema（使用内部方法）
         file_schema_map: Dict[str, Tuple[set, set]] = {}
-        graph_config = self._get_graph_config()
 
         for fc in file_contents:
             filename = fc[0]
             content = fc[1] if len(fc) > 1 else ""
 
-            if graph_config:
-                # [修改] 调用类自身的 _route_domain 方法
-                domain_name = self._route_domain(filename, content or "")
-                domain_def = graph_config.get_domain(domain_name)
-                if domain_def:
-                    ent_types = set(domain_def.entity_types)
-                    rel_types = set(domain_def.relation_types)
-                else:
-                    ent_types = set(self.entity_types) or DEFAULT_ALLOWED_ENTITY_TYPES
-                    rel_types = set(self.relationship_types) or DEFAULT_ALLOWED_RELATION_TYPES
-            else:
-                ent_types = set(self.entity_types) or DEFAULT_ALLOWED_ENTITY_TYPES
-                rel_types = set(self.relationship_types) or DEFAULT_ALLOWED_RELATION_TYPES
+            # 1. 路由领域 (使用内部方法)
+            domain = self._route_domain(filename, content or "")
+
+            # 2. 获取 Schema (使用内部方法，不要直接调 graph_config)
+            ent_types, rel_types = self._schema_for_domain(domain)
 
             file_schema_map[filename] = (ent_types, rel_types)
 
