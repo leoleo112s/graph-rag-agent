@@ -376,8 +376,11 @@ class EntityRelationExtractor:
         Returns:
             domain: 领域标识（如 "student_policy", "hr_policy", "default"）
         """
-        if self.graph_config and hasattr(self.graph_config, 'route_domain'):
-            return self.graph_config.route_domain(filename, content)
+        # [修改] 使用 _get_graph_config() 获取配置，防止 self.graph_config 为 None
+        config = self._get_graph_config()
+
+        if config and hasattr(config, 'route_domain'):
+            return config.route_domain(filename, content)
         return "default"
 
     def _get_schema(self, domain: str) -> Tuple[set, set]:
@@ -749,7 +752,8 @@ class EntityRelationExtractor:
             content = fc[1] if len(fc) > 1 else ""
 
             if graph_config:
-                domain_name = graph_config.route_domain(filename, content or "")
+                # [修改] 调用类自身的 _route_domain 方法
+                domain_name = self._route_domain(filename, content or "")
                 domain_def = graph_config.get_domain(domain_name)
                 if domain_def:
                     ent_types = set(domain_def.entity_types)
