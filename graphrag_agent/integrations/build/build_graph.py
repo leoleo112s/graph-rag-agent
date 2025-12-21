@@ -1,6 +1,7 @@
 import time
 import os
 import psutil
+import traceback
 from typing import Dict, Any, List, Tuple
 
 from rich.console import Console
@@ -431,6 +432,7 @@ class KnowledgeGraphBuilder:
             
         except Exception as e:
             self.console.print(f"[red]基础图谱构建失败: {str(e)}[/red]")
+            traceback.print_exc()
             raise
 
     def process(self):
@@ -472,9 +474,10 @@ class KnowledgeGraphBuilder:
             if self.start_time is not None:
                 elapsed_time = self.end_time - self.start_time
                 self.console.print(f"[bold yellow]中断前耗时：{self._format_time(elapsed_time)}[/bold yellow]")
-                
+
             error_text = Text(f"构建过程中出现错误: {str(e)}", style="bold red")
             self.console.print(Panel(error_text, border_style="red"))
+            traceback.print_exc()
             raise
 
 if __name__ == "__main__":
@@ -484,3 +487,5 @@ if __name__ == "__main__":
     except Exception as e:
         console = Console()
         console.print(f"[red]执行过程中出现错误: {str(e)}[/red]")
+        traceback.print_exc()
+        raise
