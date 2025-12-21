@@ -452,8 +452,17 @@ class EntityRelationExtractor:
             # 确保缓存结果是dict
             if isinstance(cached, dict):
                 return cached
-            # 兼容旧的字符串缓存格式
-            print(f"⚠️ 缓存格式为字符串，返回空结果")
+            # ✅ 兼容旧的字符串缓存格式 - 尝试解析为 JSON
+            if isinstance(cached, str):
+                obj = _extract_json_dict(cached)
+                if isinstance(obj, dict) and ("entities" in obj or "relationships" in obj or "relations" in obj):
+                    # 成功解析出有效的实体/关系数据
+                    return obj
+                # 如果字符串无法解析为有效 JSON
+                print(f"⚠️ 缓存字符串无法解析为有效JSON，返回空结果")
+                return {"entities": [], "relations": [], "relationships": []}
+            # 其他类型的缓存（不应该发生）
+            print(f"⚠️ 缓存格式异常(type={type(cached)})，返回空结果")
             return {"entities": [], "relations": [], "relationships": []}
 
         # 1) 调用 LLM（注意：system_template/human_template 可能会用到 entity_types/relationship_types 占位符）
@@ -587,7 +596,17 @@ class EntityRelationExtractor:
                             self._save_to_cache(cache_keys[idx], res)
                         except Exception as e:
                             print(f'Chunk {idx} 处理异常: {e}')
-                            cached_results[cache_keys[idx]] = "" + self.completion_delimiter
+                            # ✅ 异常时返回空的 dict 结构，而不是字符串
+                            empty_result = {
+                                "entities": [],
+                                "relations": [],
+                                "relationships": [],
+                                "domains": [],
+                                "bridges": [],
+                                "raw": ""
+                            }
+                            cached_results[cache_keys[idx]] = empty_result
+                            # ⚠️ 不缓存失败结果，下次重试
 
                         if progress_callback:
                             progress_callback(chunk_index)
