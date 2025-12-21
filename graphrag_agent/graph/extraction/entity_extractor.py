@@ -57,7 +57,7 @@ ALLOWED_RELATION_TYPES = {
     "REQUIRES"
 }
 
-MIN_ENTITY_FREQUENCY = 2            # 最小实体频率
+MIN_ENTITY_FREQUENCY = 1            # 最小实体频率
 NAME_SIMILARITY_THRESHOLD = 0.85    # 名称相似度阈值
 
 
@@ -132,8 +132,8 @@ def post_process_entities(raw_entities: List[Dict], allowed_types: set = None) -
 
     步骤：
     1. normalize：标准化名称
-    2. type_filter：类型过滤（动态白名单）
-    3. frequency_filter：频率过滤（≥2 次）
+    2. type_filter：类型过滤（动态白名单，大小写不敏感）
+    3. frequency_filter：频率过滤（≥1 次）
     4. deduplicate：去重（Levenshtein 距离）
 
     Args:
@@ -147,18 +147,22 @@ def post_process_entities(raw_entities: List[Dict], allowed_types: set = None) -
     if allowed_types is None:
         allowed_types = ALLOWED_ENTITY_TYPES
 
+    # [新增] 预处理 allowed_types 为全大写，方便比较
+    allowed_types_upper = {t.upper() for t in allowed_types}
+
     # 1. normalize
     for e in raw_entities:
         if "name" in e:
             e["name"] = normalize_entity_name(e.get("name", ""))
 
-    # 2. type filter（动态白名单）
+    # 2. type filter（动态白名单）[修改了这里]
+    # 将 e.get("type") 转大写后再对比
     entities = [
         e for e in raw_entities
-        if e.get("type") in allowed_types and e.get("name")
+        if e.get("type") and e.get("type").upper() in allowed_types_upper and e.get("name")
     ]
 
-    # 3. frequency filter（≥2 次）
+    # 3. frequency filter（≥1 次）
     freq = Counter(e["name"] for e in entities)
     entities = [
         e for e in entities
