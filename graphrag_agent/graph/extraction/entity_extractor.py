@@ -391,14 +391,39 @@ class EntityRelationExtractor:
 
     def _get_graph_config(self):
         """
-        获取图谱配置（兼容 Factory 注入模式）
+        获取图谱配置（支持运行时热更新）
+
+        优先级（从高到低）：
+        1. 直接传入的 graph_config (通过 __init__)
+        2. Factory 注入的 prompt_builder.config
+        3. 🔥 GraphConfigService 动态读取（热更新机制）
         """
         # 1. 尝试直接获取 graph_config (如果通过 __init__ 传入)
         if self.graph_config:
             return self.graph_config
+
         # 2. 尝试从 prompt_builder 获取 (extractor_factory 注入的方式)
         if hasattr(self, 'prompt_builder') and self.prompt_builder and hasattr(self.prompt_builder, 'config'):
             return self.prompt_builder.config
+
+        # 🔥 3. 从 GraphConfigService 动态读取（运行时热更新）
+        try:
+            # 延迟导入，避免循环依赖
+            from server.services.graph_config_service import get_config_service
+
+            config_service = get_config_service()
+            config = config_service.get_config()
+
+            if config:
+                # 找到配置，打印提示（用于调试）
+                print(f"[Extractor] 从 GraphConfigService 读取配置: {config.project_name}")
+                return config
+        except ImportError:
+            # 如果在非 server 环境（如纯脚本），GraphConfigService 可能不存在
+            pass
+        except Exception as e:
+            print(f"[Extractor] 从 GraphConfigService 读取配置失败: {e}")
+
         return None
 
     def _route_domain(self, filename: str, content: str) -> str:

@@ -20,6 +20,9 @@ from graphrag_agent.graph.core import connection_manager
 from graphrag_agent.config.graph_config_model import GraphConfig
 from graphrag_agent.config.graph_config_storage import get_storage
 
+# 引入配置服务（热更新机制）
+from services.graph_config_service import get_config_service
+
 # 引入 V2 构建管理器和广播器
 from graphrag_agent.integrations.build.incremental_update_v2 import IncrementalUpdateManagerV2
 from utils.progress_broadcaster import get_broadcaster
@@ -299,18 +302,19 @@ async def list_files():
 
 @router.get("/graph/config")
 async def get_graph_config():
-    """获取当前图谱配置"""
+    """获取当前图谱配置（从内存缓存读取）"""
     logger.info("收到获取图谱配置请求")
 
     try:
-        storage = get_storage()
-        config = storage.load()
+        # 🔥 使用 GraphConfigService 获取配置（优先读缓存）
+        config_service = get_config_service()
+        config = config_service.get_config()
 
         if config is None:
             logger.info("当前无配置，返回空")
             return {"exists": False, "config": None}
 
-        logger.info(f"返回配置: {config.project_name}")
+        logger.info(f"返回配置: {config.project_name} (缓存状态: {config_service.get_cache_status()})")
         return {
             "exists": True,
             "config": config.model_dump(mode='json')
@@ -323,20 +327,25 @@ async def get_graph_config():
 
 @router.post("/graph/config")
 async def save_graph_config(config: GraphConfig):
-    """保存图谱配置"""
+    """保存图谱配置并刷新内存缓存（热更新）"""
     logger.info(f"收到保存图谱配置请求: {config.project_name}")
 
     try:
-        storage = get_storage()
-        success = storage.save(config)
+        # 🔥 使用 GraphConfigService 保存配置（自动刷新缓存）
+        config_service = get_config_service()
+        saved_config = config_service.update_config_obj(config)
 
-        if success:
-            logger.info(f"配置保存成功: {config.project_name}")
-            return {"message": "配置保存成功", "project_name": config.project_name}
-        else:
-            logger.error("配置保存失败")
-            raise HTTPException(status_code=500, detail="配置保存失败")
+        logger.info(f"配置保存成功并已刷新缓存: {saved_config.project_name}")
+        return {
+            "message": "配置保存成功，已自动刷新缓存",
+            "project_name": saved_config.project_name,
+            "cache_status": config_service.get_cache_status()
+        }
 
+    except ValueError as e:
+        # 配置验证失败
+        logger.error(f"配置验证失败: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"配置验证失败: {str(e)}")
     except Exception as e:
         logger.error(f"保存图谱配置失败: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"保存配置失败: {str(e)}")
@@ -344,16 +353,20 @@ async def save_graph_config(config: GraphConfig):
 
 @router.delete("/graph/config")
 async def delete_graph_config():
-    """删除图谱配置"""
+    """删除图谱配置并清空内存缓存"""
     logger.info("收到删除图谱配置请求")
 
     try:
-        storage = get_storage()
-        success = storage.delete()
+        # 🔥 使用 GraphConfigService 删除配置（自动清空缓存）
+        config_service = get_config_service()
+        success = config_service.delete_config()
 
         if success:
-            logger.info("配置删除成功")
-            return {"message": "配置删除成功"}
+            logger.info("配置删除成功并已清空缓存")
+            return {
+                "message": "配置删除成功，缓存已清空",
+                "cache_status": config_service.get_cache_status()
+            }
         else:
             logger.error("配置删除失败")
             raise HTTPException(status_code=500, detail="配置删除失败")
