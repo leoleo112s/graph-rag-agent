@@ -452,9 +452,8 @@ class EntityRelationExtractor:
         """
         获取领域的 Schema（实体类型 + 关系类型）
 
-        策略：
-        1. 如果有 GraphConfig，使用 GraphConfig.get_schema(domain)
-        2. 否则返回全局白名单
+        ⚠️ DEPRECATED: 此方法已废弃，建议使用 _schema_for_domain()
+        保留此方法仅为向后兼容，内部直接调用 _schema_for_domain
 
         Args:
             domain: 领域标识
@@ -462,16 +461,8 @@ class EntityRelationExtractor:
         Returns:
             (entity_types, relation_types): 实体类型集合和关系类型集合
         """
-        # [修改] 使用 _get_graph_config() 获取配置，防止 self.graph_config 为 None
-        config = self._get_graph_config()
-
-        if config and hasattr(config, 'get_schema'):
-            schema = config.get_schema(domain)
-            return (
-                set(schema.get("entity_types", ALLOWED_ENTITY_TYPES)),
-                set(schema.get("relation_types", ALLOWED_RELATION_TYPES))
-            )
-        return (ALLOWED_ENTITY_TYPES, ALLOWED_RELATION_TYPES)
+        # 直接调用 _schema_for_domain，避免重复逻辑
+        return self._schema_for_domain(domain)
 
     def _schema_for_domain(self, domain: str) -> Tuple[set, set]:
         """
@@ -480,13 +471,14 @@ class EntityRelationExtractor:
         策略：
         1. 如果有 GraphConfig，从 domain_definitions 中查找匹配的领域
         2. 从 DomainDefinition.schema 获取 entities 和 relations
-        3. 否则返回全局白名单
+        3. 🔥 转换为大写以保持一致性（避免大小写导致的过滤问题）
+        4. 否则返回初始化时传入的类型（或全局白名单）
 
         Args:
             domain: 领域标识（如 "规则库", "事实库", "default"）
 
         Returns:
-            (entity_types, relation_types): 实体类型集合和关系类型集合
+            (entity_types, relation_types): 实体类型集合和关系类型集合（已大写化）
         """
         config = self._get_graph_config()
 
@@ -495,15 +487,20 @@ class EntityRelationExtractor:
             for domain_def in config.domain_definitions:
                 if domain_def.domain_name == domain:
                     # 找到匹配的领域，返回其 schema
+                    # 🔥 注意：不转大写，保持原样，因为 post_process_entities 会在内部处理大小写
                     entities = set(domain_def.schema.entities) if domain_def.schema.entities else set()
                     relations = set(domain_def.schema.relations) if domain_def.schema.relations else set()
+
+                    print(f"[Extractor] 找到领域 '{domain}' 的 Schema: {len(entities)} 个实体类型, {len(relations)} 个关系类型")
                     return (entities, relations)
 
-        # 未找到匹配或无配置，返回全局白名单
-        return (
-            set(self.entity_types) if self.entity_types else ALLOWED_ENTITY_TYPES,
-            set(self.relationship_types) if self.relationship_types else ALLOWED_RELATION_TYPES
-        )
+        # 未找到匹配或无配置，返回初始化时传入的类型
+        # 如果初始化时也没有传入，则使用全局白名单作为最后的 fallback
+        fallback_entities = set(self.entity_types) if self.entity_types else ALLOWED_ENTITY_TYPES
+        fallback_relations = set(self.relationship_types) if self.relationship_types else ALLOWED_RELATION_TYPES
+
+        print(f"[Extractor] 未找到领域 '{domain}' 的配置，使用 fallback schema: {len(fallback_entities)} 个实体类型")
+        return (fallback_entities, fallback_relations)
 
     @retry(times=3, exceptions=(Exception,), delay=1.0)
     def _process_single_chunk(
@@ -525,17 +522,21 @@ class EntityRelationExtractor:
 
         Args:
             input_text: 输入文本
-            domain_entity_types: 领域实体类型（可选，默认使用全局白名单）
-            domain_relation_types: 领域关系类型（可选，默认使用全局白名单）
+            domain_entity_types: 领域实体类型（可选）
+            domain_relation_types: 领域关系类型（可选）
 
         Returns:
             Dict: 包含 entities, relations 等字段的字典
         """
-        # 使用默认 schema（如果未提供）
-        if domain_entity_types is None:
-            domain_entity_types = ALLOWED_ENTITY_TYPES
-        if domain_relation_types is None:
-            domain_relation_types = ALLOWED_RELATION_TYPES
+        # 🔥 智能 fallback：如果未提供 schema，尝试从 default 领域获取
+        if domain_entity_types is None or domain_relation_types is None:
+            # 优先使用 default 领域的配置（如果有 GraphConfig）
+            default_entities, default_relations = self._schema_for_domain("default")
+
+            if domain_entity_types is None:
+                domain_entity_types = default_entities
+            if domain_relation_types is None:
+                domain_relation_types = default_relations
 
         # 生成缓存键
         cache_key = self._generate_cache_key(input_text)
@@ -879,11 +880,14 @@ class EntityRelationExtractor:
 
         for fname, chunks in normalized:
             start = cursor
-            allowed_entity_types, allowed_relation_types = file_schema_map.get(
-                fname,
-                (set(self.entity_types) or DEFAULT_ALLOWED_ENTITY_TYPES,
-                 set(self.relationship_types) or DEFAULT_ALLOWED_RELATION_TYPES)
-            )
+
+            # 🔥 智能 fallback：如果文件没有映射到 schema，使用 default 领域
+            if fname not in file_schema_map:
+                default_entities, default_relations = self._schema_for_domain("default")
+                allowed_entity_types = default_entities
+                allowed_relation_types = default_relations
+            else:
+                allowed_entity_types, allowed_relation_types = file_schema_map[fname]
 
             for chunk_text in chunks:
                 flat_chunks.append(chunk_text)
