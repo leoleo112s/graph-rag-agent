@@ -163,6 +163,12 @@ def post_process_entities(
     # [核心修复] 1. 制作全大写的白名单集合
     allowed_types_upper = {t.upper() for t in allowed_entity_types}
 
+    # --- [新增调试代码] ---
+    print(f"\n🔍 DEBUG: 白名单(Allowed): {allowed_types_upper}")
+    for e in raw_entities:
+        print(f"   🧐 LLM输出: Name='{e.get('name')}', Type='{e.get('type')}'")
+    # --------------------------
+
     # normalize names
     for e in raw_entities:
         if "name" in e:
