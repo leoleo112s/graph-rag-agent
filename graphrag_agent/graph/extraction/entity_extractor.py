@@ -60,6 +60,11 @@ ALLOWED_RELATION_TYPES = {
 MIN_ENTITY_FREQUENCY = 1            # 最小实体频率
 NAME_SIMILARITY_THRESHOLD = 0.85    # 名称相似度阈值
 
+# 默认常量（用作 fallback）
+DEFAULT_MIN_ENTITY_FREQUENCY = 1    # 与 MIN_ENTITY_FREQUENCY 保持一致
+DEFAULT_ALLOWED_ENTITY_TYPES = ALLOWED_ENTITY_TYPES
+DEFAULT_ALLOWED_RELATION_TYPES = ALLOWED_RELATION_TYPES
+
 
 # =========================
 # 工具函数（生产级）
@@ -86,9 +91,11 @@ def normalize_entity_name(name: str) -> str:
     )
 
 
-def is_similar(a: str, b: str) -> bool:
+def is_similar(a: str, b: str, threshold: float = None) -> bool:
     """判断两个实体名称是否相似（基于 SequenceMatcher）"""
-    return SequenceMatcher(None, a, b).ratio() >= NAME_SIMILARITY_THRESHOLD
+    if threshold is None:
+        threshold = NAME_SIMILARITY_THRESHOLD
+    return SequenceMatcher(None, a, b).ratio() >= threshold
 
 
 def _extract_json_dict(text: str) -> Optional[Dict]:
@@ -126,83 +133,93 @@ def _extract_json_dict(text: str) -> Optional[Dict]:
 # 后处理核心逻辑（生产级）
 # =========================
 
-def post_process_entities(raw_entities: List[Dict], allowed_types: set = None) -> List[Dict]:
+def post_process_entities(
+    raw_entities: List[Dict[str, Any]],
+    allowed_entity_types: set,
+    min_freq: int,
+    similarity_threshold: float
+) -> List[Dict[str, Any]]:
     """
     实体后处理（生产级验证 + 动态 Schema）
 
     步骤：
     1. normalize：标准化名称
     2. type_filter：类型过滤（动态白名单，大小写不敏感）
-    3. frequency_filter：频率过滤（≥1 次）
-    4. deduplicate：去重（Levenshtein 距离）
+    3. frequency_filter：频率过滤
+    4. deduplicate：去重（相似度阈值）
 
     Args:
         raw_entities: 原始实体列表
-        allowed_types: 允许的实体类型（动态 Schema，默认使用全局白名单）
+        allowed_entity_types: 允许的实体类型集合
+        min_freq: 最小实体频率
+        similarity_threshold: 相似度阈值
+
+    Returns:
+        List[Dict[str, Any]]: 处理后的实体列表
     """
     if not raw_entities:
         return []
 
-    # 使用动态 Schema 或默认白名单
-    if allowed_types is None:
-        allowed_types = ALLOWED_ENTITY_TYPES
+    # [核心修复] 1. 制作全大写的白名单集合
+    allowed_types_upper = {t.upper() for t in allowed_entity_types}
 
-    # [新增] 预处理 allowed_types 为全大写，方便比较
-    allowed_types_upper = {t.upper() for t in allowed_types}
-
-    # 1. normalize
+    # normalize names
     for e in raw_entities:
         if "name" in e:
             e["name"] = normalize_entity_name(e.get("name", ""))
 
-    # 2. type filter（动态白名单）[修改了这里]
-    # 将 e.get("type") 转大写后再对比
-    entities = [
-        e for e in raw_entities
-        if e.get("type") and e.get("type").upper() in allowed_types_upper and e.get("name")
-    ]
+    # 2. type filter（动态白名单，大小写不敏感）
+    entities = []
+    for e in raw_entities:
+        raw_type = e.get("type", "")
+        # [核心修复] 2. 转大写后对比，且 e["name"] 不能为空
+        if raw_type and raw_type.upper() in allowed_types_upper and e.get("name"):
+            # 可选：将类型标准化为大写，或者保持原样
+            # e["type"] = raw_type.upper()
+            entities.append(e)
 
-    # 3. frequency filter（≥1 次）
+    # 3. frequency filter
     freq = Counter(e["name"] for e in entities)
-    entities = [
-        e for e in entities
-        if freq[e["name"]] >= MIN_ENTITY_FREQUENCY
-    ]
+    entities = [e for e in entities if freq[e["name"]] >= min_freq]
 
-    # 4. deduplicate by similarity（Levenshtein 距离）
+    # 4. similarity dedup
     deduped = []
     for e in entities:
-        if not any(is_similar(e["name"], u["name"]) for u in deduped):
+        if not any(is_similar(e["name"], u["name"], similarity_threshold) for u in deduped):
             deduped.append(e)
 
-    print(f"✅ 实体后处理：{len(raw_entities)} → {len(deduped)} 个实体（Schema: {len(allowed_types)} 类型）")
+    print(f"✅ 实体后处理：{len(raw_entities)} → {len(deduped)} 个实体（Schema: {len(allowed_entity_types)} 类型）")
     return deduped
 
 
 def post_process_relations(
-    raw_relations: List[Dict],
-    entities: List[Dict],
-    allowed_relation_types: set = None
-) -> List[Dict]:
+    raw_relations: List[Dict[str, Any]],
+    entities: List[Dict[str, Any]],
+    allowed_relation_types: set,
+    similarity_threshold: float
+) -> List[Dict[str, Any]]:
     """
     关系后处理（生产级验证 + 动态 Schema）
 
     步骤：
-    1. 验证关系类型（动态白名单）
+    1. 验证关系类型（动态白名单，大小写不敏感）
     2. 验证 source/target 实体存在
     3. 去重
 
     Args:
         raw_relations: 原始关系列表
         entities: 实体列表
-        allowed_relation_types: 允许的关系类型（动态 Schema，默认使用全局白名单）
+        allowed_relation_types: 允许的关系类型集合
+        similarity_threshold: 相似度阈值（保留参数以统一接口，关系处理暂不使用）
+
+    Returns:
+        List[Dict[str, Any]]: 处理后的关系列表
     """
     if not raw_relations or not entities:
         return []
 
-    # 使用动态 Schema 或默认白名单
-    if allowed_relation_types is None:
-        allowed_relation_types = ALLOWED_RELATION_TYPES
+    # [新增] 1. 预处理白名单为全大写
+    allowed_rels_upper = {r.upper() for r in allowed_relation_types}
 
     entity_names = {normalize_entity_name(e["name"]) for e in entities}
     cleaned = []
@@ -211,15 +228,16 @@ def post_process_relations(
     for r in raw_relations:
         src = normalize_entity_name(r.get("source", ""))
         tgt = normalize_entity_name(r.get("target", ""))
-        r_type = r.get("type")
+        r_type = r.get("type", "")
 
-        # 验证（动态白名单）
+        # [修改] 2. 核心修改：类型转大写后对比
         if (
             src in entity_names and
             tgt in entity_names and
-            r_type in allowed_relation_types
+            r_type and r_type.upper() in allowed_rels_upper
         ):
-            key = (src, tgt, r_type)
+            # Key 使用大写类型以防止重复
+            key = (src, tgt, r_type.upper())
             if key not in seen:
                 cleaned.append({
                     "source": src,
@@ -401,8 +419,11 @@ class EntityRelationExtractor:
         Returns:
             (entity_types, relation_types): 实体类型集合和关系类型集合
         """
-        if self.graph_config and hasattr(self.graph_config, 'get_schema'):
-            schema = self.graph_config.get_schema(domain)
+        # [修改] 使用 _get_graph_config() 获取配置，防止 self.graph_config 为 None
+        config = self._get_graph_config()
+
+        if config and hasattr(config, 'get_schema'):
+            schema = config.get_schema(domain)
             return (
                 set(schema.get("entity_types", ALLOWED_ENTITY_TYPES)),
                 set(schema.get("relation_types", ALLOWED_RELATION_TYPES))
@@ -535,7 +556,12 @@ class EntityRelationExtractor:
 
             # 2. 后处理实体（动态 Schema）
             raw_entities = parsed.get("entities", [])
-            entities = post_process_entities(raw_entities, allowed_types=domain_entity_types)
+            entities = post_process_entities(
+                raw_entities,
+                allowed_entity_types=domain_entity_types,
+                min_freq=MIN_ENTITY_FREQUENCY,
+                similarity_threshold=NAME_SIMILARITY_THRESHOLD
+            )
 
             # 3. 后处理关系（动态 Schema）
             raw_relations = parsed.get("relations", [])
@@ -546,7 +572,8 @@ class EntityRelationExtractor:
             relations = post_process_relations(
                 raw_relations,
                 entities,
-                allowed_relation_types=domain_relation_types
+                allowed_relation_types=domain_relation_types,
+                similarity_threshold=NAME_SIMILARITY_THRESHOLD
             )
 
             # 4. 构建统一的 dict 结果
@@ -628,6 +655,9 @@ class EntityRelationExtractor:
 
             print(f"📋 文件 '{filename}' → Domain: {domain} (实体类型: {len(entity_types)}, 关系类型: {len(relation_types)})")
 
+        # [修改] 不要原地修改 tuple，构造新列表
+        new_file_contents = []
+
         for i, file_content in enumerate(file_contents):
             filename = file_content[0]
             chunks = file_content[2]
@@ -693,14 +723,18 @@ class EntityRelationExtractor:
                                 }
 
             ordered_results = [cached_results[key] for key in cache_keys]
-            file_content.append(ordered_results)
+
+            # [修改] 构造新的 tuple：(*原Tuple内容, 新结果)
+            # 注意：如果不确定 fc 是 list 还是 tuple，这种写法最稳健
+            new_fc = tuple(list(file_content) + [ordered_results])
+            new_file_contents.append(new_fc)
 
             cache_ratio = self.cache_hits / (self.cache_hits + self.cache_misses) * 100 if (self.cache_hits + self.cache_misses) > 0 else 0
             print(f"文件 {i+1}/{len(file_contents)} 处理完成, 缓存命中率: {cache_ratio:.1f}%")
 
         process_time = time.time() - t0
         print(f"所有chunks处理完成, 总耗时: {process_time:.2f}秒, 平均每chunk: {process_time/total_chunks:.2f}秒")
-        return file_contents
+        return new_file_contents
 
     def _extract_one_chunk(self, chunk_text: str, allowed_entity_types: set, allowed_relation_types: set) -> Dict[str, Any]:
         """
