@@ -60,6 +60,10 @@ ALLOWED_RELATION_TYPES = {
 MIN_ENTITY_FREQUENCY = 1            # 最小实体频率
 NAME_SIMILARITY_THRESHOLD = 0.85    # 名称相似度阈值
 
+# 默认常量（用作 fallback）
+DEFAULT_ALLOWED_ENTITY_TYPES = ALLOWED_ENTITY_TYPES
+DEFAULT_ALLOWED_RELATION_TYPES = ALLOWED_RELATION_TYPES
+
 
 # =========================
 # 工具函数（生产级）
@@ -188,7 +192,7 @@ def post_process_relations(
     关系后处理（生产级验证 + 动态 Schema）
 
     步骤：
-    1. 验证关系类型（动态白名单）
+    1. 验证关系类型（动态白名单，大小写不敏感）
     2. 验证 source/target 实体存在
     3. 去重
 
@@ -204,6 +208,9 @@ def post_process_relations(
     if allowed_relation_types is None:
         allowed_relation_types = ALLOWED_RELATION_TYPES
 
+    # [新增] 预处理白名单为全大写
+    allowed_rels_upper = {r.upper() for r in allowed_relation_types}
+
     entity_names = {normalize_entity_name(e["name"]) for e in entities}
     cleaned = []
     seen = set()
@@ -211,13 +218,13 @@ def post_process_relations(
     for r in raw_relations:
         src = normalize_entity_name(r.get("source", ""))
         tgt = normalize_entity_name(r.get("target", ""))
-        r_type = r.get("type")
+        r_type = r.get("type", "")  # 默认为空字符串防止 None
 
-        # 验证（动态白名单）
+        # 验证（动态白名单）[修改] 转大写后对比
         if (
             src in entity_names and
             tgt in entity_names and
-            r_type in allowed_relation_types
+            r_type and r_type.upper() in allowed_rels_upper
         ):
             key = (src, tgt, r_type)
             if key not in seen:
@@ -401,8 +408,11 @@ class EntityRelationExtractor:
         Returns:
             (entity_types, relation_types): 实体类型集合和关系类型集合
         """
-        if self.graph_config and hasattr(self.graph_config, 'get_schema'):
-            schema = self.graph_config.get_schema(domain)
+        # [修改] 使用 _get_graph_config() 获取配置，防止 self.graph_config 为 None
+        config = self._get_graph_config()
+
+        if config and hasattr(config, 'get_schema'):
+            schema = config.get_schema(domain)
             return (
                 set(schema.get("entity_types", ALLOWED_ENTITY_TYPES)),
                 set(schema.get("relation_types", ALLOWED_RELATION_TYPES))
@@ -628,6 +638,9 @@ class EntityRelationExtractor:
 
             print(f"📋 文件 '{filename}' → Domain: {domain} (实体类型: {len(entity_types)}, 关系类型: {len(relation_types)})")
 
+        # [修改] 不要原地修改 tuple，构造新列表
+        new_file_contents = []
+
         for i, file_content in enumerate(file_contents):
             filename = file_content[0]
             chunks = file_content[2]
@@ -693,14 +706,18 @@ class EntityRelationExtractor:
                                 }
 
             ordered_results = [cached_results[key] for key in cache_keys]
-            file_content.append(ordered_results)
+
+            # [修改] 构造新的 tuple：(*原Tuple内容, 新结果)
+            # 注意：如果不确定 fc 是 list 还是 tuple，这种写法最稳健
+            new_fc = tuple(list(file_content) + [ordered_results])
+            new_file_contents.append(new_fc)
 
             cache_ratio = self.cache_hits / (self.cache_hits + self.cache_misses) * 100 if (self.cache_hits + self.cache_misses) > 0 else 0
             print(f"文件 {i+1}/{len(file_contents)} 处理完成, 缓存命中率: {cache_ratio:.1f}%")
 
         process_time = time.time() - t0
         print(f"所有chunks处理完成, 总耗时: {process_time:.2f}秒, 平均每chunk: {process_time/total_chunks:.2f}秒")
-        return file_contents
+        return new_file_contents
 
     def _extract_one_chunk(self, chunk_text: str, allowed_entity_types: set, allowed_relation_types: set) -> Dict[str, Any]:
         """
