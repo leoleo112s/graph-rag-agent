@@ -90,9 +90,11 @@ def normalize_entity_name(name: str) -> str:
     )
 
 
-def is_similar(a: str, b: str) -> bool:
+def is_similar(a: str, b: str, threshold: float = None) -> bool:
     """判断两个实体名称是否相似（基于 SequenceMatcher）"""
-    return SequenceMatcher(None, a, b).ratio() >= NAME_SIMILARITY_THRESHOLD
+    if threshold is None:
+        threshold = NAME_SIMILARITY_THRESHOLD
+    return SequenceMatcher(None, a, b).ratio() >= threshold
 
 
 def _extract_json_dict(text: str) -> Optional[Dict]:
@@ -130,56 +132,62 @@ def _extract_json_dict(text: str) -> Optional[Dict]:
 # 后处理核心逻辑（生产级）
 # =========================
 
-def post_process_entities(raw_entities: List[Dict], allowed_types: set = None) -> List[Dict]:
+def post_process_entities(
+    raw_entities: List[Dict[str, Any]],
+    allowed_entity_types: set,
+    min_freq: int,
+    similarity_threshold: float
+) -> List[Dict[str, Any]]:
     """
     实体后处理（生产级验证 + 动态 Schema）
 
     步骤：
     1. normalize：标准化名称
     2. type_filter：类型过滤（动态白名单，大小写不敏感）
-    3. frequency_filter：频率过滤（≥1 次）
-    4. deduplicate：去重（Levenshtein 距离）
+    3. frequency_filter：频率过滤
+    4. deduplicate：去重（相似度阈值）
 
     Args:
         raw_entities: 原始实体列表
-        allowed_types: 允许的实体类型（动态 Schema，默认使用全局白名单）
+        allowed_entity_types: 允许的实体类型集合
+        min_freq: 最小实体频率
+        similarity_threshold: 相似度阈值
+
+    Returns:
+        List[Dict[str, Any]]: 处理后的实体列表
     """
     if not raw_entities:
         return []
 
-    # 使用动态 Schema 或默认白名单
-    if allowed_types is None:
-        allowed_types = ALLOWED_ENTITY_TYPES
+    # [核心修复] 1. 制作全大写的白名单集合
+    allowed_types_upper = {t.upper() for t in allowed_entity_types}
 
-    # [新增] 预处理 allowed_types 为全大写，方便比较
-    allowed_types_upper = {t.upper() for t in allowed_types}
-
-    # 1. normalize
+    # normalize names
     for e in raw_entities:
         if "name" in e:
             e["name"] = normalize_entity_name(e.get("name", ""))
 
-    # 2. type filter（动态白名单）[修改了这里]
-    # 将 e.get("type") 转大写后再对比
-    entities = [
-        e for e in raw_entities
-        if e.get("type") and e.get("type").upper() in allowed_types_upper and e.get("name")
-    ]
+    # 2. type filter（动态白名单，大小写不敏感）
+    entities = []
+    for e in raw_entities:
+        raw_type = e.get("type", "")
+        # [核心修复] 2. 转大写后对比，且 e["name"] 不能为空
+        if raw_type and raw_type.upper() in allowed_types_upper and e.get("name"):
+            # 可选：将类型标准化为大写，或者保持原样
+            # e["type"] = raw_type.upper()
+            entities.append(e)
 
-    # 3. frequency filter（≥1 次）
+    # 3. frequency filter
     freq = Counter(e["name"] for e in entities)
-    entities = [
-        e for e in entities
-        if freq[e["name"]] >= MIN_ENTITY_FREQUENCY
-    ]
+    entities = [e for e in entities if freq[e["name"]] >= min_freq]
 
-    # 4. deduplicate by similarity（Levenshtein 距离）
+    # 4. similarity dedup
     deduped = []
     for e in entities:
-        if not any(is_similar(e["name"], u["name"]) for u in deduped):
+        if not any(is_similar(e["name"], u["name"], similarity_threshold) for u in deduped):
             deduped.append(e)
 
-    print(f"✅ 实体后处理：{len(raw_entities)} → {len(deduped)} 个实体（Schema: {len(allowed_types)} 类型）")
+    print(f"✅ 实体后处理：{len(raw_entities)} → {len(deduped)} 个实体（Schema: {len(allowed_entity_types)} 类型）")
     return deduped
 
 
@@ -545,7 +553,12 @@ class EntityRelationExtractor:
 
             # 2. 后处理实体（动态 Schema）
             raw_entities = parsed.get("entities", [])
-            entities = post_process_entities(raw_entities, allowed_types=domain_entity_types)
+            entities = post_process_entities(
+                raw_entities,
+                allowed_entity_types=domain_entity_types,
+                min_freq=MIN_ENTITY_FREQUENCY,
+                similarity_threshold=NAME_SIMILARITY_THRESHOLD
+            )
 
             # 3. 后处理关系（动态 Schema）
             raw_relations = parsed.get("relations", [])
