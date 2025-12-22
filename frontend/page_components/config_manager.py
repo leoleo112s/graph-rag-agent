@@ -1,12 +1,63 @@
 """
 配置管理页面（通用图谱构建器）
 支持用户定义领域（Domain）和桥接点（Bridge）
+
+增强功能：
+- 配置校验反馈
+- JSON 源码编辑模式
+- 状态同步提示
 """
 
 import streamlit as st
 import requests
+import json
 from typing import Dict, List, Optional
 from frontend.frontend_config.settings import API_URL
+
+
+def validate_config(config: Dict) -> tuple[bool, Optional[str]]:
+    """
+    校验配置格式（前端快速校验）
+
+    Returns:
+        (is_valid, error_message)
+    """
+    try:
+        # 必需字段
+        required_fields = ['project_name', 'version', 'domain_definitions', 'bridge_definitions']
+        for field in required_fields:
+            if field not in config:
+                return False, f"缺少必需字段: {field}"
+
+        # 项目名称不能为空
+        if not config['project_name']:
+            return False, "项目名称不能为空"
+
+        # 检查领域定义
+        for idx, domain in enumerate(config.get('domain_definitions', [])):
+            if 'domain_name' not in domain:
+                return False, f"领域 #{idx+1} 缺少 domain_name 字段"
+            if 'schema' not in domain:
+                return False, f"领域 '{domain['domain_name']}' 缺少 schema 字段"
+
+            schema = domain['schema']
+            if 'entities' not in schema or 'relations' not in schema:
+                return False, f"领域 '{domain['domain_name']}' 的 schema 必须包含 entities 和 relations"
+
+        # 检查桥接点定义
+        bridge_keys = set()
+        for idx, bridge in enumerate(config.get('bridge_definitions', [])):
+            if 'key' not in bridge:
+                return False, f"桥接点 #{idx+1} 缺少 key 字段"
+
+            if bridge['key'] in bridge_keys:
+                return False, f"桥接点 key '{bridge['key']}' 重复"
+            bridge_keys.add(bridge['key'])
+
+        return True, None
+
+    except Exception as e:
+        return False, f"校验异常: {str(e)}"
 
 
 def fetch_graph_config() -> Optional[Dict]:
@@ -21,18 +72,73 @@ def fetch_graph_config() -> Optional[Dict]:
         return None
 
 
-def save_graph_config(config: Dict) -> bool:
-    """保存图谱配置"""
+def save_graph_config(config: Dict, show_feedback: bool = True) -> tuple[bool, Optional[Dict]]:
+    """
+    保存图谱配置（增强版：包含校验和详细反馈）
+
+    Args:
+        config: 配置字典
+        show_feedback: 是否显示 Streamlit 反馈消息
+
+    Returns:
+        (success, response_data)
+    """
+    # 1. 前端快速校验
+    is_valid, error_msg = validate_config(config)
+    if not is_valid:
+        if show_feedback:
+            st.error(f"❌ 配置校验失败: {error_msg}")
+        return False, None
+
+    # 2. 发送到后端
     try:
         response = requests.post(
             f"{API_URL}/admin/graph/config",
-            json=config
+            json=config,
+            timeout=10
         )
         response.raise_for_status()
-        return True
+        data = response.json()
+
+        if show_feedback:
+            st.success("✅ 配置保存成功！")
+
+            # 显示缓存状态
+            cache_status = data.get('cache_status', {})
+            if cache_status:
+                with st.expander("🔍 查看缓存状态", expanded=False):
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("缓存状态", "已刷新" if cache_status.get('has_cache') else "空")
+                    with col2:
+                        st.metric("领域数量", cache_status.get('domain_count', 0))
+                    with col3:
+                        st.metric("桥接点数量", cache_status.get('bridge_count', 0))
+
+            # 提示用户下一步操作
+            st.info("💡 **下一步**: 前往「🏗️ 构建管理」重新构建知识图谱以应用新配置")
+            st.caption("⚡ 配置已热更新到内存，无需重启服务")
+
+        return True, data
+
+    except requests.exceptions.Timeout:
+        if show_feedback:
+            st.error("❌ 保存超时，请检查后端服务状态")
+        return False, None
+    except requests.exceptions.HTTPError as e:
+        error_detail = "未知错误"
+        try:
+            error_detail = e.response.json().get('detail', str(e))
+        except:
+            error_detail = str(e)
+
+        if show_feedback:
+            st.error(f"❌ 保存失败: {error_detail}")
+        return False, None
     except Exception as e:
-        st.error(f"保存配置失败: {e}")
-        return False
+        if show_feedback:
+            st.error(f"❌ 保存配置失败: {str(e)}")
+        return False, None
 
 
 def fetch_templates() -> Dict:
@@ -321,6 +427,102 @@ def render_config_overview(config: Dict):
         st.info(f"📝 {config['description']}")
 
 
+def render_json_editor(config: Dict) -> Optional[Dict]:
+    """
+    渲染 JSON 源码编辑器（高级用户模式）
+
+    Returns:
+        updated_config if user updated, else None
+    """
+    st.subheader("📝 JSON 源码编辑")
+    st.caption("⚠️ 高级模式：直接编辑配置 JSON，需要熟悉配置格式")
+
+    # 将字典转为 JSON 字符串供编辑器使用
+    config_str = json.dumps(config, indent=2, ensure_ascii=False)
+
+    # 使用 text_area 让用户编辑
+    new_config_str = st.text_area(
+        "配置 JSON",
+        value=config_str,
+        height=600,
+        help="直接编辑配置的 JSON 表示。修改后点击「校验并应用」按钮。"
+    )
+
+    col1, col2, col3 = st.columns([2, 2, 1])
+
+    with col1:
+        if st.button("✅ 校验并应用", type="primary", use_container_width=True):
+            try:
+                # 解析 JSON
+                new_config = json.loads(new_config_str)
+
+                # 校验配置
+                is_valid, error_msg = validate_config(new_config)
+                if not is_valid:
+                    st.error(f"❌ 配置校验失败: {error_msg}")
+                    return None
+
+                # 更新 session state
+                st.success("✅ JSON 格式校验通过！")
+                st.info("💡 配置已更新到当前编辑状态，请点击「💾 保存配置」标签页保存")
+
+                return new_config
+
+            except json.JSONDecodeError as e:
+                st.error(f"❌ JSON 格式错误: {str(e)}")
+                st.code(new_config_str[max(0, e.pos-50):e.pos+50], language="json")
+                return None
+
+    with col2:
+        # 格式化按钮
+        if st.button("🔧 格式化 JSON", use_container_width=True):
+            try:
+                formatted = json.dumps(json.loads(new_config_str), indent=2, ensure_ascii=False)
+                st.code(formatted, language="json")
+                st.caption("复制上面的格式化结果到编辑器中")
+            except json.JSONDecodeError as e:
+                st.error(f"❌ JSON 格式错误，无法格式化: {str(e)}")
+
+    with col3:
+        # 重置按钮
+        if st.button("🔄 重置", use_container_width=True):
+            st.rerun()
+
+    # 显示 Diff 预览
+    with st.expander("👀 查看变更 (Diff)", expanded=False):
+        try:
+            new_config_parsed = json.loads(new_config_str)
+
+            # 简单的 diff 显示
+            original_keys = set(config.keys())
+            new_keys = set(new_config_parsed.keys())
+
+            added_keys = new_keys - original_keys
+            removed_keys = original_keys - new_keys
+            common_keys = original_keys & new_keys
+
+            if added_keys:
+                st.success(f"➕ 新增字段: {', '.join(added_keys)}")
+            if removed_keys:
+                st.error(f"➖ 删除字段: {', '.join(removed_keys)}")
+
+            changed_keys = []
+            for key in common_keys:
+                if config.get(key) != new_config_parsed.get(key):
+                    changed_keys.append(key)
+
+            if changed_keys:
+                st.warning(f"📝 修改字段: {', '.join(changed_keys)}")
+
+            if not added_keys and not removed_keys and not changed_keys:
+                st.info("无变更")
+
+        except:
+            st.caption("无法解析 JSON 进行 Diff 比较")
+
+    return None
+
+
 def config_manager_page():
     """配置管理主页面"""
     st.title("⚙️ 图谱配置管理")
@@ -353,53 +555,69 @@ def config_manager_page():
                     "bridge_definitions": [],
                     "domain_definitions": []
                 }
-                if save_graph_config(new_config):
-                    st.success("✅ 配置创建成功！")
+                success, _ = save_graph_config(new_config, show_feedback=True)
+                if success:
                     st.rerun()
 
         return
 
+    # 🔥 使用 session state 管理配置（支持 JSON 编辑器更新）
+    if 'current_config' not in st.session_state or st.session_state.get('config_reload_trigger'):
+        st.session_state.current_config = config.copy()
+        if 'config_reload_trigger' in st.session_state:
+            del st.session_state.config_reload_trigger
+
+    working_config = st.session_state.current_config
+
     # 显示配置概览
-    render_config_overview(config)
+    render_config_overview(working_config)
 
     st.markdown("---")
 
-    # 创建标签页
-    tab1, tab2, tab3, tab4 = st.tabs([
+    # 🔥 创建标签页（新增 JSON 编辑器）
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "🔗 桥接点配置",
         "📦 领域配置",
+        "📝 JSON 编辑器",
         "📋 切换模板",
         "💾 保存与导出"
     ])
 
     with tab1:
-        render_bridge_editor(config)
+        render_bridge_editor(working_config)
 
     with tab2:
-        render_domain_editor(config)
+        render_domain_editor(working_config)
 
     with tab3:
+        # 🔥 JSON 源码编辑模式
+        updated_config = render_json_editor(working_config)
+        if updated_config:
+            st.session_state.current_config = updated_config
+            st.rerun()
+
+    with tab4:
         st.subheader("📋 切换到其他模板")
         st.warning("⚠️ 切换模板将覆盖当前配置，请确保已保存重要更改")
         render_template_selector()
 
-    with tab4:
+    with tab5:
         st.subheader("💾 保存配置")
 
         # 修改项目信息
         project_name = st.text_input(
             "项目名称",
-            value=config.get('project_name', ''),
+            value=working_config.get('project_name', ''),
             key="edit_project_name"
         )
         industry = st.text_input(
             "所属行业",
-            value=config.get('industry', ''),
+            value=working_config.get('industry', ''),
             key="edit_industry"
         )
         description = st.text_area(
             "项目描述",
-            value=config.get('description', ''),
+            value=working_config.get('description', ''),
             key="edit_description"
         )
 
@@ -407,23 +625,23 @@ def config_manager_page():
 
         with col1:
             if st.button("💾 保存配置", type="primary", use_container_width=True):
-                # 更新配置
-                config['project_name'] = project_name
-                config['industry'] = industry
-                config['description'] = description
+                # 🔥 更新配置并使用增强版 save_graph_config
+                working_config['project_name'] = project_name
+                working_config['industry'] = industry
+                working_config['description'] = description
 
-                if save_graph_config(config):
-                    st.success("✅ 配置保存成功！")
-                    st.info("💡 请前往「🏗️ 构建管理」重新构建知识图谱以应用新配置")
+                success, response_data = save_graph_config(working_config, show_feedback=True)
+                if success:
+                    # 触发配置重载
+                    st.session_state.config_reload_trigger = True
 
         with col2:
             # 导出配置
-            import json
-            config_json = json.dumps(config, ensure_ascii=False, indent=2)
+            config_json = json.dumps(working_config, ensure_ascii=False, indent=2)
             st.download_button(
                 label="📥 导出配置 (JSON)",
                 data=config_json,
-                file_name=f"{config.get('project_name', 'config')}.json",
+                file_name=f"{working_config.get('project_name', 'config')}.json",
                 mime="application/json",
                 use_container_width=True
             )
