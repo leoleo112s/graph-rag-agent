@@ -61,6 +61,7 @@ MIN_ENTITY_FREQUENCY = 1            # 最小实体频率
 NAME_SIMILARITY_THRESHOLD = 0.85    # 名称相似度阈值
 
 # 默认常量（用作 fallback）
+DEFAULT_MIN_ENTITY_FREQUENCY = 1    # 与 MIN_ENTITY_FREQUENCY 保持一致
 DEFAULT_ALLOWED_ENTITY_TYPES = ALLOWED_ENTITY_TYPES
 DEFAULT_ALLOWED_RELATION_TYPES = ALLOWED_RELATION_TYPES
 
@@ -192,10 +193,11 @@ def post_process_entities(
 
 
 def post_process_relations(
-    raw_relations: List[Dict],
-    entities: List[Dict],
-    allowed_relation_types: set = None
-) -> List[Dict]:
+    raw_relations: List[Dict[str, Any]],
+    entities: List[Dict[str, Any]],
+    allowed_relation_types: set,
+    similarity_threshold: float
+) -> List[Dict[str, Any]]:
     """
     关系后处理（生产级验证 + 动态 Schema）
 
@@ -207,16 +209,16 @@ def post_process_relations(
     Args:
         raw_relations: 原始关系列表
         entities: 实体列表
-        allowed_relation_types: 允许的关系类型（动态 Schema，默认使用全局白名单）
+        allowed_relation_types: 允许的关系类型集合
+        similarity_threshold: 相似度阈值（保留参数以统一接口，关系处理暂不使用）
+
+    Returns:
+        List[Dict[str, Any]]: 处理后的关系列表
     """
     if not raw_relations or not entities:
         return []
 
-    # 使用动态 Schema 或默认白名单
-    if allowed_relation_types is None:
-        allowed_relation_types = ALLOWED_RELATION_TYPES
-
-    # [新增] 预处理白名单为全大写
+    # [新增] 1. 预处理白名单为全大写
     allowed_rels_upper = {r.upper() for r in allowed_relation_types}
 
     entity_names = {normalize_entity_name(e["name"]) for e in entities}
@@ -226,15 +228,16 @@ def post_process_relations(
     for r in raw_relations:
         src = normalize_entity_name(r.get("source", ""))
         tgt = normalize_entity_name(r.get("target", ""))
-        r_type = r.get("type", "")  # 默认为空字符串防止 None
+        r_type = r.get("type", "")
 
-        # 验证（动态白名单）[修改] 转大写后对比
+        # [修改] 2. 核心修改：类型转大写后对比
         if (
             src in entity_names and
             tgt in entity_names and
             r_type and r_type.upper() in allowed_rels_upper
         ):
-            key = (src, tgt, r_type)
+            # Key 使用大写类型以防止重复
+            key = (src, tgt, r_type.upper())
             if key not in seen:
                 cleaned.append({
                     "source": src,
@@ -569,7 +572,8 @@ class EntityRelationExtractor:
             relations = post_process_relations(
                 raw_relations,
                 entities,
-                allowed_relation_types=domain_relation_types
+                allowed_relation_types=domain_relation_types,
+                similarity_threshold=NAME_SIMILARITY_THRESHOLD
             )
 
             # 4. 构建统一的 dict 结果
