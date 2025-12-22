@@ -41,20 +41,32 @@ from graphrag_agent.config.settings import MAX_WORKERS as DEFAULT_MAX_WORKERS, B
 # =========================
 
 ALLOWED_ENTITY_TYPES = {
-    "POLICY",       # 制度、政策、办法、条例
-    "PROCESS",      # 流程、步骤、阶段
-    "CONDITION",    # 条件、资格、标准
-    "ORGANIZATION", # 组织、机构、部门
-    "DOCUMENT"      # 正式文件名称
+    "机构",         # 对应 Organization (如: 华东理工大学, 答辩委员会)
+    "部门",         # 对应 Department (如: 研究生院, 学生工作部)
+    "政策",         # 对应 Policy (如: 奖学金管理办法)
+    "规章制度",     # 对应 Regulation
+    "法条",         # 对应 Law/Article
+    "条款",         # 对应 Clause/Condition (如: 6学分, 违纪处分)
+    "文档",         # 对应 Document (如: 申请表)
+    "当事人",       # 对应 Person/Party (如: 毕业生, 学生本人)
+    "地点",         # 对应 Location (如: 中西部地区)
+    "概念",         # 对应 Concept (如: 学费代偿)
+    "流程",         # 对应 Process
+    "条件"          # 对应 Condition
 }
 
 ALLOWED_RELATION_TYPES = {
-    "HAS_CONDITION",
-    "HAS_STEP",
-    "ISSUED_BY",
-    "APPLIES_TO",
-    "PART_OF",
-    "REQUIRES"
+    "包含",         # PART_OF / INCLUDES
+    "属于",         # PART_OF
+    "发布",         # ISSUED_BY
+    "负责",         # RESPONSIBLE_FOR
+    "需要",         # REQUIRES
+    "依据",         # BASED_ON
+    "适用于",       # APPLIES_TO
+    "有步骤",       # HAS_STEP
+    "有条件",       # HAS_CONDITION
+    "关联",         # RELATED_TO (兜底)
+    "提交给"        # SUBMIT_TO
 }
 
 MIN_ENTITY_FREQUENCY = 1            # 最小实体频率
