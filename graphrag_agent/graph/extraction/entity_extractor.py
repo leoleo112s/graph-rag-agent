@@ -21,9 +21,10 @@ import pickle
 import json
 import re
 import logging
+import unicodedata
 import concurrent.futures
 from typing import List, Tuple, Optional, Dict, Any
-from collections import Counter
+from collections import Counter, defaultdict
 from difflib import SequenceMatcher
 
 # 配置日志
@@ -73,11 +74,11 @@ ALLOWED_RELATION_TYPES = {
     "提交给"        # SUBMIT_TO
 }
 
-MIN_ENTITY_FREQUENCY = 1            # 最小实体频率
-NAME_SIMILARITY_THRESHOLD = 0.85    # 名称相似度阈值
+# 默认后处理参数（可通过初始化覆盖）
+DEFAULT_MIN_ENTITY_FREQUENCY = 1            # 默认最小实体频率
+DEFAULT_NAME_SIMILARITY_THRESHOLD = 0.85    # 默认名称相似度阈值
 
 # 默认常量（用作 fallback）
-DEFAULT_MIN_ENTITY_FREQUENCY = 1    # 与 MIN_ENTITY_FREQUENCY 保持一致
 DEFAULT_ALLOWED_ENTITY_TYPES = ALLOWED_ENTITY_TYPES
 DEFAULT_ALLOWED_RELATION_TYPES = ALLOWED_RELATION_TYPES
 
@@ -88,29 +89,50 @@ DEFAULT_ALLOWED_RELATION_TYPES = ALLOWED_RELATION_TYPES
 
 def normalize_entity_name(name: str) -> str:
     """
-    标准化实体名称
+    标准化实体名称（生产级多语言支持）
+
+    使用 Unicode NFKC 标准化，自动处理：
+    - 全角字符 → 半角（如 Ａ→A，１→1，％→%）
+    - 全角空格 → 半角空格
+    - 其他 Unicode 变体 → 标准形式
 
     规则：
-    - 去除空格
-    - 统一括号格式：全角 → 半角
+    1. NFKC 标准化（兼容性分解 + 标准合成）
+    2. 去除所有空格
+    3. 去除首尾空白
+
+    Args:
+        name: 原始实体名称
+
+    Returns:
+        str: 标准化后的实体名称
     """
     if not name:
         return ""
 
-    return (
-        name.strip()
-        .replace(" ", "")
-        .replace("（", "(")
-        .replace("）", ")")
-        .replace("【", "[")
-        .replace("】", "]")
-    )
+    # Unicode NFKC 标准化：全角 → 半角，统一 Unicode 变体
+    normalized = unicodedata.normalize('NFKC', name)
+
+    # 去除空格并清理
+    normalized = normalized.replace(" ", "").strip()
+
+    return normalized
 
 
 def is_similar(a: str, b: str, threshold: float = None) -> bool:
-    """判断两个实体名称是否相似（基于 SequenceMatcher）"""
+    """
+    判断两个实体名称是否相似（基于 SequenceMatcher）
+
+    Args:
+        a: 第一个实体名称
+        b: 第二个实体名称
+        threshold: 相似度阈值，默认使用全局默认值
+
+    Returns:
+        bool: 是否相似
+    """
     if threshold is None:
-        threshold = NAME_SIMILARITY_THRESHOLD
+        threshold = DEFAULT_NAME_SIMILARITY_THRESHOLD
     return SequenceMatcher(None, a, b).ratio() >= threshold
 
 
@@ -204,13 +226,39 @@ def post_process_entities(
     freq = Counter(e["name"] for e in entities)
     entities = [e for e in entities if freq[e["name"]] >= min_freq]
 
-    # 4. similarity dedup
-    deduped = []
-    for e in entities:
-        if not any(is_similar(e["name"], u["name"], similarity_threshold) for u in deduped):
-            deduped.append(e)
+    # 4. similarity dedup（优化：分桶策略，O(N²) → O(N log N)）
+    # 按频率降序排列：高频词更规范，保留高频词，让低频词去匹配高频词
+    sorted_entities = sorted(entities, key=lambda x: freq[x["name"]], reverse=True)
 
-    print(f"✅ 实体后处理：{len(raw_entities)} → {len(deduped)} 个实体（Schema: {len(allowed_entity_types)} 类型）")
+    # 使用分桶（Blocking）策略：按首字符分组，只对同组内的实体进行相似度比对
+    # 这将大幅减少比对次数：从 O(N²) 降到 O(N × avg_bucket_size)
+    deduped = []
+    buckets = defaultdict(list)  # 首字符 → 已去重实体列表
+
+    for e in sorted_entities:
+        name = e["name"]
+        if not name:
+            continue
+
+        # 分桶键：使用首字符（可扩展为前2字符或 MinHash）
+        bucket_key = name[0] if name else ""
+
+        # 只与同一桶内的实体比对
+        candidates = buckets[bucket_key]
+        is_duplicate = any(
+            is_similar(name, candidate["name"], similarity_threshold)
+            for candidate in candidates
+        )
+
+        if not is_duplicate:
+            deduped.append(e)
+            buckets[bucket_key].append(e)
+
+    logger.info(
+        f"✅ 实体后处理：{len(raw_entities)} → {len(deduped)} 个实体"
+        f"（Schema: {len(allowed_entity_types)} 类型，频率阈值: {min_freq}，"
+        f"相似度阈值: {similarity_threshold}）"
+    )
     return deduped
 
 
@@ -293,9 +341,11 @@ class EntityRelationExtractor:
     def __init__(self, llm, system_template, human_template,
                  entity_types: List[str], relationship_types: List[str],
                  cache_dir="./cache/graph", max_workers=4, batch_size=5,
-                 graph_config=None):
+                 graph_config=None,
+                 min_entity_frequency: int = None,
+                 name_similarity_threshold: float = None):
         """
-        初始化实体关系提取器（+ GraphConfig 支持）
+        初始化实体关系提取器（+ GraphConfig 支持 + 参数化配置）
 
         Args:
             llm: 语言模型
@@ -307,6 +357,8 @@ class EntityRelationExtractor:
             max_workers: 并行工作线程数
             batch_size: 批处理大小
             graph_config: GraphConfig 实例（可选，用于 Schema-aware routing）
+            min_entity_frequency: 最小实体频率（可选，默认使用全局默认值）
+            name_similarity_threshold: 名称相似度阈值（可选，默认使用全局默认值）
         """
         self.llm = llm
         self.entity_types = entity_types
@@ -315,6 +367,16 @@ class EntityRelationExtractor:
 
         # 🔥 新增：GraphConfig 支持
         self.graph_config = graph_config
+
+        # 🔥 新增：后处理参数化配置
+        self.min_entity_frequency = (
+            min_entity_frequency if min_entity_frequency is not None
+            else DEFAULT_MIN_ENTITY_FREQUENCY
+        )
+        self.name_similarity_threshold = (
+            name_similarity_threshold if name_similarity_threshold is not None
+            else DEFAULT_NAME_SIMILARITY_THRESHOLD
+        )
 
         # 设置分隔符（兼容旧格式）
         self.tuple_delimiter = " : "
@@ -353,7 +415,8 @@ class EntityRelationExtractor:
         print(f"🔥 生产级实体提取器已初始化")
         print(f"   - 实体类型白名单：{ALLOWED_ENTITY_TYPES}")
         print(f"   - 关系类型白名单：{ALLOWED_RELATION_TYPES}")
-        print(f"   - 最小实体频率：{MIN_ENTITY_FREQUENCY}")
+        print(f"   - 最小实体频率：{self.min_entity_frequency}")
+        print(f"   - 名称相似度阈值：{self.name_similarity_threshold}")
 
     def _generate_cache_key(self, text: str) -> str:
         """生成文本的缓存键"""
@@ -617,16 +680,16 @@ class EntityRelationExtractor:
                     "raw": str(raw)
                 }
 
-            # 2. 后处理实体（动态 Schema）
+            # 2. 后处理实体（动态 Schema + 参数化配置）
             raw_entities = parsed.get("entities", [])
             entities = post_process_entities(
                 raw_entities,
                 allowed_entity_types=domain_entity_types,
-                min_freq=MIN_ENTITY_FREQUENCY,
-                similarity_threshold=NAME_SIMILARITY_THRESHOLD
+                min_freq=self.min_entity_frequency,
+                similarity_threshold=self.name_similarity_threshold
             )
 
-            # 3. 后处理关系（动态 Schema）
+            # 3. 后处理关系（动态 Schema + 参数化配置）
             raw_relations = parsed.get("relations", [])
             # 兼容 relationships 字段
             if not raw_relations:
@@ -636,7 +699,7 @@ class EntityRelationExtractor:
                 raw_relations,
                 entities,
                 allowed_relation_types=domain_relation_types,
-                similarity_threshold=NAME_SIMILARITY_THRESHOLD
+                similarity_threshold=self.name_similarity_threshold
             )
 
             # 4. 构建统一的 dict 结果
