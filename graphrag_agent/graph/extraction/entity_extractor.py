@@ -20,10 +20,14 @@ import os
 import pickle
 import json
 import re
+import logging
 import concurrent.futures
 from typing import List, Tuple, Optional, Dict, Any
 from collections import Counter
 from difflib import SequenceMatcher
+
+# 配置日志
+logger = logging.getLogger(__name__)
 
 from langchain.prompts import (
     ChatPromptTemplate,
@@ -372,7 +376,15 @@ class EntityRelationExtractor:
             print(f"缓存保存错误: {e}")
 
     def _load_from_cache(self, cache_key: str) -> Optional[str]:
-        """从缓存加载结果"""
+        """
+        从缓存加载结果
+
+        Args:
+            cache_key: 缓存键
+
+        Returns:
+            缓存的结果，如果加载失败或缓存不存在则返回 None
+        """
         if not self.enable_cache:
             return None
 
@@ -383,8 +395,15 @@ class EntityRelationExtractor:
                     result = pickle.load(f)
                     self.cache_hits += 1
                     return result
+            except (pickle.UnpicklingError, EOFError) as e:
+                # 严重错误：缓存文件损坏，记录 ERROR 级别，可能需要人工介入清理缓存
+                logger.error(f"缓存文件损坏 [{cache_key}]: {e}", exc_info=True)
+                logger.error(f"建议删除损坏的缓存文件: {cache_path}")
+                return None
             except Exception as e:
-                print(f"缓存加载错误: {e}")
+                # 一般错误：缓存读取失败，记录 WARNING 级别
+                logger.warning(f"缓存读取失败 [{cache_key}]: {e}")
+                return None
 
         self.cache_misses += 1
         return None
@@ -896,9 +915,15 @@ class EntityRelationExtractor:
             cursor += len(chunks)
             spans.append((fname, start, cursor))
 
-        # 4) 批量调用 LLM 抽取（使用并发）
-        print(f"开始批量抽取 {len(flat_chunks)} 个 chunks...")
+        # 4) 批量调用 LLM 抽取（使用并发 + 熔断机制）
+        logger.info(f"开始批量抽取 {len(flat_chunks)} 个 chunks...")
         llm_results = [None] * len(flat_chunks)
+
+        # 错误计数器和熔断配置
+        error_count = 0
+        total_chunks = len(flat_chunks)
+        ERROR_RATE_THRESHOLD = 0.2  # 错误率阈值：20%
+        MIN_CHUNKS_FOR_CIRCUIT_BREAKER = 10  # 至少处理 10 个 chunk 后才启用熔断
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             futures = {
@@ -918,7 +943,23 @@ class EntityRelationExtractor:
                     res = fut.result()
                     llm_results[idx] = res
                 except Exception as e:
-                    print(f'Chunk {idx} 处理异常: {e}')
+                    error_count += 1
+                    # 记录详细错误信息
+                    logger.error(f"Chunk {idx} 处理失败: {e}", exc_info=True)
+
+                    # 🔥 熔断机制：如果错误率超过阈值且处理了足够多的 chunk，则中止
+                    if total_chunks > MIN_CHUNKS_FOR_CIRCUIT_BREAKER:
+                        current_error_rate = error_count / (completed + 1)
+                        if current_error_rate > ERROR_RATE_THRESHOLD:
+                            error_msg = (
+                                f"错误率过高 ({current_error_rate:.1%} > {ERROR_RATE_THRESHOLD:.1%})，"
+                                f"已处理 {completed + 1}/{total_chunks} 个 chunk，失败 {error_count} 个。"
+                                f"中止图谱构建。请检查 LLM 连接或 Prompt 配置。"
+                            )
+                            logger.critical(error_msg)
+                            raise RuntimeError(error_msg) from e
+
+                    # 填充空结果（仅在未触发熔断时）
                     llm_results[idx] = {
                         "entities": [],
                         "relations": [],
@@ -931,6 +972,15 @@ class EntityRelationExtractor:
                 completed += 1
                 if progress_callback:
                     progress_callback(completed)
+
+        # 记录最终统计
+        if error_count > 0:
+            error_rate = error_count / total_chunks
+            logger.warning(
+                f"批量抽取完成，共 {total_chunks} 个 chunk，"
+                f"成功 {total_chunks - error_count} 个，失败 {error_count} 个 "
+                f"(错误率: {error_rate:.1%})"
+            )
 
         if None in llm_results:
             raise ValueError(f"process_chunks_batch: 部分 chunk 抽取失败")
