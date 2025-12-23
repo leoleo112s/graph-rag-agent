@@ -978,14 +978,18 @@ class EntityRelationExtractor:
             cursor += len(chunks)
             spans.append((fname, start, cursor))
 
-        # 4) 批量调用 LLM 抽取（使用并发 + 熔断机制）
+        # 4) 批量调用 LLM 抽取（使用并发 + 增强型熔断机制）
         logger.info(f"开始批量抽取 {len(flat_chunks)} 个 chunks...")
         llm_results = [None] * len(flat_chunks)
 
-        # 错误计数器和熔断配置
+        # 错误和空结果计数器
         error_count = 0
+        empty_result_count = 0  # 新增：空结果计数
         total_chunks = len(flat_chunks)
+
+        # 熔断配置
         ERROR_RATE_THRESHOLD = 0.2  # 错误率阈值：20%
+        EMPTY_RATE_THRESHOLD = 0.3  # 空结果率阈值：30%
         MIN_CHUNKS_FOR_CIRCUIT_BREAKER = 10  # 至少处理 10 个 chunk 后才启用熔断
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
@@ -1005,22 +1009,19 @@ class EntityRelationExtractor:
                 try:
                     res = fut.result()
                     llm_results[idx] = res
+
+                    # 🔥 新增：检查空结果（LLM 返回成功但无实体/关系）
+                    if not res.get("entities") and not res.get("relationships"):
+                        empty_result_count += 1
+                        logger.warning(
+                            f"Chunk {idx} 返回空结果（无实体和关系）。"
+                            f"这可能是正常的，也可能表明 Prompt 或内容有问题。"
+                        )
+
                 except Exception as e:
                     error_count += 1
                     # 记录详细错误信息
                     logger.error(f"Chunk {idx} 处理失败: {e}", exc_info=True)
-
-                    # 🔥 熔断机制：如果错误率超过阈值且处理了足够多的 chunk，则中止
-                    if total_chunks > MIN_CHUNKS_FOR_CIRCUIT_BREAKER:
-                        current_error_rate = error_count / (completed + 1)
-                        if current_error_rate > ERROR_RATE_THRESHOLD:
-                            error_msg = (
-                                f"错误率过高 ({current_error_rate:.1%} > {ERROR_RATE_THRESHOLD:.1%})，"
-                                f"已处理 {completed + 1}/{total_chunks} 个 chunk，失败 {error_count} 个。"
-                                f"中止图谱构建。请检查 LLM 连接或 Prompt 配置。"
-                            )
-                            logger.critical(error_msg)
-                            raise RuntimeError(error_msg) from e
 
                     # 填充空结果（仅在未触发熔断时）
                     llm_results[idx] = {
@@ -1033,20 +1034,87 @@ class EntityRelationExtractor:
                     }
 
                 completed += 1
+
+                # 🔥 增强型熔断机制：检查错误率和空结果率
+                if completed > MIN_CHUNKS_FOR_CIRCUIT_BREAKER:
+                    current_error_rate = error_count / completed
+                    current_empty_rate = empty_result_count / completed
+                    combined_failure_rate = (error_count + empty_result_count) / completed
+
+                    # 检查错误率
+                    if current_error_rate > ERROR_RATE_THRESHOLD:
+                        error_msg = (
+                            f"错误率过高 ({current_error_rate:.1%} > {ERROR_RATE_THRESHOLD:.1%})，"
+                            f"已处理 {completed}/{total_chunks} 个 chunk，失败 {error_count} 个。"
+                            f"中止图谱构建。请检查 LLM 连接或 Prompt 配置。"
+                        )
+                        logger.critical(error_msg)
+                        # 取消剩余任务
+                        for f in futures.keys():
+                            if not f.done():
+                                f.cancel()
+                        raise RuntimeError(error_msg)
+
+                    # 检查空结果率
+                    if current_empty_rate > EMPTY_RATE_THRESHOLD:
+                        error_msg = (
+                            f"空结果率过高 ({current_empty_rate:.1%} > {EMPTY_RATE_THRESHOLD:.1%})，"
+                            f"已处理 {completed}/{total_chunks} 个 chunk，"
+                            f"空结果 {empty_result_count} 个（无实体和关系）。"
+                            f"中止图谱构建。请检查 Prompt 配置或文档内容质量。"
+                        )
+                        logger.critical(error_msg)
+                        # 取消剩余任务
+                        for f in futures.keys():
+                            if not f.done():
+                                f.cancel()
+                        raise RuntimeError(error_msg)
+
+                    # 综合检查（错误+空结果）
+                    if combined_failure_rate > 0.5:  # 50% 综合失败率
+                        error_msg = (
+                            f"综合失败率过高 ({combined_failure_rate:.1%} > 50%)，"
+                            f"已处理 {completed}/{total_chunks} 个 chunk，"
+                            f"错误 {error_count} 个，空结果 {empty_result_count} 个。"
+                            f"中止图谱构建。"
+                        )
+                        logger.critical(error_msg)
+                        # 取消剩余任务
+                        for f in futures.keys():
+                            if not f.done():
+                                f.cancel()
+                        raise RuntimeError(error_msg)
+
                 if progress_callback:
                     progress_callback(completed)
 
-        # 记录最终统计
-        if error_count > 0:
-            error_rate = error_count / total_chunks
-            logger.warning(
-                f"批量抽取完成，共 {total_chunks} 个 chunk，"
-                f"成功 {total_chunks - error_count} 个，失败 {error_count} 个 "
-                f"(错误率: {error_rate:.1%})"
+        # 🔥 新增：完整性校验
+        # 1. 检查数量对齐
+        if len(llm_results) != total_chunks:
+            raise RuntimeError(
+                f"严重错误：结果数量({len(llm_results)})与输入块数({total_chunks})不一致！"
             )
 
-        if None in llm_results:
-            raise ValueError(f"process_chunks_batch: 部分 chunk 抽取失败")
+        # 2. 检查 None 值（防止意外漏填）
+        none_indices = [i for i, r in enumerate(llm_results) if r is None]
+        if none_indices:
+            raise RuntimeError(
+                f"严重错误：存在 {len(none_indices)} 个未被填充的结果槽位（索引: {none_indices[:10]}...），"
+                f"请检查并发逻辑。"
+            )
+
+        # 记录最终统计
+        if error_count > 0 or empty_result_count > 0:
+            error_rate = error_count / total_chunks
+            empty_rate = empty_result_count / total_chunks
+            logger.warning(
+                f"批量抽取完成，共 {total_chunks} 个 chunk，"
+                f"成功 {total_chunks - error_count - empty_result_count} 个，"
+                f"失败 {error_count} 个 (错误率: {error_rate:.1%})，"
+                f"空结果 {empty_result_count} 个 (空结果率: {empty_rate:.1%})"
+            )
+        else:
+            logger.info(f"批量抽取完成，共 {total_chunks} 个 chunk，全部成功")
 
         print(f"批量抽取完成，共 {len(llm_results)} 个结果")
 
