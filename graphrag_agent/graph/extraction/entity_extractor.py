@@ -345,7 +345,7 @@ class EntityRelationExtractor:
                  min_entity_frequency: int = None,
                  name_similarity_threshold: float = None):
         """
-        初始化实体关系提取器（+ GraphConfig 支持 + 参数化配置）
+        初始化实体关系提取器（+ GraphConfig 支持 + 参数化配置 + 缓存版本隔离）
 
         Args:
             llm: 语言模型
@@ -353,8 +353,8 @@ class EntityRelationExtractor:
             human_template: 用户提示模板
             entity_types: 实体类型列表（兼容性，实际使用白名单）
             relationship_types: 关系类型列表（兼容性，实际使用白名单）
-            cache_dir: 缓存目录
-            max_workers: 并行工作线程数
+            cache_dir: 缓存目录（支持版本隔离）
+            max_workers: 并行工作线程数（支持 "auto" 或 0 表示自动计算）
             batch_size: 批处理大小
             graph_config: GraphConfig 实例（可选，用于 Schema-aware routing）
             min_entity_frequency: 最小实体频率（可选，默认使用全局默认值）
@@ -378,6 +378,13 @@ class EntityRelationExtractor:
             else DEFAULT_NAME_SIMILARITY_THRESHOLD
         )
 
+        # 🔥 新增：保存模板用于缓存版本控制
+        self.system_template = system_template
+        self.human_template = human_template
+
+        # 🔥 新增：提取 model_name 用于缓存隔离
+        self.model_name = self._extract_model_name(llm)
+
         # 设置分隔符（兼容旧格式）
         self.tuple_delimiter = " : "
         self.record_delimiter = "\n"
@@ -396,27 +403,98 @@ class EntityRelationExtractor:
         # 创建处理链
         self.chain = self.chat_prompt | self.llm
 
-        # 缓存设置
-        self.cache_dir = cache_dir
+        # 🔥 缓存设置（版本隔离）
+        # 计算 prompt 版本 hash（混合 system 和 human template）
+        self.prompt_version = generate_hash(system_template + human_template)[:8]
+
+        # 构建带版本隔离的缓存目录
+        # 格式: cache_dir/model_name/prompt_version/
+        self.cache_dir = os.path.join(
+            cache_dir,
+            self.model_name,
+            self.prompt_version
+        )
         self.enable_cache = True
 
         # 确保缓存目录存在
-        if not os.path.exists(cache_dir):
-            os.makedirs(cache_dir)
+        if not os.path.exists(self.cache_dir):
+            os.makedirs(self.cache_dir)
+            logger.info(f"创建缓存目录（版本隔离）: {self.cache_dir}")
 
-        # 并行处理配置
-        self.max_workers = max_workers or DEFAULT_MAX_WORKERS
+        # 🔥 并行处理配置（支持动态线程数）
+        self.max_workers = self._compute_max_workers(max_workers)
         self.batch_size = batch_size or DEFAULT_BATCH_SIZE
 
         # 缓存统计
         self.cache_hits = 0
         self.cache_misses = 0
 
-        print(f"🔥 生产级实体提取器已初始化")
-        print(f"   - 实体类型白名单：{ALLOWED_ENTITY_TYPES}")
-        print(f"   - 关系类型白名单：{ALLOWED_RELATION_TYPES}")
-        print(f"   - 最小实体频率：{self.min_entity_frequency}")
-        print(f"   - 名称相似度阈值：{self.name_similarity_threshold}")
+        logger.info(f"🔥 生产级实体提取器已初始化")
+        logger.info(f"   - Model: {self.model_name}")
+        logger.info(f"   - Prompt Version: {self.prompt_version}")
+        logger.info(f"   - Cache Dir: {self.cache_dir}")
+        logger.info(f"   - Max Workers: {self.max_workers}")
+        logger.info(f"   - 实体类型白名单：{ALLOWED_ENTITY_TYPES}")
+        logger.info(f"   - 关系类型白名单：{ALLOWED_RELATION_TYPES}")
+        logger.info(f"   - 最小实体频率：{self.min_entity_frequency}")
+        logger.info(f"   - 名称相似度阈值：{self.name_similarity_threshold}")
+
+    def _extract_model_name(self, llm) -> str:
+        """
+        从 LLM 对象中提取模型名称
+
+        尝试策略：
+        1. llm.model_name (LangChain ChatOpenAI)
+        2. llm.model (某些 LLM 实现)
+        3. llm.__class__.__name__ (fallback)
+
+        Returns:
+            str: 模型名称（用于缓存隔离）
+        """
+        # 策略 1: model_name 属性
+        if hasattr(llm, 'model_name') and llm.model_name:
+            return str(llm.model_name).replace('/', '_')  # 避免路径问题
+
+        # 策略 2: model 属性
+        if hasattr(llm, 'model') and llm.model:
+            return str(llm.model).replace('/', '_')
+
+        # 策略 3: 类名 fallback
+        return llm.__class__.__name__
+
+    def _compute_max_workers(self, max_workers) -> int:
+        """
+        计算实际的最大工作线程数
+
+        支持：
+        - 整数 N: 使用 N 个线程
+        - "auto" 或 0: 自动计算（CPU 核数 + 4，最多 32）
+        - None: 使用默认配置
+
+        Returns:
+            int: 实际线程数
+        """
+        # 如果是 "auto" 或 0，动态计算
+        if max_workers == "auto" or max_workers == 0:
+            # 使用 Python ThreadPoolExecutor 的默认策略
+            # min(32, (cpu_count or 1) + 4)
+            import os
+            cpu_count = os.cpu_count() or 1
+            computed = min(32, cpu_count + 4)
+            logger.info(f"动态计算线程数：CPU 核数 {cpu_count} → {computed} 个线程")
+            return computed
+
+        # 如果是 None，使用默认配置
+        if max_workers is None:
+            return DEFAULT_MAX_WORKERS
+
+        # 如果是整数，直接使用
+        if isinstance(max_workers, int) and max_workers > 0:
+            return max_workers
+
+        # 其他情况，fallback 到默认值
+        logger.warning(f"无效的 max_workers 值: {max_workers}，使用默认值 {DEFAULT_MAX_WORKERS}")
+        return DEFAULT_MAX_WORKERS
 
     def _generate_cache_key(self, text: str) -> str:
         """生成文本的缓存键"""
