@@ -802,11 +802,23 @@ class EntityRelationExtractor:
         """
         构建兼容旧格式的结果
 
+        ⚠️ DEPRECATED: 此方法将在 v2.0 中移除
+
+        新代码应直接使用字典格式（ExtractionResult），不再需要字符串转换。
+        请运行 scripts/migrate_extraction_cache.py 迁移旧缓存。
+
         格式：
         ("entity"{tuple_delimiter}<name>{tuple_delimiter}<type>{tuple_delimiter}<desc>){record_delimiter}
         ("relationship"{tuple_delimiter}<src>{tuple_delimiter}<tgt>{tuple_delimiter}<type>{tuple_delimiter}<desc>{tuple_delimiter}<strength>){record_delimiter}
         {completion_delimiter}
         """
+        import warnings
+        warnings.warn(
+            "_build_compatible_result is deprecated and will be removed in v2.0. "
+            "Use dict format (ExtractionResult) instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
         lines = []
 
         # 实体
