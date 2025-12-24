@@ -201,10 +201,18 @@ def post_process_entities(
     # [核心修复] 1. 制作全大写的白名单集合
     allowed_types_upper = {t.upper() for t in allowed_entity_types}
 
-    # --- [新增调试代码] ---
-    print(f"\n🔍 DEBUG: 白名单(Allowed): {allowed_types_upper}")
+    # --- [DEBUG] 实体类型过滤日志 ---
+    logger.debug(
+        "实体类型过滤白名单",
+        allowed_types=list(allowed_types_upper),
+        raw_entity_count=len(raw_entities)
+    )
     for e in raw_entities:
-        print(f"   🧐 LLM输出: Name='{e.get('name')}', Type='{e.get('type')}'")
+        logger.debug(
+            "LLM输出实体",
+            entity_name=e.get('name'),
+            entity_type=e.get('type')
+        )
     # --------------------------
 
     # normalize names
@@ -802,11 +810,23 @@ class EntityRelationExtractor:
         """
         构建兼容旧格式的结果
 
+        ⚠️ DEPRECATED: 此方法将在 v2.0 中移除
+
+        新代码应直接使用字典格式（ExtractionResult），不再需要字符串转换。
+        请运行 scripts/migrate_extraction_cache.py 迁移旧缓存。
+
         格式：
         ("entity"{tuple_delimiter}<name>{tuple_delimiter}<type>{tuple_delimiter}<desc>){record_delimiter}
         ("relationship"{tuple_delimiter}<src>{tuple_delimiter}<tgt>{tuple_delimiter}<type>{tuple_delimiter}<desc>{tuple_delimiter}<strength>){record_delimiter}
         {completion_delimiter}
         """
+        import warnings
+        warnings.warn(
+            "_build_compatible_result is deprecated and will be removed in v2.0. "
+            "Use dict format (ExtractionResult) instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
         lines = []
 
         # 实体

@@ -290,6 +290,8 @@ class KnowledgeGraphBuilder:
                 
                 # 将处理结果合并回文档数据
                 file_content_map = {}
+                old_format_count = 0  # 统计旧格式数量
+
                 for processed_file in processed_file_contents:
                     # 兼容不同的返回格式
                     filename = processed_file[0]
@@ -305,7 +307,25 @@ class KnowledgeGraphBuilder:
                         self.console.print(f"[yellow]警告: 文件 {filename} 返回格式异常，长度: {len(processed_file)}[/yellow]")
                         continue
 
+                    # 检测并警告旧格式
+                    if entity_data and len(entity_data) > 0:
+                        first_item = entity_data[0]
+                        if isinstance(first_item, str) or isinstance(first_item, tuple):
+                            old_format_count += 1
+
                     file_content_map[filename] = entity_data
+
+                # 如果检测到旧格式，给出警告
+                if old_format_count > 0:
+                    self.console.print(
+                        f"[yellow]⚠️  检测到 {old_format_count} 个文件使用旧的实体抽取格式[/yellow]"
+                    )
+                    self.console.print(
+                        "[yellow]   建议运行: python scripts/migrate_extraction_cache.py[/yellow]"
+                    )
+                    self.console.print(
+                        "[yellow]   v2.0 将移除对旧格式的支持[/yellow]"
+                    )
                 
                 # 使用映射将结果放回到原始文档中
                 for doc in self.processed_documents:
