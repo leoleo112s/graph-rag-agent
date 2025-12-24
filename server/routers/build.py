@@ -6,6 +6,10 @@
 - SSE (Server-Sent Events) 进度推送
 - 触发构建任务的 HTTP 端点
 - 构建状态查询
+
+改进：
+- ✅ 使用统一的分布式锁（支持多进程部署）
+- ✅ 替换内存锁为 Redis 锁（解决锁隔离问题）
 """
 import asyncio
 import logging
@@ -18,14 +22,19 @@ from pydantic import BaseModel, Field
 
 from utils.progress_broadcaster import get_broadcaster
 from utils.progress_manager import get_progress_manager
+from utils.build_lock import get_build_lock_manager  # ✅ 使用统一的锁管理器
 from graphrag_agent.config.settings import FILES_DIR
 
 _LOGGER = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/build", tags=["build"])
 
+# ✅ 移除独立的锁和状态变量（已由 BuildLockManager 统一管理）
+# _build_running = False  # ❌ 删除
+# _build_lock = asyncio.Lock()  # ❌ 删除
 
-# ========== WebSocket 端点 ==========
+# 全局锁管理器
+_lock_manager = get_build_lock_manager()
 
 
 @router.websocket("/ws/progress")
@@ -220,10 +229,11 @@ async def _run_build_task(request: BuildRequest):
     Args:
         request: 构建请求参数
     """
-    global _build_running
-
     broadcaster = get_broadcaster()
     progress_mgr = get_progress_manager()
+
+    # ✅ 使用统一的分布式锁（无需 global 变量）
+    lock_resource = "graph_build"
 
     try:
         # 动态导入，避免循环依赖和模块加载时的 Neo4j 连接
@@ -327,8 +337,8 @@ async def _run_build_task(request: BuildRequest):
         )
 
     finally:
-        async with _build_lock:
-            _build_running = False
+        # ✅ 释放分布式锁
+        await _lock_manager.release_async(lock_resource)
 
 
 @router.post("/run", response_model=BuildResponse)
@@ -344,6 +354,10 @@ async def run_build(
     **监听进度的两种方式**：
     1. WebSocket: `/build/ws/progress` (双向通信，更灵活)
     2. SSE: `/build/sse/progress` (单向推送，更简单)
+
+    **改进**：
+    - ✅ 使用分布式锁，支持多进程部署
+    - ✅ 与 admin.py 共享同一个锁，防止并发冲突
 
     Args:
         request: 构建请求参数
@@ -363,19 +377,17 @@ async def run_build(
         curl http://localhost:8000/build/sse/status
         ```
     """
-    global _build_running
+    lock_resource = "graph_build"
 
-    async with _build_lock:
-        if _build_running:
-            return BuildResponse(
-                status="already_running",
-                message="已有构建任务正在运行，请等待其完成",
-                task_id=None
-            )
+    # ✅ 尝试获取分布式锁
+    if not await _lock_manager.acquire_async(lock_resource, ttl=7200):  # 2 小时 TTL
+        return BuildResponse(
+            status="already_running",
+            message="已有构建任务正在运行，请等待其完成（来自 build.py 或 admin.py）",
+            task_id=None
+        )
 
-        _build_running = True
-
-    # 在后台启动构建任务
+    # 在后台启动构建任务（锁会在任务完成后释放）
     background_tasks.add_task(_run_build_task, request)
 
     return BuildResponse(
@@ -390,13 +402,15 @@ async def get_build_status() -> Dict[str, Any]:
     """
     查询当前构建状态
 
+    ✅ 改进：使用分布式锁状态，支持多进程
+
     Returns:
         构建状态信息
     """
-    global _build_running
+    lock_resource = "graph_build"
 
     return {
-        "is_running": _build_running,
+        "is_running": _lock_manager.is_locked(lock_resource),
         "active_connections": len(get_broadcaster().active_connections),
     }
 
@@ -406,18 +420,21 @@ async def stop_build():
     """
     停止当前构建任务（TODO: 需要实现优雅停止机制）
 
+    ✅ 改进：使用分布式锁
+
     Returns:
         停止结果
     """
-    global _build_running
+    lock_resource = "graph_build"
 
-    # TODO: 实现实际的停止逻辑
-    async with _build_lock:
-        if not _build_running:
-            raise HTTPException(status_code=400, detail="当前没有运行中的构建任务")
+    # ✅ 检查是否有任务在运行
+    if not _lock_manager.is_locked(lock_resource):
+        raise HTTPException(status_code=400, detail="当前没有运行中的构建任务")
 
-        _build_running = False
+    # TODO: 实现实际的停止逻辑（需要任务取消机制）
+    # 目前仅释放锁，实际任务可能仍在运行
+    await _lock_manager.release_async(lock_resource)
 
     await get_broadcaster().emit_status("stopped", "构建任务已被用户停止")
 
-    return {"status": "stopped", "message": "构建任务停止指令已发送"}
+    return {"status": "stopped", "message": "构建任务停止指令已发送（锁已释放）"}
