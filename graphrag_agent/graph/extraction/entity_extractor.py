@@ -201,10 +201,18 @@ def post_process_entities(
     # [核心修复] 1. 制作全大写的白名单集合
     allowed_types_upper = {t.upper() for t in allowed_entity_types}
 
-    # --- [新增调试代码] ---
-    print(f"\n🔍 DEBUG: 白名单(Allowed): {allowed_types_upper}")
+    # --- [DEBUG] 实体类型过滤日志 ---
+    logger.debug(
+        "实体类型过滤白名单",
+        allowed_types=list(allowed_types_upper),
+        raw_entity_count=len(raw_entities)
+    )
     for e in raw_entities:
-        print(f"   🧐 LLM输出: Name='{e.get('name')}', Type='{e.get('type')}'")
+        logger.debug(
+            "LLM输出实体",
+            entity_name=e.get('name'),
+            entity_type=e.get('type')
+        )
     # --------------------------
 
     # normalize names

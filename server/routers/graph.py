@@ -17,10 +17,14 @@ API Endpoints:
     - GET  /source/file-info        - 获取文件信息
 """
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Query
 from typing import Optional, Dict, Any
 from server_config.database import get_db_manager
-import traceback
+from utils.exceptions import ResourceNotFoundError, DatabaseError
+from utils.logger import get_logger
+
+# 获取日志器
+logger = get_logger(__name__)
 
 # 导入 kg_service 中的功能
 from services.kg_service import (
@@ -59,26 +63,23 @@ async def get_graph_overview(
         - nodes: 节点列表
         - links: 边列表
     """
-    try:
-        result = get_knowledge_graph(limit=limit, query=query)
+    # 移除 try-except，全局异常处理器会自动捕获
+    logger.info("获取图谱概览", limit=limit, query=query)
 
-        if "error" in result:
-            raise HTTPException(status_code=500, detail=result["error"])
+    result = get_knowledge_graph(limit=limit, query=query)
 
-        return {
-            "status": "success",
-            "data": result,
-            "meta": {
-                "node_count": len(result.get("nodes", [])),
-                "link_count": len(result.get("links", []))
-            }
+    if "error" in result:
+        # 使用 DatabaseError 抛出业务异常
+        raise DatabaseError(result["error"])
+
+    return {
+        "status": "success",
+        "data": result,
+        "meta": {
+            "node_count": len(result.get("nodes", [])),
+            "link_count": len(result.get("links", []))
         }
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"获取图谱概览失败: {str(e)}")
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"获取图谱概览失败: {str(e)}")
+    }
 
 
 @router.get("/subgraph", summary="获取实体子图")
