@@ -156,6 +156,45 @@ graph-rag-agent/
   - 支持传统模式与动态模式自动切换
   - 完全向后兼容
 
+### 🏭 生产级架构特性（New！）
+
+- **📋 统一 API 返回格式**：标准化 JSON 响应 + 细粒度错误码
+  - `BaseResponse[T]` 泛型模型（code + msg + data）
+  - 分层错误码体系（51xx LLM, 52xx DB, 53xx Cache, 54xx File, 55xx Extraction）
+  - API 版本控制（/api/v1 前缀）
+  - 全局异常处理（BusinessException, HTTPException, Exception）
+  - DEBUG 模式控制错误详情可见性
+
+- **📊 结构化日志系统**：生产环境友好的日志架构
+  - JSONFormatter（生产）+ ColoredConsoleFormatter（开发）
+  - 自动上下文追踪（request_id, user_id, session_id）
+  - 日志轮转（100MB/文件，5 份备份）
+  - Pub/Sub 支持实时日志推送
+  - 替代 604 个 print() 调用和 363 个 console.print()
+
+- **⚙️ Celery 任务队列**：异步任务处理 + 进程隔离
+  - 替代 BackgroundTasks（解决资源竞争）
+  - 自动重试（最多 3 次，60s 间隔）
+  - 任务超时控制（1h soft, 1h5m hard）
+  - Redis 作为 broker 和 result backend
+  - Flower 监控面板
+  - 分布式锁防止并发构建
+
+- **📡 Redis 状态管理**：多 worker 进度同步
+  - 替代内存单例（支持水平扩展）
+  - Redis Pub/Sub 实时进度推送
+  - WebSocket 广播构建进度
+  - TTL 自动过期清理
+  - 持久化任务状态追踪
+
+- **🗄️ Neo4j 部署优化**：生产环境最佳实践
+  - 环境变量化内存配置（HEAP_INITIAL_SIZE, HEAP_MAX_SIZE, PAGECACHE_SIZE）
+  - 索引预创建脚本（`scripts/init_indices.py`）
+  - 动态 Schema 刷新开关（`NEO4J_REFRESH_SCHEMA`）
+  - 增强健康检查（读/写延迟、连接池、磁盘空间）
+  - APOC 插件配置文档
+  - 文件上传安全校验（6 层防护）
+
 ### 🚀 性能与优化特性
 
 - **🔥 生产级实体抽取重构**：三板斧质量控制 + Schema-aware Routing
@@ -261,7 +300,7 @@ graph-rag-agent/
 
 请参考：[快速开始文档](./assets/start.md)
 
-### 本地部署（Neo4j Docker + 前后端分进程）
+### 本地部署（推荐：开发环境）
 
 ```bash
 # 1) 克隆项目
@@ -279,14 +318,85 @@ pip install -e .
 
 # 4) 配置环境变量
 cp .env.example .env
-# 按需填入 OpenAI/Neo4j 等密钥，确保 CHUNK_VECTOR_INDEX/ENTITY_VECTOR_INDEX 与 Neo4j 中一致
+# 编辑 .env 文件，填入必要配置：
+# - OPENAI_API_KEY, OPENAI_BASE_URL
+# - NEO4J_URI, NEO4J_USERNAME, NEO4J_PASSWORD
+# - 可选：调整 Neo4j 内存配置（根据服务器规格）
 
-# 5) 启动后端
-uvicorn server.main:app --reload --host 0.0.0.0 --port 8000
-# 可用 /status 检查向量索引是否就绪
+# 5) 创建 Neo4j 索引（生产环境必须，开发环境可选）
+python scripts/init_indices.py
+# 或手动执行：cypher-shell -u neo4j -p 12345678 < scripts/init_indices.cypher
 
-# 6) 启动前端（新终端）
-streamlit run frontend/app.py --server.port 8501 --server.address 0.0.0.0
+# 6) 启动后端
+python server/main.py
+# 默认端口: 8000
+# 健康检查: http://localhost:8000/api/v1/admin/health
+
+# 7) 启动前端（新终端）
+streamlit run frontend/app.py
+# 默认端口: 8501
+# 访问: http://localhost:8501
+```
+
+### 生产环境部署（可选：Celery + Redis）
+
+如需使用任务队列功能（异步图谱构建、进度追踪）：
+
+```bash
+# 1) 安装 Redis（如果尚未安装）
+# macOS: brew install redis && brew services start redis
+# Ubuntu: sudo apt install redis-server && sudo systemctl start redis
+# Docker: docker run -d --name redis -p 6379:6379 redis:7
+
+# 2) 配置环境变量（添加到 .env）
+echo "CELERY_BROKER_URL=redis://localhost:6379/0" >> .env
+echo "CELERY_RESULT_BACKEND=redis://localhost:6379/1" >> .env
+echo "REDIS_HOST=localhost" >> .env
+echo "REDIS_PORT=6379" >> .env
+
+# 3) 启动 Celery Worker（新终端）
+celery -A server.celery_app worker --loglevel=info --concurrency=2
+
+# 4) 启动 Flower 监控（可选，新终端）
+celery -A server.celery_app flower --port=5555
+# 访问: http://localhost:5555
+
+# 5) 使用 Celery 版 API
+# POST http://localhost:8000/api/v1/build-celery/run
+# GET  http://localhost:8000/api/v1/build-celery/status/{task_id}
+# WebSocket: ws://localhost:8000/api/v1/build-celery/ws/{task_id}
+```
+
+### Neo4j 内存调优（生产环境推荐）
+
+根据服务器规格调整 `.env` 中的内存配置：
+
+```env
+# 4GB 服务器
+NEO4J_HEAP_INITIAL_SIZE=1G
+NEO4J_HEAP_MAX_SIZE=1G
+NEO4J_PAGECACHE_SIZE=1G
+
+# 8GB 服务器
+NEO4J_HEAP_INITIAL_SIZE=2G
+NEO4J_HEAP_MAX_SIZE=2G
+NEO4J_PAGECACHE_SIZE=2G
+
+# 16GB 服务器
+NEO4J_HEAP_INITIAL_SIZE=4G
+NEO4J_HEAP_MAX_SIZE=4G
+NEO4J_PAGECACHE_SIZE=6G
+
+# 32GB 服务器
+NEO4J_HEAP_INITIAL_SIZE=8G
+NEO4J_HEAP_MAX_SIZE=8G
+NEO4J_PAGECACHE_SIZE=12G
+```
+
+重启 Docker Compose 使配置生效：
+```bash
+docker compose down
+docker compose up -d
 ```
 
 ### 方式二：AI 向导模式（推荐新用户）
@@ -448,6 +558,45 @@ streamlit run frontend/app.py
 - **性能监控**：跟踪 API 调用耗时，优化系统性能
 - **用户反馈机制**：收集用户对回答的评价，持续改进系统
 
+### 生产级 API 架构（New！）
+
+- **统一 JSON 返回格式**：
+  - `BaseResponse[T]` 泛型模型（code, msg, data）
+  - 细粒度错误码（200 成功, 4xx 客户端错误, 5xxx 服务端错误）
+  - API 版本控制（/api/v1 前缀）
+  - 三层异常处理（BusinessException → HTTPException → Exception）
+  - DEBUG 模式控制错误详情可见性
+
+- **结构化日志系统**：
+  - 生产环境 JSON 格式（便于日志分析）
+  - 开发环境彩色控制台（可读性强）
+  - 请求链路追踪（request_id, user_id, session_id）
+  - 日志轮转和归档（100MB/文件，保留 5 份）
+  - Pub/Sub 实时日志推送
+
+- **任务队列架构**：
+  - Celery + Redis 异步任务处理
+  - 进程隔离（FastAPI Web + Celery Worker）
+  - 自动重试和超时控制
+  - 分布式锁防止并发冲突
+  - Flower 监控面板
+  - WebSocket 实时进度推送
+
+- **文件上传安全**：
+  - 6 层安全防护（文件名、扩展名、MIME 类型、魔术字节、大小、哈希）
+  - 防止路径遍历、扩展名伪造、DoS 攻击
+  - 支持批量上传和去重
+  - 病毒扫描占位（生产环境可集成 ClamAV）
+  - 参考实现：`server/routers/upload.py`
+
+- **增强健康检查**：
+  - Neo4j 读/写测试（带延迟测量）
+  - 连接池状态（活跃/空闲连接数）
+  - 磁盘空间检查（告警阈值）
+  - 文件目录可写性测试
+  - 三级状态（healthy, degraded, unhealthy）
+  - 支持 Prometheus/Nginx/K8s 集成
+
 ### 前后端实现
 
 - **Web 管理界面**（New！）：
@@ -461,6 +610,9 @@ streamlit run frontend/app.py
 - **调试模式**：开发者可查看执行轨迹和搜索过程
 - **RESTful API**：完善的后端 API 设计，支持扩展开发
   - 新增 AI Copilot API 端点（文档分析、配置推荐、应用推荐）
+  - 新增 Celery 构建 API（/api/v1/build-celery）
+  - 增强健康检查 API（/api/v1/admin/health）
+  - 文件上传校验 API（/api/v1/upload）
 
 ## 🖥️ 简单演示
 
@@ -750,16 +902,41 @@ cp graph_config.json graph_config.json.backup  # 新增：图谱配置备份
 # git pull 后如果配置冲突，可以还原
 ```
 
+### 生产环境部署清单
+
+完整的生产环境部署步骤，请参考 [`NEO4J_DEPLOYMENT_IMPROVEMENTS.md`](./NEO4J_DEPLOYMENT_IMPROVEMENTS.md)
+
+**关键检查项**：
+
+- [ ] **内存调优**：根据服务器规格配置 Neo4j 内存（`.env` 文件）
+- [ ] **索引预创建**：运行 `python scripts/init_indices.py`
+- [ ] **关闭 Schema 刷新**：设置 `NEO4J_REFRESH_SCHEMA=false`
+- [ ] **健康检查**：配置负载均衡使用 `/api/v1/admin/health`
+- [ ] **日志配置**：设置 `DEBUG=false` 启用 JSON 日志
+- [ ] **任务队列**（可选）：部署 Redis + Celery Worker
+- [ ] **文件上传安全**：根据 `upload.py` 实现文件校验
+- [ ] **监控告警**：集成 Prometheus/Grafana
+
+**相关文档**：
+- [API 改进文档](./API_IMPROVEMENTS.md)
+- [日志和异常处理改进](./LOGGING_AND_EXCEPTION_IMPROVEMENTS.md)
+- [任务队列和进度改进](./TASK_QUEUE_AND_PROGRESS_IMPROVEMENTS.md)
+- [Neo4j 部署改进](./NEO4J_DEPLOYMENT_IMPROVEMENTS.md)
+
 ### 关闭系统
 
 ```bash
-# 方式 1: 优雅关闭
+# 方式 1: 优雅关闭（推荐）
 # 在运行服务的终端按 Ctrl+C
+# 如果使用 Celery，也需要停止 worker 进程
 
-# 方式 2: 停止 Neo4j 容器
+# 方式 2: 停止所有容器
 docker compose down
 
-# 方式 3: 停止 Docker Desktop（释放所有资源）
+# 方式 3: 完全清理（删除数据）
+docker compose down -v  # 警告：会删除 Neo4j 数据！
+
+# 方式 4: 停止 Docker Desktop（释放所有资源）
 # macOS: 菜单栏图标 -> Quit Docker Desktop
 # Linux: sudo systemctl stop docker
 ```
