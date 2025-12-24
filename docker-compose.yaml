@@ -8,9 +8,9 @@ services:
       NEO4J_AUTH: "neo4j/12345678"
       NEO4J_PLUGINS: '["apoc", "graph-data-science"]'
       NEO4J_dbms_security_procedures_unrestricted: "apoc.*,gds.*"
-      NEO4J_dbms_memory_heap_initial__size: "2G"
-      NEO4J_dbms_memory_heap_max__size: "2G"
-      NEO4J_dbms_memory_pagecache_size: "1G"
+      NEO4J_dbms_memory_heap_initial__size: "${NEO4J_HEAP_INITIAL_SIZE:-2G}"
+      NEO4J_dbms_memory_heap_max__size: "${NEO4J_HEAP_MAX_SIZE:-2G}"
+      NEO4J_dbms_memory_pagecache_size: "${NEO4J_PAGECACHE_SIZE:-1G}"
       NEO4J_apoc_trigger_enabled: "true"
     restart: unless-stopped
     volumes:

@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from . import chat, feedback, knowledge_graph, source, admin, build, graph, status
+from . import chat, feedback, knowledge_graph, source, admin, build, graph, status, upload
 
 # 创建总路由器
 api_router = APIRouter()
@@ -13,5 +13,6 @@ api_router.include_router(admin.router, tags=["管理"])
 api_router.include_router(build.router, tags=["图谱构建"])
 api_router.include_router(graph.router, tags=["图谱探索"])
 api_router.include_router(status.router, tags=["系统状态"])
+api_router.include_router(upload.router, tags=["文件上传"])
 
 __all__ = ['api_router']

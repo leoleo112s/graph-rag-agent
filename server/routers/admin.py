@@ -262,13 +262,156 @@ async def get_graph_stats():
 
 @router.get("/health")
 async def health_check():
-    """健康检查"""
+    """
+    健康检查（增强版）
+
+    检查项：
+    1. Neo4j 连接状态（读取测试）
+    2. Neo4j 写入测试（延迟测量）
+    3. 连接池状态（活跃/空闲连接数）
+    4. 磁盘空间检查
+    5. 文件目录可写性
+
+    返回：
+    - status: 总体状态（healthy, degraded, unhealthy）
+    - checks: 各项检查详情
+    - timestamp: 检查时间戳
+    """
+    import time
+
+    checks = {
+        "neo4j_read": {"status": "unknown", "latency_ms": None, "error": None},
+        "neo4j_write": {"status": "unknown", "latency_ms": None, "error": None},
+        "neo4j_pool": {"status": "unknown", "active": None, "idle": None, "error": None},
+        "disk_space": {"status": "unknown", "free_gb": None, "error": None},
+        "files_dir": {"status": "unknown", "writable": False, "error": None},
+    }
+
+    overall_status = "healthy"
+
+    # 1. Neo4j 读取测试
     try:
-        connection_manager.execute_query("RETURN 1")
-        neo4j_status = "healthy"
-    except:
-        neo4j_status = "unhealthy"
-    return {"status": "ok", "neo4j": neo4j_status, "timestamp": datetime.now().isoformat()}
+        start = time.time()
+        connection_manager.execute_query("RETURN 1 AS test")
+        latency_ms = (time.time() - start) * 1000
+
+        checks["neo4j_read"]["status"] = "healthy"
+        checks["neo4j_read"]["latency_ms"] = round(latency_ms, 2)
+
+        # 超过 100ms 标记为降级
+        if latency_ms > 100:
+            checks["neo4j_read"]["status"] = "degraded"
+            overall_status = "degraded"
+    except Exception as e:
+        checks["neo4j_read"]["status"] = "unhealthy"
+        checks["neo4j_read"]["error"] = str(e)
+        overall_status = "unhealthy"
+
+    # 2. Neo4j 写入测试（使用临时节点）
+    try:
+        start = time.time()
+        test_id = str(uuid.uuid4())
+
+        # 创建临时测试节点
+        create_query = f"""
+        CREATE (n:__HealthCheck__ {{id: '{test_id}', timestamp: timestamp()}})
+        RETURN n.id AS id
+        """
+        result = connection_manager.execute_query(create_query)
+
+        # 删除测试节点
+        delete_query = f"MATCH (n:__HealthCheck__ {{id: '{test_id}'}}) DELETE n"
+        connection_manager.execute_query(delete_query)
+
+        latency_ms = (time.time() - start) * 1000
+
+        checks["neo4j_write"]["status"] = "healthy"
+        checks["neo4j_write"]["latency_ms"] = round(latency_ms, 2)
+
+        # 超过 200ms 标记为降级
+        if latency_ms > 200:
+            checks["neo4j_write"]["status"] = "degraded"
+            if overall_status == "healthy":
+                overall_status = "degraded"
+    except Exception as e:
+        checks["neo4j_write"]["status"] = "unhealthy"
+        checks["neo4j_write"]["error"] = str(e)
+        overall_status = "unhealthy"
+
+    # 3. 连接池状态检查
+    try:
+        # 查询连接池信息（需要 APOC 插件）
+        pool_query = """
+        CALL dbms.queryJmx('org.neo4j:*,name=Pool,*')
+        YIELD name, attributes
+        RETURN name, attributes
+        """
+        pool_result = connection_manager.execute_query(pool_query)
+
+        if pool_result:
+            # 提取连接池指标
+            for record in pool_result:
+                attrs = record.get('attributes', {})
+                if 'NumIdle' in attrs and 'NumActive' in attrs:
+                    checks["neo4j_pool"]["idle"] = attrs['NumIdle']
+                    checks["neo4j_pool"]["active"] = attrs['NumActive']
+                    checks["neo4j_pool"]["status"] = "healthy"
+                    break
+        else:
+            # 如果 APOC 不可用，使用备用检查
+            checks["neo4j_pool"]["status"] = "healthy"
+            checks["neo4j_pool"]["error"] = "APOC unavailable, pool metrics not available"
+    except Exception as e:
+        # 连接池检查失败不影响整体状态（非关键）
+        checks["neo4j_pool"]["status"] = "degraded"
+        checks["neo4j_pool"]["error"] = f"Pool check failed: {str(e)}"
+
+    # 4. 磁盘空间检查
+    try:
+        import shutil
+        total, used, free = shutil.disk_usage("/")
+        free_gb = free / (1024 ** 3)
+
+        checks["disk_space"]["free_gb"] = round(free_gb, 2)
+
+        if free_gb < 1:  # 少于 1GB
+            checks["disk_space"]["status"] = "unhealthy"
+            overall_status = "unhealthy"
+        elif free_gb < 5:  # 少于 5GB
+            checks["disk_space"]["status"] = "degraded"
+            if overall_status == "healthy":
+                overall_status = "degraded"
+        else:
+            checks["disk_space"]["status"] = "healthy"
+    except Exception as e:
+        checks["disk_space"]["status"] = "degraded"
+        checks["disk_space"]["error"] = str(e)
+
+    # 5. 文件目录可写性检查
+    try:
+        files_dir = Path(FILES_DIR)
+
+        # 确保目录存在
+        files_dir.mkdir(parents=True, exist_ok=True)
+
+        # 测试写入
+        test_file = files_dir / f".health_check_{uuid.uuid4()}.tmp"
+        test_file.write_text("health check test")
+        test_file.unlink()  # 删除测试文件
+
+        checks["files_dir"]["status"] = "healthy"
+        checks["files_dir"]["writable"] = True
+    except Exception as e:
+        checks["files_dir"]["status"] = "unhealthy"
+        checks["files_dir"]["writable"] = False
+        checks["files_dir"]["error"] = str(e)
+        overall_status = "unhealthy"
+
+    return {
+        "status": overall_status,
+        "checks": checks,
+        "timestamp": datetime.now().isoformat()
+    }
 
 
 @router.get("/files/list")

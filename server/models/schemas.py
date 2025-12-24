@@ -199,6 +199,7 @@ class ErrorCode:
     FILE_NOT_FOUND = 5402
     FILE_READ_ERROR = 5403
     FILE_WRITE_ERROR = 5404
+    FILE_DELETE_ERROR = 5405
 
     # 实体抽取相关错误 (55xx)
     EXTRACTION_ERROR = 5501
