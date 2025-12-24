@@ -348,53 +348,27 @@ class KnowledgeGraphBuilder:
                             self.console.print(f"[yellow]警告: 文件 {doc['filename']} 的实体数据缺失或格式不正确[/yellow]")
                             continue
 
-                        # ✅ 兼容性处理：规范化 entity_data 中的每个结果为 dict 格式
+                        # 强制要求标准格式：entity_data 必须是字典列表
                         normalized_entity_data = []
                         for res in entity_data:
                             if isinstance(res, dict):
-                                # ✅ 新格式：dict，直接使用
+                                # 确保包含必要的键，如果没有则补空列表
+                                res.setdefault("entities", [])
+                                res.setdefault("relationships", [])
+                                res.setdefault("relations", res.get("relationships", []))  # 兼容旧字段名
+                                res.setdefault("bridges", [])
+                                res.setdefault("domains", [])
                                 normalized_entity_data.append(res)
-                            elif isinstance(res, (tuple, list)):
-                                # ⚠️ 老格式：tuple/list，转换为 dict
-                                if len(res) >= 2:
-                                    normalized_entity_data.append({
-                                        "entities": res[0] if len(res) > 0 else [],
-                                        "relations": res[1] if len(res) > 1 else [],
-                                        "relationships": res[1] if len(res) > 1 else [],
-                                        "bridges": res[2] if len(res) > 2 else [],
-                                        "domains": res[3] if len(res) > 3 else [],
-                                        "raw": str(res)
-                                    })
-                                else:
-                                    # 格式不正确，使用空结构
-                                    normalized_entity_data.append({
-                                        "entities": [],
-                                        "relations": [],
-                                        "relationships": [],
-                                        "bridges": [],
-                                        "domains": [],
-                                        "raw": str(res)
-                                    })
-                            elif isinstance(res, str):
-                                # ⚠️ 老格式：string（可能是原始 LLM 输出），转换为 dict
-                                normalized_entity_data.append({
-                                    "entities": [],
-                                    "relations": [],
-                                    "relationships": [],
-                                    "bridges": [],
-                                    "domains": [],
-                                    "raw": res
-                                })
                             else:
-                                # 未知格式，使用空结构
-                                normalized_entity_data.append({
-                                    "entities": [],
-                                    "relations": [],
-                                    "relationships": [],
-                                    "bridges": [],
-                                    "domains": [],
-                                    "raw": str(res)
-                                })
+                                # 遇到非 dict 格式直接报错，强制开发者修复上游 Extractor
+                                self.console.print(
+                                    f"[red]❌ 错误: 发现非法的实体数据格式 {type(res).__name__}，必须为 dict。"
+                                    f"请检查 Extractor 返回格式。忽略此条目。[/red]"
+                                )
+                                # 记录详细信息用于调试
+                                import logging
+                                logging.error(f"Invalid entity data format: type={type(res)}, value={res}")
+                                continue
 
                         # 使用规范化后的数据
                         entity_data = normalized_entity_data
