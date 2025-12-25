@@ -57,3 +57,8 @@ textract==1.6.3
 # triton==3.1.0
 # regex==2024.11.6
 # tenacity==9.0.0
+# Multimodal processing (OCR/ASR)
+paddleocr==2.7.3
+paddlepaddle==2.6.0
+openai-whisper==20231117
+Pillow>=10.0.0
