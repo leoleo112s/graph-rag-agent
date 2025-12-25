@@ -310,12 +310,48 @@ async def _run_build_task(request: BuildRequest):
 
         elif request.mode == "full":
             # 全量构建
-            await broadcaster.emit_log("执行全量构建...", "INFO")
-            await broadcaster.emit_log("全量构建功能开发中，请使用增量模式", "WARNING")
+            await broadcaster.emit_log("执行全量构建（将清理所有现有数据）...", "WARNING")
             await progress_mgr.update(
-                stage="error",
-                details="全量构建功能开发中",
-                log="全量构建功能开发中，请使用增量模式"
+                percent=10,
+                stage="full_build",
+                details="执行全量构建...",
+                log="开始全量构建（先清理数据，再重建）"
+            )
+
+            # ✅ 执行真正的全量构建：clean=True
+            full_result = await manager.run_full_pipeline(
+                file_paths=None,  # None 表示处理所有文件
+                clean=True  # 清理现有数据
+            )
+
+            # 提取结果统计
+            clean_result = full_result.get('clean', {})
+            l0_result = full_result.get('l0', {})
+            l1_result = full_result.get('l1', {})
+
+            # 记录清理结果
+            if clean_result.get('status') == 'success':
+                neo4j_cleared = clean_result.get('results', {}).get('neo4j', {})
+                nodes_cleared = neo4j_cleared.get('cleared_nodes', 0)
+                rels_cleared = neo4j_cleared.get('cleared_relationships', 0)
+                await broadcaster.emit_log(
+                    f"数据清理完成：删除 {nodes_cleared} 个节点，{rels_cleared} 个关系",
+                    "INFO"
+                )
+
+            l0_files = l0_result.get('processed_count', 0)
+            l1_tasks = l1_result.get('submitted_count', 0)
+
+            await broadcaster.emit_log(
+                f"全量构建完成：处理 {l0_files} 个文件，提交 {l1_tasks} 个图谱任务",
+                "INFO"
+            )
+            await progress_mgr.update(
+                percent=100,
+                stage="full_build_completed",
+                details=f"全量构建完成：{l0_files} 个文件",
+                log=f"✅ 全量构建完成",
+                stats={"l0_files": l0_files, "l1_tasks": l1_tasks}
             )
 
         await broadcaster.emit_status("completed", "图谱构建任务完成")
