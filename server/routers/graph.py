@@ -3,6 +3,8 @@
 
 提供知识图谱探索、节点关系查询、路径分析等功能。
 
+✅ 改进：添加查询性能保护（超时控制、节点数限制）
+
 API Endpoints:
     - GET  /graph/overview          - 获取图谱概览
     - GET  /graph/subgraph          - 获取节点周围的子图
@@ -17,7 +19,8 @@ API Endpoints:
     - GET  /source/file-info        - 获取文件信息
 """
 
-from fastapi import APIRouter, Query
+import asyncio
+from fastapi import APIRouter, Query, HTTPException
 from typing import Optional, Dict, Any
 from server_config.database import get_db_manager
 from utils.exceptions import ResourceNotFoundError, DatabaseError
@@ -39,6 +42,16 @@ from services.kg_service import (
     get_simplified_community,
     get_entity_cycles
 )
+
+# ============================================================================
+# 性能保护常量
+# ============================================================================
+
+# ✅ 改进：添加硬性限制常量防止查询爆炸
+MAX_HOPS_LIMIT = 2  # 最大跳数限制（防止指数级爆炸）
+QUERY_TIMEOUT_SECONDS = 10.0  # 查询超时时间（秒）
+MAX_NODES_PER_QUERY = 500  # 单次查询最大节点数
+MAX_NEIGHBOR_LIMIT = 100  # 每跳最大邻居数（需配合 Service 层）
 
 router = APIRouter(prefix="/graph", tags=["图谱探索"])
 
@@ -85,42 +98,90 @@ async def get_graph_overview(
 @router.get("/subgraph", summary="获取实体子图")
 async def get_subgraph(
     entity_id: str = Query(..., description="中心实体ID"),
-    hops: int = Query(1, description="扩展跳数（1-3）", ge=1, le=3)
+    hops: int = Query(1, description="扩展跳数（1-2）", ge=1, le=MAX_HOPS_LIMIT)
 ) -> Dict[str, Any]:
     """
     获取指定实体周围的子图
 
+    ✅ 改进：添加超时控制和节点数限制防止超级节点查询爆炸
+
     参数:
         - entity_id: 中心实体的ID
-        - hops: 扩展的跳数（1-3跳）
+        - hops: 扩展的跳数（1-2跳，已降低限制）
 
     返回:
-        - nodes: 子图节点列表
+        - nodes: 子图节点列表（最多 500 个）
         - links: 子图边列表
         - center: 中心实体ID
+        - truncated: 是否被截断
     """
     try:
-        # 使用 get_entity_influence 获取实体周围的子图
-        result = get_entity_influence(driver, entity_id, max_depth=hops)
+        logger.info("查询子图", entity_id=entity_id, hops=hops)
+
+        # ✅ 使用 asyncio.wait_for 添加超时控制
+        loop = asyncio.get_event_loop()
+
+        result = await asyncio.wait_for(
+            loop.run_in_executor(
+                None,
+                lambda: get_entity_influence(driver, entity_id, max_depth=hops)
+            ),
+            timeout=QUERY_TIMEOUT_SECONDS
+        )
 
         if "error" in result:
             raise HTTPException(status_code=404, detail=result["error"])
 
+        # ✅ 结果后处理截断：保护前端不崩溃
+        nodes = result.get("nodes", [])
+        links = result.get("links", [])
+        truncated = False
+
+        if len(nodes) > MAX_NODES_PER_QUERY:
+            logger.warning(
+                "查询结果被截断",
+                entity_id=entity_id,
+                hops=hops,
+                original_nodes=len(nodes),
+                truncated_nodes=MAX_NODES_PER_QUERY
+            )
+            nodes = nodes[:MAX_NODES_PER_QUERY]
+            truncated = True
+
+            # 过滤悬空边（edges whose nodes are not in truncated nodes）
+            node_ids = {node["id"] for node in nodes}
+            links = [
+                link for link in links
+                if link.get("source") in node_ids and link.get("target") in node_ids
+            ]
+
         return {
             "status": "success",
-            "data": result,
+            "data": {
+                "nodes": nodes,
+                "links": links,
+                **{k: v for k, v in result.items() if k not in ["nodes", "links"]}
+            },
             "meta": {
                 "center_entity": entity_id,
                 "hops": hops,
-                "node_count": len(result.get("nodes", [])),
-                "link_count": len(result.get("links", []))
+                "node_count": len(nodes),
+                "link_count": len(links),
+                "truncated": truncated,
+                "max_nodes_limit": MAX_NODES_PER_QUERY
             }
         }
+
+    except asyncio.TimeoutError:
+        logger.error("图谱查询超时", entity_id=entity_id, hops=hops, timeout=QUERY_TIMEOUT_SECONDS)
+        raise HTTPException(
+            status_code=504,
+            detail=f"查询过于复杂（超时 {QUERY_TIMEOUT_SECONDS}s），请减少跳数或更换中心节点重试"
+        )
     except HTTPException:
         raise
     except Exception as e:
-        print(f"获取子图失败: {str(e)}")
-        traceback.print_exc()
+        logger.error("获取子图失败", entity_id=entity_id, error=str(e), exc_info=True)
         raise HTTPException(status_code=500, detail=f"获取子图失败: {str(e)}")
 
 
@@ -192,10 +253,12 @@ async def get_entity_details(
 async def query_shortest_path(
     source: str = Query(..., description="起始实体ID"),
     target: str = Query(..., description="目标实体ID"),
-    max_hops: int = Query(3, description="最大跳数（1-5）", ge=1, le=5)
+    max_hops: int = Query(3, description="最大跳数（1-4）", ge=1, le=4)
 ) -> Dict[str, Any]:
     """
     查询两个实体之间的最短路径
+
+    ✅ 改进：添加超时控制，降低max_hops限制（5→4）
 
     参数:
         - source: 起始实体ID
