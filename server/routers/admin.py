@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Dict, Optional, List, Any
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Body
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 # 引入配置
@@ -24,6 +25,14 @@ from graphrag_agent.config.graph_config_storage import get_storage
 from graphrag_agent.integrations.build.incremental_update_v2 import IncrementalUpdateManagerV2
 from utils.progress_broadcaster import get_broadcaster
 from utils.progress_manager import get_progress_manager
+
+# 引入构建历史数据库
+from models.build_history import (
+    get_build_history_db,
+    BuildType,
+    BuildStatus,
+    BuildStage as HistoryBuildStage
+)
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -86,37 +95,63 @@ def _process_config_for_pipeline(raw_config: Optional[Dict]) -> Dict:
 def _run_full_build_task(task_id: str, config: Optional[Dict] = None):
     """后台执行全量构建任务"""
     global _is_building
-    # 获取全局状态引用 (注意：这里假设 main.py 或其他地方定义了 build_status，
-    # 但为了安全，我们通过 progress_manager 更新)
     pm = get_progress_manager()
-    
+    history_db = get_build_history_db()
+
+    # 创建历史记录
+    record_id = history_db.create_record(
+        task_type=BuildType.FULL,
+        config_snapshot=config
+    )
+    logger.info(f"创建构建历史记录: {record_id}")
+
     try:
-        # 🟢 1. 处理配置格式
+        # 1. 处理配置格式
         pipeline_config = _process_config_for_pipeline(config)
 
-        # 🟢 2. 初始化管理器 (传入处理后的配置)
+        # 2. 初始化管理器
         manager = IncrementalUpdateManagerV2(config=pipeline_config)
-        
+
         # 3. 执行构建
-        print(f">>> [后台任务] 开始执行全量构建: {task_id}")
-        
+        logger.info(f"开始执行全量构建: {task_id}")
+        pm.update_status("initializing", 5, "初始化构建环境")
+
         # 使用 asyncio.run 运行异步管道
         result = asyncio.run(manager.run_full_pipeline())
-        
-        # 4. 更新状态
+
+        # 4. 更新状态和历史
         l0_count = result.get('l0', {}).get('files_processed', 0)
         l1_count = result.get('l1', {}).get('submitted_count', 0)
-        
+
+        stats = {
+            "l0_files": l0_count,
+            "l1_tasks": l1_count
+        }
+
         msg = f"全量构建完成: 处理 {l0_count} 个文件, 提交 {l1_count} 个图谱任务"
         pm.update_status("completed", 100, msg)
 
+        # 更新历史记录为成功
+        history_db.update_record(
+            record_id=record_id,
+            status=BuildStatus.COMPLETED,
+            stats=stats,
+            final_stage="completed"
+        )
+
     except Exception as e:
-        print(f">>> [后台任务] ❌ 全量构建发生异常！")
-        import traceback
-        traceback.print_exc()
-        pm.update_status("failed", 0, str(e))
+        logger.error(f"全量构建发生异常: {str(e)}", exc_info=True)
+        error_msg = str(e)
+        pm.update_status("failed", 0, f"构建失败: {error_msg}")
+
+        # 更新历史记录为失败
+        history_db.update_record(
+            record_id=record_id,
+            status=BuildStatus.FAILED,
+            error_msg=error_msg,
+            final_stage="failed"
+        )
     finally:
-        # 释放锁状态 (虽然这只是内存标记，重启会重置)
         global _is_building
         _is_building = False
 
@@ -125,30 +160,60 @@ def _run_incremental_build_task(task_id: str, config: Optional[Dict] = None):
     """后台执行增量构建任务"""
     global _is_building
     pm = get_progress_manager()
-    
+    history_db = get_build_history_db()
+
+    # 创建历史记录
+    record_id = history_db.create_record(
+        task_type=BuildType.INCREMENTAL,
+        config_snapshot=config
+    )
+    logger.info(f"创建构建历史记录: {record_id}")
+
     try:
-        # 🟢 1. 处理配置格式
+        # 1. 处理配置格式
         pipeline_config = _process_config_for_pipeline(config)
 
-        # 🟢 2. 初始化管理器
+        # 2. 初始化管理器
         manager = IncrementalUpdateManagerV2(config=pipeline_config)
-        
+
         # 3. 执行构建
-        print(f">>> [后台任务] 开始执行增量构建: {task_id}")
-        result = asyncio.run(manager.run_full_pipeline()) 
-        
-        # 4. 更新状态
+        logger.info(f"开始执行增量构建: {task_id}")
+        pm.update_status("detecting_changes", 10, "检测文件变化")
+
+        result = asyncio.run(manager.run_full_pipeline())
+
+        # 4. 更新状态和历史
         l0_count = result.get('l0', {}).get('files_processed', 0)
         l1_count = result.get('l1', {}).get('submitted_count', 0)
-        
+
+        stats = {
+            "l0_files": l0_count,
+            "l1_tasks": l1_count
+        }
+
         msg = f"增量构建完成: 处理 {l0_count} 个文件, 提交 {l1_count} 个图谱任务"
         pm.update_status("completed", 100, msg)
-        
+
+        # 更新历史记录为成功
+        history_db.update_record(
+            record_id=record_id,
+            status=BuildStatus.COMPLETED,
+            stats=stats,
+            final_stage="completed"
+        )
+
     except Exception as e:
-        print(f">>> [后台任务] ❌ 增量构建发生异常！")
-        import traceback
-        traceback.print_exc()
-        pm.update_status("failed", 0, str(e))
+        logger.error(f"增量构建发生异常: {str(e)}", exc_info=True)
+        error_msg = str(e)
+        pm.update_status("failed", 0, f"构建失败: {error_msg}")
+
+        # 更新历史记录为失败
+        history_db.update_record(
+            record_id=record_id,
+            status=BuildStatus.FAILED,
+            error_msg=error_msg,
+            final_stage="failed"
+        )
     finally:
         global _is_building
         _is_building = False
@@ -217,6 +282,113 @@ async def get_build_status():
     if "is_running" not in status:
         status["is_running"] = _is_building
     return status
+
+
+@router.get("/build/stream")
+async def stream_build_progress():
+    """
+    SSE 接口：实时推送构建进度
+
+    Returns:
+        StreamingResponse: Server-Sent Events 流
+    """
+    logger.info("新的 SSE 客户端连接")
+
+    async def event_stream():
+        """生成 SSE 事件流"""
+        pm = get_progress_manager()
+
+        try:
+            async for event in pm.event_generator():
+                # 格式化为 SSE 格式
+                event_name = event.get("event", "message")
+                data = event.get("data", "{}")
+
+                yield f"event: {event_name}\n"
+                yield f"data: {data}\n\n"
+        except asyncio.CancelledError:
+            logger.info("SSE 客户端断开连接")
+        except Exception as e:
+            logger.error(f"SSE 流错误: {str(e)}", exc_info=True)
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
+
+
+@router.get("/build/history")
+async def get_build_history(
+    limit: int = 50,
+    offset: int = 0,
+    status: Optional[str] = None,
+    task_type: Optional[str] = None
+):
+    """
+    获取构建历史记录
+
+    Args:
+        limit: 返回数量限制
+        offset: 偏移量
+        status: 过滤状态 (running/completed/failed/cancelled)
+        task_type: 过滤构建类型 (full/incremental)
+
+    Returns:
+        构建历史记录列表
+    """
+    logger.info(f"查询构建历史: limit={limit}, offset={offset}")
+
+    try:
+        history_db = get_build_history_db()
+
+        # 转换过滤参数
+        status_filter = BuildStatus(status) if status else None
+        type_filter = BuildType(task_type) if task_type else None
+
+        records = history_db.list_records(
+            limit=limit,
+            offset=offset,
+            status=status_filter,
+            task_type=type_filter
+        )
+
+        return {
+            "records": [r.model_dump() for r in records],
+            "count": len(records),
+            "limit": limit,
+            "offset": offset
+        }
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"无效的过滤参数: {str(e)}")
+    except Exception as e:
+        logger.error(f"获取构建历史失败: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"获取构建历史失败: {str(e)}")
+
+
+@router.get("/build/statistics")
+async def get_build_statistics():
+    """
+    获取构建统计信息
+
+    Returns:
+        统计数据
+    """
+    logger.info("查询构建统计信息")
+
+    try:
+        history_db = get_build_history_db()
+        stats = history_db.get_statistics()
+        return stats
+
+    except Exception as e:
+        logger.error(f"获取构建统计失败: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"获取构建统计失败: {str(e)}")
 
 
 # ==================== 统计与文件 API ====================

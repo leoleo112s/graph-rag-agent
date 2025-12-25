@@ -9,9 +9,54 @@ import json
 import logging
 from typing import Dict, Any, List, Optional
 from datetime import datetime
+from enum import Enum
 import threading
 
 _LOGGER = logging.getLogger(__name__)
+
+
+class BuildStage(str, Enum):
+    """构建阶段枚举（标准化）"""
+    IDLE = "idle"
+    INITIALIZING = "initializing"
+    DETECTING_CHANGES = "detecting_changes"
+    CHUNKING = "chunking"
+    ENTITY_EXTRACTION = "entity_extraction"
+    ENTITY_DISAMBIGUATION = "entity_disambiguation"
+    INDEXING = "indexing"
+    COMMUNITY_DETECTION = "community_detection"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+# 阶段显示名称映射（用于前端展示）
+STAGE_DISPLAY_NAMES = {
+    BuildStage.IDLE: "空闲",
+    BuildStage.INITIALIZING: "初始化",
+    BuildStage.DETECTING_CHANGES: "检测文件变化",
+    BuildStage.CHUNKING: "文档分块",
+    BuildStage.ENTITY_EXTRACTION: "实体关系提取",
+    BuildStage.ENTITY_DISAMBIGUATION: "实体消歧",
+    BuildStage.INDEXING: "向量索引构建",
+    BuildStage.COMMUNITY_DETECTION: "社区检测",
+    BuildStage.COMPLETED: "已完成",
+    BuildStage.FAILED: "失败"
+}
+
+
+# 阶段进度权重（用于计算总进度）
+STAGE_WEIGHTS = {
+    BuildStage.IDLE: 0,
+    BuildStage.INITIALIZING: 5,
+    BuildStage.DETECTING_CHANGES: 10,
+    BuildStage.CHUNKING: 20,
+    BuildStage.ENTITY_EXTRACTION: 60,
+    BuildStage.ENTITY_DISAMBIGUATION: 75,
+    BuildStage.INDEXING: 85,
+    BuildStage.COMMUNITY_DETECTION: 95,
+    BuildStage.COMPLETED: 100,
+    BuildStage.FAILED: 0
+}
 
 
 class ProgressManager:
@@ -146,6 +191,47 @@ class ProgressManager:
             当前进度状态的副本
         """
         return self.current_status.copy()
+
+    def update_status(
+        self,
+        stage: str,
+        percent: int = 0,
+        details: str = "",
+        log: Optional[str] = None
+    ):
+        """
+        同步更新状态（用于非异步环境，如后台线程）
+
+        Args:
+            stage: 当前阶段
+            percent: 进度百分比
+            details: 详细描述
+            log: 日志消息
+        """
+        # 更新状态
+        self.current_status["stage"] = stage
+        self.current_status["percent"] = min(100, max(0, percent))
+        self.current_status["details"] = details
+
+        if log:
+            timestamp = datetime.now().strftime("%H:%M:%S")
+            log_entry = f"[{timestamp}] {log}"
+            self.current_status["logs"].append(log_entry)
+
+            # 只保留最近 50 条日志
+            if len(self.current_status["logs"]) > 50:
+                self.current_status["logs"].pop(0)
+
+        self.current_status["last_update"] = datetime.now().isoformat()
+
+        # 在事件循环中通知订阅者（如果有的话）
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                asyncio.create_task(self._notify_subscribers())
+        except RuntimeError:
+            # 如果没有事件循环，跳过通知
+            pass
 
     async def event_generator(self):
         """
