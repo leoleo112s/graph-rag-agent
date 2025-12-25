@@ -4,7 +4,7 @@
 """
 
 from typing import List, Dict, Optional, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from datetime import datetime
 
 
@@ -83,6 +83,52 @@ class GraphConfig(BaseModel):
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
     created_by: Optional[str] = Field(default=None)
+
+    @model_validator(mode='after')
+    def validate_integrity(self):
+        """
+        校验配置完整性
+
+        ✅ 改进：在 Pydantic 模型层面验证配置，避免无效配置进入系统
+
+        检查项：
+        1. Bridge Key 唯一性 - 同一个 key 不能定义多次
+        2. Domain Name 唯一性 - 同一个领域名不能定义多次
+        3. Bridge Mapping 引用完整性 - 引用的 bridge_key 必须存在
+
+        Raises:
+            ValueError: 当发现重复或引用不存在时
+        """
+        # 1. 检查 Bridge Key 唯一性
+        bridge_keys = set()
+        for bridge in self.bridge_definitions:
+            if bridge.key in bridge_keys:
+                raise ValueError(
+                    f"❌ 配置错误：重复的 Bridge Key '{bridge.key}'。\n"
+                    f"   提示：每个 bridge.key 必须唯一，请修改重复的 key。"
+                )
+            bridge_keys.add(bridge.key)
+
+        # 2. 检查 Domain Name 唯一性
+        domain_names = set()
+        for domain in self.domain_definitions:
+            if domain.domain_name in domain_names:
+                raise ValueError(
+                    f"❌ 配置错误：重复的 Domain Name '{domain.domain_name}'。\n"
+                    f"   提示：每个领域名称必须唯一，请修改重复的领域名。"
+                )
+            domain_names.add(domain.domain_name)
+
+            # 3. 检查 Bridge Mapping 的引用完整性
+            for mapping in domain.bridge_mappings:
+                if mapping.bridge_key not in bridge_keys:
+                    raise ValueError(
+                        f"❌ 配置错误：领域 '{domain.domain_name}' 引用了不存在的 Bridge Key '{mapping.bridge_key}'。\n"
+                        f"   提示：请确保在 bridge_definitions 中定义了该 key，或修正 bridge_mappings 中的引用。\n"
+                        f"   已定义的 Bridge Keys: {sorted(bridge_keys)}"
+                    )
+
+        return self
 
     class Config:
         json_schema_extra = {

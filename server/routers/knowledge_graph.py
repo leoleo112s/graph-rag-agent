@@ -1,9 +1,9 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from typing import Optional
 import traceback
 from services.kg_service import (
-    get_knowledge_graph, 
-    extract_kg_from_message, 
+    get_knowledge_graph,
+    extract_kg_from_message,
     get_chunks,
     get_shortest_path,
     get_one_two_hop_paths,
@@ -16,6 +16,7 @@ from services.kg_service import (
 from server_config.database import get_db_manager
 from models.schemas import (ReasoningRequest, EntityData, EntityDeleteData, EntitySearchFilter, EntityUpdateData,
                             RelationData, RelationDeleteData, RelationSearchFilter, RelationUpdateData)
+from server.utils.auth import verify_admin_token  # ✅ 导入管理员权限验证
 
 # 创建路由器
 router = APIRouter()
@@ -402,8 +403,22 @@ def search_relations(filters: RelationSearchFilter):
         raise HTTPException(status_code=500, detail=f"搜索关系失败: {str(e)}")
 
 
-@router.post("/entity/create")
+@router.post("/entity/create", dependencies=[Depends(verify_admin_token)])
 def create_entity(entity_data: EntityData):
+    """
+    创建实体
+
+    ✅ 改进：需要管理员权限（X-Admin-Token Header）
+
+    Args:
+        entity_data: 实体数据
+
+    Returns:
+        Dict: 创建结果
+
+    Security:
+        - Requires: X-Admin-Token in HTTP Headers
+    """
     db_manager = get_db_manager()
     try:
         # 检查实体是否已存在
@@ -445,8 +460,22 @@ def create_entity(entity_data: EntityData):
         return {"success": False, "message": f"创建实体失败: {str(e)}"}
 
 
-@router.post("/entity/update")
+@router.post("/entity/update", dependencies=[Depends(verify_admin_token)])
 def update_entity(entity_data: EntityUpdateData):
+    """
+    更新实体
+
+    ✅ 改进：需要管理员权限（X-Admin-Token Header）
+
+    Args:
+        entity_data: 实体更新数据
+
+    Returns:
+        Dict: 更新结果
+
+    Security:
+        - Requires: X-Admin-Token in HTTP Headers
+    """
     db_manager = get_db_manager()
     try:
         # 检查实体是否存在
@@ -515,8 +544,22 @@ def update_entity(entity_data: EntityUpdateData):
         return {"success": False, "message": f"更新实体失败: {str(e)}"}
 
 
-@router.post("/entity/delete")
+@router.post("/entity/delete", dependencies=[Depends(verify_admin_token)])
 def delete_entity(entity_data: EntityDeleteData):
+    """
+    删除实体
+
+    ✅ 改进：需要管理员权限（X-Admin-Token Header）
+
+    Args:
+        entity_data: 实体删除数据
+
+    Returns:
+        Dict: 删除结果
+
+    Security:
+        - Requires: X-Admin-Token in HTTP Headers
+    """
     db_manager = get_db_manager()
     try:
         # 检查实体是否存在
@@ -566,8 +609,22 @@ def delete_entity(entity_data: EntityDeleteData):
         return {"success": False, "message": f"删除实体失败: {str(e)}"}
 
 
-@router.post("/relation/create")
+@router.post("/relation/create", dependencies=[Depends(verify_admin_token)])
 def create_relation(relation_data: RelationData):
+    """
+    创建关系
+
+    ✅ 改进：需要管理员权限（X-Admin-Token Header）
+
+    Args:
+        relation_data: 关系数据
+
+    Returns:
+        Dict: 创建结果
+
+    Security:
+        - Requires: X-Admin-Token in HTTP Headers
+    """
     db_manager = get_db_manager()
     try:
         # 检查源实体和目标实体是否存在
@@ -637,8 +694,22 @@ def create_relation(relation_data: RelationData):
         return {"success": False, "message": f"创建关系失败: {str(e)}"}
 
 
-@router.post("/relation/update")
+@router.post("/relation/update", dependencies=[Depends(verify_admin_token)])
 def update_relation(relation_data: RelationUpdateData):
+    """
+    更新关系
+
+    ✅ 改进：需要管理员权限（X-Admin-Token Header）
+
+    Args:
+        relation_data: 关系更新数据
+
+    Returns:
+        Dict: 更新结果
+
+    Security:
+        - Requires: X-Admin-Token in HTTP Headers
+    """
     db_manager = get_db_manager()
     try:
         # 检查关系是否存在
@@ -763,8 +834,22 @@ def update_relation(relation_data: RelationUpdateData):
         return {"success": False, "message": f"更新关系失败: {str(e)}"}
 
 
-@router.post("/relation/delete")
+@router.post("/relation/delete", dependencies=[Depends(verify_admin_token)])
 def delete_relation(relation_data: RelationDeleteData):
+    """
+    删除关系
+
+    ✅ 改进：需要管理员权限（X-Admin-Token Header）
+
+    Args:
+        relation_data: 关系删除数据
+
+    Returns:
+        Dict: 删除结果
+
+    Security:
+        - Requires: X-Admin-Token in HTTP Headers
+    """
     db_manager = get_db_manager()
     try:
         # 检查关系是否存在

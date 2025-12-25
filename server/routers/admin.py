@@ -27,15 +27,19 @@ from services.graph_config_service import get_config_service
 from graphrag_agent.integrations.build.incremental_update_v2 import IncrementalUpdateManagerV2
 from utils.progress_broadcaster import get_broadcaster
 from utils.progress_manager import get_progress_manager
+from utils.build_lock import get_build_lock_manager  # ✅ 使用统一的锁管理器
 
 # 配置日志
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
-# 全局构建锁，防止重复运行
-_build_lock = asyncio.Lock()
-_is_building = False
+# ✅ 移除独立的锁和状态变量（已由 BuildLockManager 统一管理）
+# _build_lock = asyncio.Lock()  # ❌ 删除
+# _is_building = False  # ❌ 删除
+
+# 全局锁管理器
+_lock_manager = get_build_lock_manager()
 
 # ==================== 🟢 关键：配置格式转换辅助函数 ====================
 
@@ -88,28 +92,30 @@ def _process_config_for_pipeline(raw_config: Optional[Dict]) -> Dict:
 
 def _run_full_build_task(task_id: str, config: Optional[Dict] = None):
     """后台执行全量构建任务"""
-    global _is_building
+    # ✅ 使用统一的分布式锁（无需 global 变量）
+    lock_resource = "graph_build"
+
     # 获取全局状态引用 (注意：这里假设 main.py 或其他地方定义了 build_status，
     # 但为了安全，我们通过 progress_manager 更新)
     pm = get_progress_manager()
-    
+
     try:
         # 🟢 1. 处理配置格式
         pipeline_config = _process_config_for_pipeline(config)
 
         # 🟢 2. 初始化管理器 (传入处理后的配置)
         manager = IncrementalUpdateManagerV2(config=pipeline_config)
-        
+
         # 3. 执行构建
         print(f">>> [后台任务] 开始执行全量构建: {task_id}")
-        
+
         # 使用 asyncio.run 运行异步管道
         result = asyncio.run(manager.run_full_pipeline())
-        
+
         # 4. 更新状态
         l0_count = result.get('l0', {}).get('files_processed', 0)
         l1_count = result.get('l1', {}).get('submitted_count', 0)
-        
+
         msg = f"全量构建完成: 处理 {l0_count} 个文件, 提交 {l1_count} 个图谱任务"
         pm.update_status("completed", 100, msg)
 
@@ -119,42 +125,43 @@ def _run_full_build_task(task_id: str, config: Optional[Dict] = None):
         traceback.print_exc()
         pm.update_status("failed", 0, str(e))
     finally:
-        # 释放锁状态 (虽然这只是内存标记，重启会重置)
-        global _is_building
-        _is_building = False
+        # ✅ 释放分布式锁（同步版本，因为此函数在后台线程中运行）
+        _lock_manager.release(lock_resource)
 
 
 def _run_incremental_build_task(task_id: str, config: Optional[Dict] = None):
     """后台执行增量构建任务"""
-    global _is_building
+    # ✅ 使用统一的分布式锁（无需 global 变量）
+    lock_resource = "graph_build"
+
     pm = get_progress_manager()
-    
+
     try:
         # 🟢 1. 处理配置格式
         pipeline_config = _process_config_for_pipeline(config)
 
         # 🟢 2. 初始化管理器
         manager = IncrementalUpdateManagerV2(config=pipeline_config)
-        
+
         # 3. 执行构建
         print(f">>> [后台任务] 开始执行增量构建: {task_id}")
-        result = asyncio.run(manager.run_full_pipeline()) 
-        
+        result = asyncio.run(manager.run_full_pipeline())
+
         # 4. 更新状态
         l0_count = result.get('l0', {}).get('files_processed', 0)
         l1_count = result.get('l1', {}).get('submitted_count', 0)
-        
+
         msg = f"增量构建完成: 处理 {l0_count} 个文件, 提交 {l1_count} 个图谱任务"
         pm.update_status("completed", 100, msg)
-        
+
     except Exception as e:
         print(f">>> [后台任务] ❌ 增量构建发生异常！")
         import traceback
         traceback.print_exc()
         pm.update_status("failed", 0, str(e))
     finally:
-        global _is_building
-        _is_building = False
+        # ✅ 释放分布式锁（同步版本，因为此函数在后台线程中运行）
+        _lock_manager.release(lock_resource)
 
 
 # ==================== 构建 API ====================
@@ -164,17 +171,24 @@ async def trigger_full_build(
     background_tasks: BackgroundTasks,
     config: Dict = Body(default=None)  # 🟢 接收前端传来的 JSON 配置
 ):
-    """触发完整构建 (V2集成版，支持动态配置)"""
-    global _is_building
+    """触发完整构建 (V2集成版，支持动态配置)
+
+    ✅ 改进：使用分布式锁，支持多进程部署
+    ✅ 与 build.py 共享同一个锁，防止并发冲突
+    """
     logger.info("收到完整构建请求")
 
-    async with _build_lock:
-        if _is_building:
-            raise HTTPException(status_code=400, detail="已有构建任务正在运行")
-        _is_building = True
+    lock_resource = "graph_build"
+
+    # ✅ 尝试获取分布式锁
+    if not await _lock_manager.acquire_async(lock_resource, ttl=7200):  # 2 小时 TTL
+        raise HTTPException(
+            status_code=400,
+            detail="已有构建任务正在运行，请等待其完成（来自 admin.py 或 build.py）"
+        )
 
     task_id = str(uuid.uuid4())
-    # 启动后台任务 (🟢 将 config 传递给任务)
+    # 启动后台任务 (🟢 将 config 传递给任务，锁会在任务完成后释放)
     background_tasks.add_task(_run_full_build_task, task_id, config)
 
     return {"message": "完整构建已在后台启动", "status": "running", "task_id": task_id}
@@ -185,17 +199,24 @@ async def trigger_incremental_build(
     background_tasks: BackgroundTasks,
     config: Dict = Body(default=None)  # 🟢 接收前端传来的 JSON 配置
 ):
-    """触发增量构建 (V2集成版，支持动态配置)"""
-    global _is_building
+    """触发增量构建 (V2集成版，支持动态配置)
+
+    ✅ 改进：使用分布式锁，支持多进程部署
+    ✅ 与 build.py 共享同一个锁，防止并发冲突
+    """
     logger.info("收到增量构建请求")
 
-    async with _build_lock:
-        if _is_building:
-            raise HTTPException(status_code=400, detail="已有构建任务正在运行")
-        _is_building = True
+    lock_resource = "graph_build"
+
+    # ✅ 尝试获取分布式锁
+    if not await _lock_manager.acquire_async(lock_resource, ttl=7200):  # 2 小时 TTL
+        raise HTTPException(
+            status_code=400,
+            detail="已有构建任务正在运行，请等待其完成（来自 admin.py 或 build.py）"
+        )
 
     task_id = str(uuid.uuid4())
-    # 启动后台任务 (🟢 将 config 传递给任务)
+    # 启动后台任务 (🟢 将 config 传递给任务，锁会在任务完成后释放)
     background_tasks.add_task(_run_incremental_build_task, task_id, config)
 
     return {"message": "增量构建已在后台启动", "status": "running", "task_id": task_id}
@@ -203,22 +224,37 @@ async def trigger_incremental_build(
 
 @router.post("/build/stop")
 async def stop_build():
-    """停止构建"""
-    global _is_building
-    if _is_building:
-        # 逻辑停止
-        # _is_building = False # 暂时不强制重置，等待任务自然结束或超时
-        return {"message": "停止指令已发送 (注意：当前后台任务可能无法立即中断)"}
-    return {"message": "没有正在运行的构建任务"}
+    """停止构建
+
+    ✅ 改进：使用分布式锁
+    """
+    lock_resource = "graph_build"
+
+    # ✅ 检查是否有任务在运行
+    if not _lock_manager.is_locked(lock_resource):
+        raise HTTPException(status_code=400, detail="当前没有运行中的构建任务")
+
+    # TODO: 实现实际的停止逻辑（需要任务取消机制）
+    # 目前仅释放锁，实际任务可能仍在运行
+    await _lock_manager.release_async(lock_resource)
+
+    await get_broadcaster().emit_status("stopped", "构建任务已被用户停止")
+
+    return {"status": "stopped", "message": "构建任务停止指令已发送（锁已释放）"}
 
 
 @router.get("/build/status")
 async def get_build_status():
-    """获取构建状态"""
+    """获取构建状态
+
+    ✅ 改进：使用分布式锁状态，支持多进程
+    """
+    lock_resource = "graph_build"
+
     status = get_progress_manager().get_current_status()
     # 确保 status 包含 is_running 字段
     if "is_running" not in status:
-        status["is_running"] = _is_building
+        status["is_running"] = _lock_manager.is_locked(lock_resource)
     return status
 
 
