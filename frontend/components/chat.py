@@ -15,6 +15,7 @@ from utils.api import (
 )
 from utils.helpers import extract_source_ids
 from utils.state import save_chat_history
+from components.feedback_panel import render_detailed_feedback_button
 
 def reset_processing_lock():
     """重置处理锁状态"""
@@ -208,8 +209,8 @@ def display_chat_interface():
                     
                     if feedback_key not in st.session_state.feedback_given:
                         # 添加反馈按钮
-                        col1, col2, col3 = st.columns([0.1, 0.1, 0.8])
-                        
+                        col1, col2, col3, col4 = st.columns([0.1, 0.1, 0.2, 0.6])
+
                         with col1:
                             thumbs_up_key = f"thumbs_up_{msg['message_id']}_{i}"
                             if st.button("👍", key=thumbs_up_key):
@@ -289,6 +290,16 @@ def display_chat_interface():
                                         st.error(f"提交反馈时出错: {str(e)}")
                                     finally:
                                         st.session_state.feedback_in_progress = False
+
+                        with col3:
+                            # 添加详细反馈按钮
+                            render_detailed_feedback_button(
+                                msg["message_id"],
+                                user_query,
+                                st.session_state.session_id,
+                                st.session_state.agent_type
+                            )
+
                     else:
                         # 显示已提供的反馈类型
                         feedback_type = st.session_state.get(feedback_type_key, None)

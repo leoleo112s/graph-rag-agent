@@ -20,6 +20,10 @@ from page_components.document_manager import document_manager_page
 from page_components.config_manager import config_manager_page
 from page_components.build_manager import build_manager_page
 from page_components.ai_config_wizard import ai_config_wizard_page
+from page_components.admin_feedback import render_feedback_admin
+from page_components.metrics_dashboard import render_metrics_dashboard
+from page_components.template_marketplace import render_template_marketplace
+from page_components.model_hub import render_model_hub
 
 
 def main():
@@ -54,7 +58,7 @@ def main():
         else:
             page = st.radio(
                 "导航菜单",
-                options=["💬 智能问答", "📚 文档管理", "🤖 AI 配置向导", "⚙️ 配置管理", "🏗️ 构建管理"],
+                options=["💬 智能问答", "📚 文档管理", "🤖 AI 配置向导", "⚙️ 配置管理", "🏗️ 构建管理", "🏪 模板市场", "🧠 模型中心", "📋 反馈管理", "📊 指标监控"],
                 label_visibility="collapsed"
             )
 
@@ -90,6 +94,18 @@ def main():
 
     elif page == "🏗️ 构建管理":
         build_manager_page()
+
+    elif page == "🏪 模板市场":
+        render_template_marketplace()
+
+    elif page == "🧠 模型中心":
+        render_model_hub()
+
+    elif page == "📋 反馈管理":
+        render_feedback_admin()
+
+    elif page == "📊 指标监控":
+        render_metrics_dashboard()
 
 if __name__ == "__main__":
     import shutup

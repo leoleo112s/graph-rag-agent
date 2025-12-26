@@ -29,11 +29,12 @@ def get_build_status() -> Optional[Dict]:
         return {"error": f"未知错误: {str(e)}"}
 
 
-def trigger_full_build() -> tuple[bool, str]:
+def trigger_full_build(config: Optional[Dict] = None) -> tuple[bool, str]:
     """触发完整构建"""
     try:
         response = requests.post(
             f"{API_URL}/admin/build/full",
+            json=config,
             timeout=10
         )
         if response.status_code == 200:
@@ -46,11 +47,12 @@ def trigger_full_build() -> tuple[bool, str]:
         return False, f"请求失败: {e}"
 
 
-def trigger_incremental_build() -> tuple[bool, str]:
+def trigger_incremental_build(config: Optional[Dict] = None) -> tuple[bool, str]:
     """触发增量构建"""
     try:
         response = requests.post(
             f"{API_URL}/admin/build/incremental",
+            json=config,
             timeout=10
         )
         if response.status_code == 200:
@@ -86,17 +88,108 @@ def get_graph_stats() -> Optional[Dict]:
         return None
 
 
+def get_build_history(limit: int = 50, offset: int = 0) -> Optional[Dict]:
+    """获取构建历史记录"""
+    try:
+        response = requests.get(
+            f"{API_URL}/admin/build/history",
+            params={"limit": limit, "offset": offset},
+            timeout=5
+        )
+        if response.status_code == 200:
+            return response.json()
+        return None
+    except Exception:
+        return None
+
+
+def get_build_statistics() -> Optional[Dict]:
+    """获取构建统计信息"""
+    try:
+        response = requests.get(f"{API_URL}/admin/build/statistics", timeout=5)
+        if response.status_code == 200:
+            return response.json()
+        return None
+    except Exception:
+        return None
+
+
+def get_available_configs() -> List[Dict]:
+    """获取可用的配置列表"""
+    try:
+        # 获取当前配置
+        response = requests.get(f"{API_URL}/admin/graph/config", timeout=5)
+        configs = []
+
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("exists"):
+                config = data.get("config")
+                configs.append({
+                    "name": config.get("project_name", "当前配置"),
+                    "type": "current",
+                    "config": config
+                })
+
+        # 获取模板列表
+        response = requests.get(f"{API_URL}/admin/graph/templates", timeout=5)
+        if response.status_code == 200:
+            templates = response.json().get("templates", [])
+            for template in templates:
+                configs.append({
+                    "name": template.get("name", "未命名模板"),
+                    "type": "template",
+                    "config": template
+                })
+
+        return configs
+    except Exception as e:
+        st.error(f"获取配置列表失败: {str(e)}")
+        return []
+
+
 def build_manager_page():
     """构建管理主页面"""
     st.title("🏗️ 知识图谱构建管理")
     st.markdown("---")
 
     # 创建标签页
-    tab1, tab2, tab3 = st.tabs(["🚀 构建操作", "📊 构建状态", "📈 图谱统计"])
+    tab1, tab2, tab3, tab4 = st.tabs(["🚀 构建操作", "📊 构建状态", "📈 图谱统计", "📜 构建历史"])
 
     # ===== 构建操作 =====
     with tab1:
         st.subheader("🔨 构建类型")
+
+        # 配置选择区域
+        st.markdown("### ⚙️ 配置选择")
+        configs = get_available_configs()
+
+        if configs:
+            config_names = ["<不使用配置（使用默认配置）>"] + [f"{c['name']} ({c['type']})" for c in configs]
+            selected_config_index = st.selectbox(
+                "选择构建配置",
+                range(len(config_names)),
+                format_func=lambda i: config_names[i],
+                help="选择要使用的知识图谱配置。选择「不使用配置」将使用系统默认配置。"
+            )
+
+            if selected_config_index == 0:
+                st.session_state.selected_build_config = None
+                st.info("💡 将使用系统默认配置进行构建")
+            else:
+                st.session_state.selected_build_config = configs[selected_config_index - 1]["config"]
+                config_name = configs[selected_config_index - 1]["name"]
+                st.success(f"✅ 已选择配置: {config_name}")
+
+                # 显示配置摘要
+                with st.expander("🔍 查看配置详情"):
+                    selected = st.session_state.selected_build_config
+                    st.json(selected)
+        else:
+            st.session_state.selected_build_config = None
+            st.warning("⚠️ 未找到可用配置，将使用系统默认配置")
+
+        st.markdown("---")
 
         # 显示当前构建状态概览
         current_status = get_build_status()
@@ -126,7 +219,8 @@ def build_manager_page():
 
             if st.button("🔄 开始增量构建", type="primary", use_container_width=True):
                 with st.spinner("正在启动增量构建..."):
-                    success, message = trigger_incremental_build()
+                    selected_config = st.session_state.get('selected_build_config')
+                    success, message = trigger_incremental_build(selected_config)
                     if success:
                         st.success(f"✅ {message}")
                         st.info("💡 请切换到「📊 构建状态」标签查看进度")
@@ -162,7 +256,8 @@ def build_manager_page():
             with col1:
                 if st.button("✅ 确认构建", type="primary"):
                     with st.spinner("正在启动完整构建..."):
-                        success, message = trigger_full_build()
+                        selected_config = st.session_state.get('selected_build_config')
+                        success, message = trigger_full_build(selected_config)
                         if success:
                             st.success(f"✅ {message}")
                             st.info("💡 请切换到「📊 构建状态」标签查看进度")
@@ -526,6 +621,143 @@ def build_manager_page():
             st.info(f"📅 最后构建时间: {last_build.strftime('%Y-%m-%d %H:%M:%S')}")
         else:
             st.warning("暂无构建记录")
+
+    # ===== 构建历史 =====
+    with tab4:
+        st.subheader("📜 构建历史记录")
+
+        # 获取构建统计
+        build_stats = get_build_statistics()
+        if build_stats:
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("总构建次数", build_stats.get('total_builds', 0))
+            with col2:
+                st.metric("成功次数", build_stats.get('completed_builds', 0))
+            with col3:
+                st.metric("失败次数", build_stats.get('failed_builds', 0))
+            with col4:
+                success_rate = build_stats.get('success_rate', 0)
+                st.metric("成功率", f"{success_rate}%")
+
+            # 平均构建时长
+            avg_duration = build_stats.get('avg_duration_seconds', 0)
+            if avg_duration > 0:
+                st.info(f"⏱️ 平均构建时长: {avg_duration // 60} 分 {avg_duration % 60} 秒")
+
+        st.markdown("---")
+
+        # 过滤选项
+        col1, col2, col3 = st.columns([2, 2, 1])
+        with col1:
+            filter_type = st.selectbox(
+                "构建类型",
+                ["全部", "完整构建", "增量构建"],
+                help="筛选构建类型"
+            )
+        with col2:
+            filter_status = st.selectbox(
+                "构建状态",
+                ["全部", "运行中", "已完成", "失败"],
+                help="筛选构建状态"
+            )
+        with col3:
+            if st.button("🔄 刷新"):
+                st.rerun()
+
+        # 转换过滤参数
+        type_filter = None
+        if filter_type == "完整构建":
+            type_filter = "full"
+        elif filter_type == "增量构建":
+            type_filter = "incremental"
+
+        status_filter = None
+        if filter_status == "运行中":
+            status_filter = "running"
+        elif filter_status == "已完成":
+            status_filter = "completed"
+        elif filter_status == "失败":
+            status_filter = "failed"
+
+        # 获取历史记录
+        history = get_build_history(limit=50, offset=0)
+
+        if not history:
+            st.warning("⚠️ 无法获取构建历史")
+        elif history.get('count', 0) == 0:
+            st.info("📭 暂无构建历史记录")
+        else:
+            records = history.get('records', [])
+
+            # 应用前端过滤（因为后端API不支持前端的中文过滤）
+            if type_filter:
+                records = [r for r in records if r['task_type'] == type_filter]
+            if status_filter:
+                records = [r for r in records if r['status'] == status_filter]
+
+            if len(records) == 0:
+                st.info("📭 没有符合条件的记录")
+            else:
+                # 显示记录列表
+                for record in records:
+                    # 状态图标
+                    if record['status'] == 'completed':
+                        status_icon = "✅"
+                        status_color = "green"
+                    elif record['status'] == 'failed':
+                        status_icon = "❌"
+                        status_color = "red"
+                    elif record['status'] == 'running':
+                        status_icon = "🔄"
+                        status_color = "blue"
+                    else:
+                        status_icon = "⚪"
+                        status_color = "gray"
+
+                    # 类型图标
+                    type_icon = "🔃" if record['task_type'] == 'full' else "🔄"
+                    type_name = "完整构建" if record['task_type'] == 'full' else "增量构建"
+
+                    # 时间格式化
+                    start_time = datetime.fromisoformat(record['start_time']).strftime('%Y-%m-%d %H:%M:%S')
+                    duration = record.get('duration')
+                    duration_str = f"{duration // 60}分{duration % 60}秒" if duration else "N/A"
+
+                    with st.expander(f"{status_icon} {type_icon} {type_name} - {start_time}"):
+                        col1, col2 = st.columns(2)
+
+                        with col1:
+                            st.markdown(f"**ID:** `{record['id'][:8]}...`")
+                            st.markdown(f"**类型:** {type_name}")
+                            st.markdown(f"**状态:** :{status_color}[{record['status']}]")
+                            st.markdown(f"**开始时间:** {start_time}")
+
+                        with col2:
+                            if record.get('end_time'):
+                                end_time = datetime.fromisoformat(record['end_time']).strftime('%Y-%m-%d %H:%M:%S')
+                                st.markdown(f"**结束时间:** {end_time}")
+                            st.markdown(f"**持续时间:** {duration_str}")
+                            if record.get('final_stage'):
+                                st.markdown(f"**最终阶段:** {record['final_stage']}")
+
+                        # 统计信息
+                        if record.get('stats'):
+                            st.markdown("**统计信息:**")
+                            stats = record['stats']
+                            stat_cols = st.columns(len(stats))
+                            for idx, (key, value) in enumerate(stats.items()):
+                                with stat_cols[idx]:
+                                    st.metric(key, value)
+
+                        # 错误信息
+                        if record.get('error_msg'):
+                            st.error(f"**错误信息:** {record['error_msg']}")
+
+                        # 配置快照
+                        if record.get('config_snapshot'):
+                            with st.expander("🔍 查看配置快照"):
+                                st.json(record['config_snapshot'])
 
     # 帮助信息
     with st.expander("❓ 使用说明"):

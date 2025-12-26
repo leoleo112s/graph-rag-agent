@@ -886,3 +886,321 @@ def delete_relation(relation_data: RelationDeleteData):
         print(e)
         traceback.print_exc()
         return {"success": False, "message": f"删除关系失败: {str(e)}"}
+
+
+@router.get("/communities")
+async def list_communities(
+    limit: int = 50,
+    offset: int = 0,
+    min_entities: int = 0
+):
+    """
+    获取所有社区列表（按重要性排序）
+
+    Args:
+        limit: 返回数量限制
+        offset: 偏移量
+        min_entities: 最小实体数过滤
+
+    Returns:
+        Dict: 社区列表和总数
+    """
+    try:
+        db_manager = get_db_manager()
+        driver = db_manager.get_driver()
+
+        # 查询所有社区及统计信息
+        query = """
+        MATCH (c:__Community__)
+        OPTIONAL MATCH (c)<-[:IN_COMMUNITY]-(e:__Entity__)
+        WITH c, count(DISTINCT e) AS entity_count
+        WHERE entity_count >= $min_entities
+
+        // 获取社区内的关系数量
+        OPTIONAL MATCH (c)<-[:IN_COMMUNITY]-(e1:__Entity__)-[r]-(e2:__Entity__)-[:IN_COMMUNITY]->(c)
+        WITH c, entity_count, count(DISTINCT r) AS relation_count
+
+        RETURN c.id AS id,
+               c.title AS title,
+               c.summary AS summary,
+               c.rating AS rating,
+               entity_count,
+               relation_count
+        ORDER BY c.rating DESC
+        SKIP $offset
+        LIMIT $limit
+        """
+
+        with driver.session() as session:
+            result = session.run(query, min_entities=min_entities, offset=offset, limit=limit)
+            communities = []
+
+            for record in result:
+                communities.append({
+                    "id": record["id"],
+                    "title": record["title"],
+                    "summary": record["summary"],
+                    "rating": record["rating"] if record["rating"] else 0,
+                    "entity_count": record["entity_count"],
+                    "relation_count": record["relation_count"]
+                })
+
+        # 获取总数
+        count_query = """
+        MATCH (c:__Community__)
+        OPTIONAL MATCH (c)<-[:IN_COMMUNITY]-(e:__Entity__)
+        WITH c, count(DISTINCT e) AS entity_count
+        WHERE entity_count >= $min_entities
+        RETURN count(c) AS total
+        """
+
+        with driver.session() as session:
+            result = session.run(count_query, min_entities=min_entities)
+            total = result.single()["total"] if result.single() else 0
+
+        return {
+            "communities": communities,
+            "total": total,
+            "limit": limit,
+            "offset": offset
+        }
+
+    except Exception as e:
+        print(f"Failed to list communities: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/community/{community_id}/members")
+async def get_community_members(community_id: str):
+    """
+    获取社区成员（实体和关系）
+
+    Args:
+        community_id: 社区ID
+
+    Returns:
+        Dict: 社区详情、实体列表、关系列表
+    """
+    try:
+        db_manager = get_db_manager()
+        driver = db_manager.get_driver()
+
+        # 查询社区信息
+        community_query = """
+        MATCH (c:__Community__ {id: $community_id})
+        RETURN c.id AS id,
+               c.title AS title,
+               c.summary AS summary,
+               c.rating AS rating
+        """
+
+        with driver.session() as session:
+            result = session.run(community_query, community_id=community_id)
+            community_record = result.single()
+
+            if not community_record:
+                raise HTTPException(status_code=404, detail="Community not found")
+
+            community = {
+                "id": community_record["id"],
+                "title": community_record["title"],
+                "summary": community_record["summary"],
+                "rating": community_record["rating"] if community_record["rating"] else 0
+            }
+
+        # 查询社区实体
+        entities_query = """
+        MATCH (c:__Community__ {id: $community_id})<-[:IN_COMMUNITY]-(e:__Entity__)
+        RETURN e.id AS id,
+               e.name AS name,
+               e.type AS type,
+               e.description AS description
+        ORDER BY e.name
+        """
+
+        with driver.session() as session:
+            result = session.run(entities_query, community_id=community_id)
+            entities = []
+
+            for record in result:
+                entities.append({
+                    "id": record["id"],
+                    "name": record["name"],
+                    "type": record["type"],
+                    "description": record["description"] if record["description"] else ""
+                })
+
+        # 查询社区内的关系
+        relations_query = """
+        MATCH (c:__Community__ {id: $community_id})<-[:IN_COMMUNITY]-(e1:__Entity__)-[r]-(e2:__Entity__)-[:IN_COMMUNITY]->(c)
+        RETURN DISTINCT e1.id AS source,
+               e2.id AS target,
+               type(r) AS type,
+               r.description AS description,
+               r.weight AS weight
+        ORDER BY r.weight DESC
+        """
+
+        with driver.session() as session:
+            result = session.run(relations_query, community_id=community_id)
+            relationships = []
+
+            for record in result:
+                relationships.append({
+                    "source": record["source"],
+                    "target": record["target"],
+                    "type": record["type"],
+                    "description": record["description"] if record["description"] else "",
+                    "weight": record["weight"] if record["weight"] else 0.5
+                })
+
+        return {
+            "community": community,
+            "entities": entities,
+            "relationships": relationships,
+            "entity_count": len(entities),
+            "relation_count": len(relationships)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Failed to get community members: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/entity/{entity_id}/detail")
+async def get_entity_detail(entity_id: str):
+    """
+    获取实体详情（聚合信息）
+
+    返回：
+    - 实体基本信息
+    - 一跳邻居节点和关系
+    - 关联的文本块
+    - 所属社区
+
+    Args:
+        entity_id: 实体ID
+
+    Returns:
+        Dict: 实体详情
+    """
+    try:
+        db_manager = get_db_manager()
+        driver = db_manager.get_driver()
+
+        # 查询实体基本信息
+        entity_query = """
+        MATCH (e:__Entity__ {id: $entity_id})
+        RETURN e.id AS id,
+               e.name AS name,
+               e.type AS type,
+               e.description AS description
+        """
+
+        with driver.session() as session:
+            result = session.run(entity_query, entity_id=entity_id)
+            entity_record = result.single()
+
+            if not entity_record:
+                raise HTTPException(status_code=404, detail="Entity not found")
+
+            entity = {
+                "id": entity_record["id"],
+                "name": entity_record["name"],
+                "type": entity_record["type"],
+                "description": entity_record["description"] if entity_record["description"] else ""
+            }
+
+        # 查询一跳邻居和关系
+        neighbors_query = """
+        MATCH (e:__Entity__ {id: $entity_id})
+        OPTIONAL MATCH (e)-[r]-(neighbor:__Entity__)
+        RETURN DISTINCT neighbor.id AS neighbor_id,
+               neighbor.name AS neighbor_name,
+               neighbor.type AS neighbor_type,
+               type(r) AS relation_type,
+               CASE
+                   WHEN startNode(r) = e THEN 'outgoing'
+                   ELSE 'incoming'
+               END AS direction,
+               r.weight AS weight
+        ORDER BY r.weight DESC
+        """
+
+        with driver.session() as session:
+            result = session.run(neighbors_query, entity_id=entity_id)
+            neighbors = []
+
+            for record in result:
+                if record["neighbor_id"]:  # 排除无邻居的情况
+                    neighbors.append({
+                        "id": record["neighbor_id"],
+                        "name": record["neighbor_name"],
+                        "type": record["neighbor_type"],
+                        "relation": record["relation_type"],
+                        "direction": record["direction"],
+                        "weight": record["weight"] if record["weight"] else 0.5
+                    })
+
+        # 查询关联的文本块
+        chunks_query = """
+        MATCH (e:__Entity__ {id: $entity_id})
+        OPTIONAL MATCH (e)<-[:MENTIONS]-(c:__Chunk__)
+        RETURN c.id AS chunk_id,
+               c.fileName AS file_name,
+               c.text AS text
+        LIMIT 10
+        """
+
+        with driver.session() as session:
+            result = session.run(chunks_query, entity_id=entity_id)
+            chunks = []
+
+            for record in result:
+                if record["chunk_id"]:  # 排除无文本块的情况
+                    chunks.append({
+                        "chunk_id": record["chunk_id"],
+                        "file_name": record["file_name"] if record["file_name"] else "Unknown",
+                        "text": record["text"][:200] + "..." if len(record["text"]) > 200 else record["text"]
+                    })
+
+        # 查询所属社区
+        community_query = """
+        MATCH (e:__Entity__ {id: $entity_id})
+        OPTIONAL MATCH (e)-[:IN_COMMUNITY]->(c:__Community__)
+        RETURN c.id AS community_id,
+               c.title AS community_title,
+               c.summary AS community_summary
+        """
+
+        with driver.session() as session:
+            result = session.run(community_query, entity_id=entity_id)
+            community_record = result.single()
+
+            community = None
+            if community_record and community_record["community_id"]:
+                community = {
+                    "id": community_record["community_id"],
+                    "title": community_record["community_title"],
+                    "summary": community_record["community_summary"]
+                }
+
+        return {
+            "entity": entity,
+            "neighbors": neighbors,
+            "chunks": chunks,
+            "community": community,
+            "neighbor_count": len(neighbors),
+            "chunk_count": len(chunks)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Failed to get entity detail: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))

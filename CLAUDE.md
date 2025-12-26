@@ -54,12 +54,18 @@ This is a GraphRAG + Deep Search implementation with multi-agent collaboration s
 
 - **server/**: FastAPI backend (`main.py`)
   - `routers/`: API endpoints
+    - `templates.py`: Template marketplace API (list, publish, rate, apply, download)
+    - `models.py`: Model management API (register, activate, delete, reload)
+  - `models/`: Data models
+    - `graph_template.py`: GraphTemplate model with SQLite database (ratings, downloads)
   - `services/agent_service.py`: Agent lifecycle management
   - `server_config/`: Auto-inherits from root config
 
 - **frontend/**: Streamlit UI (`app.py`)
   - Debug mode with trace visualization, graph interaction
   - Knowledge graph visualization (Neo4j-style)
+  - Template marketplace UI (browse, rate, apply templates)
+  - Model hub UI (register, switch, configure models)
 
 ### Integration Entry Points
 
@@ -195,6 +201,142 @@ python server/main.py
 # Frontend (Streamlit)
 streamlit run frontend/app.py
 ```
+
+## Template Marketplace & Model Management (New in v2.1)
+
+### Template Marketplace
+
+A marketplace for sharing and reusing graph configuration templates across projects.
+
+**Key Features:**
+- **Template Publishing**: Convert current `graph_config.json` to shareable template
+- **Rating System**: 1-5 star ratings with user comments
+- **Domain Filtering**: Filter by industry (legal, medical, ecommerce, education, finance, etc.)
+- **One-Click Apply**: Directly replace current config with template
+- **Template Download**: Export template configuration as JSON
+
+**Database Schema** (`server/models/graph_template.py`):
+- **templates** table: id, name, domain, description, config_json, schema_definition, author, downloads, rating
+- **template_ratings** table: template_id, user_id, rating (1-5), comment
+
+**API Endpoints** (`server/routers/templates.py`):
+- `GET /admin/templates/` - List templates with filtering and sorting
+- `GET /admin/templates/{id}` - Get template details with ratings
+- `POST /admin/templates/publish` - Publish current config as template
+- `POST /admin/templates/{id}/rate` - Rate template (1-5 stars + comment)
+- `POST /admin/templates/apply` - One-click apply template to current project
+- `POST /admin/templates/{id}/download` - Download template config (increments counter)
+- `DELETE /admin/templates/{id}` - Delete template (default templates protected)
+
+**Frontend** (`frontend/page_components/template_marketplace.py`):
+- Template card grid with sorting (rating/downloads/date)
+- Domain filtering dropdown
+- Template details sidebar with full config preview
+- Publish template dialog
+- Rating interface with star slider
+
+**Usage:**
+1. Navigate to "🏪 模板市场" in frontend
+2. Browse templates by domain or rating
+3. Click "详情" to view full configuration
+4. Click "应用" to apply template to your project
+5. Rate templates to help community
+
+### Model Management Hub
+
+Dynamic management of multiple LLM and Embedding models without service restart.
+
+**Key Features:**
+- **Model Registry**: Persistent storage of model configurations (`data/model_registry.json`)
+- **Dynamic Switching**: Change active LLM/Embedding without restarting
+- **Multi-Provider Support**: OpenAI, local models (.gguf), custom endpoints
+- **Thread-Safe Singleton**: Global ModelManager instance
+- **Default Protection**: Cannot delete default models from `.env`
+
+**Model Manager** (`graphrag_agent/models/model_manager.py`):
+```python
+from graphrag_agent.models.model_manager import get_model_manager
+
+# Get singleton instance
+manager = get_model_manager()
+
+# Register new model
+model_id = manager.register_model(
+    name="GPT-4o",
+    model_type="llm",  # or "embedding"
+    provider="openai",
+    config={
+        "model": "gpt-4o",
+        "api_key": "sk-...",
+        "base_url": "https://api.openai.com/v1",
+        "temperature": 0.7,
+        "max_tokens": 4096
+    },
+    description="GPT-4 Optimized model",
+    tags=["gpt", "openai", "production"],
+    set_active=True  # Activate immediately
+)
+
+# List models
+llm_models = manager.list_models(model_type="llm")
+
+# Activate model
+manager.activate_model(model_id)
+
+# Get active LLM/Embedding
+llm = manager.get_active_llm()
+embedding = manager.get_active_embedding()
+
+# Reload models (clear cache)
+manager.reload_models()
+```
+
+**API Endpoints** (`server/routers/models.py`):
+- `GET /admin/models/` - List models with filtering (type, provider, active)
+- `GET /admin/models/{id}` - Get model details
+- `POST /admin/models/register` - Register new model
+- `POST /admin/models/activate` - Activate model (set as current)
+- `DELETE /admin/models/{id}` - Delete model (default protected)
+- `POST /admin/models/reload` - Reload models (clear cache)
+- `GET /admin/models/active/llm` - Get active LLM info
+- `GET /admin/models/active/embedding` - Get active embedding info
+
+**Frontend** (`frontend/page_components/model_hub.py`):
+- Separate tabs for LLM and Embedding models
+- Model card display with activation/deletion buttons
+- Register model dialog with full configuration
+- Active model indicator
+- API key masking for security
+
+**Model Configuration Structure:**
+```python
+{
+    "id": "unique-id",
+    "name": "GPT-4o",
+    "model_type": "llm",  # or "embedding"
+    "provider": "openai",  # or "local", "custom"
+    "config": {
+        "model": "gpt-4o",
+        "api_key": "sk-...",
+        "base_url": "https://api.openai.com/v1",
+        "temperature": 0.7,
+        "max_tokens": 4096
+    },
+    "is_active": true,
+    "is_default": false,
+    "description": "GPT-4 Optimized model",
+    "tags": ["gpt", "openai", "production"]
+}
+```
+
+**Usage Scenarios:**
+- **A/B Testing**: Switch between different models to compare quality
+- **Cost Optimization**: Use cheaper models for simple tasks
+- **Provider Migration**: Switch from OpenAI to DeepSeek or Claude
+- **Local Deployment**: Use local .gguf models for privacy
+
+**Integration with Existing Code:**
+The Model Manager is designed to be a drop-in replacement for `graphrag_agent/models/get_models.py`. Future refactoring can replace direct imports of `get_llm_model()` with `get_model_manager().get_active_llm()`.
 
 ## Agent System
 

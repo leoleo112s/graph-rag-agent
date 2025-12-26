@@ -9,6 +9,7 @@ from docx import Document
 import csv
 import json
 import yaml
+import logging
 try:
     from yaml import CLoader as Loader
 except ImportError:
@@ -39,16 +40,24 @@ class FileReader:
     - CSV (CSV文件)
     - JSON (JSON文件)
     - YAML/YML (YAML文件)
+    - PNG/JPG/JPEG (图像文件 - 需要OCR)
+    - MP3/WAV/M4A (音频文件 - 需要ASR)
     """
 
-    def __init__(self, directory_path: str):
+    def __init__(self, directory_path: str, enable_ocr: bool = False, enable_asr: bool = False):
         """
         初始化文件读取器
-        
+
         Args:
             directory_path: 文件目录路径
+            enable_ocr: 是否启用OCR图像识别
+            enable_asr: 是否启用ASR语音识别
         """
         self.directory_path = directory_path
+        self.enable_ocr = enable_ocr
+        self.enable_asr = enable_asr
+        self._image_processor = None
+        self._audio_processor = None
         
     def read_files(self, file_extensions: Optional[List[str]] = None, recursive: bool = True) -> List[Tuple[str, str]]:
         """
@@ -71,6 +80,20 @@ class FileReader:
             '.json': self._read_json,
             '.yaml': self._read_yaml,
             '.yml': self._read_yaml,
+            # 图像文件 (需要OCR)
+            '.png': self._read_image,
+            '.jpg': self._read_image,
+            '.jpeg': self._read_image,
+            '.bmp': self._read_image,
+            '.tiff': self._read_image,
+            '.tif': self._read_image,
+            # 音频文件 (需要ASR)
+            '.mp3': self._read_audio,
+            '.wav': self._read_audio,
+            '.m4a': self._read_audio,
+            '.mp4': self._read_audio,  # 音频格式MP4
+            '.ogg': self._read_audio,
+            '.flac': self._read_audio,
         }
         
         # 如未指定扩展名，则使用所有支持的扩展名
@@ -480,12 +503,69 @@ class FileReader:
                 # 先转为JSON字符串以获得更易读的格式
                 return yaml.dump(data, allow_unicode=True, default_flow_style=False)
         except Exception as e:
-            raise FileReadError(
-                f"无法读取YAML文件",
-                file_path=file_path,
-                original_error=e
-            )
-    
+            print(f"读取YAML文件 {os.path.basename(file_path)} 失败: {str(e)}")
+            return f"[无法读取YAML文件内容: {str(e)}]"
+
+    def _read_image(self, file_path: str) -> str:
+        """使用OCR读取图像文件并返回提取的文字"""
+        if not self.enable_ocr:
+            logger.warning(f"OCR is disabled. Skipping image file: {file_path}")
+            return f"[OCR未启用，跳过图像文件: {os.path.basename(file_path)}]"
+
+        try:
+            # 延迟导入和初始化
+            if self._image_processor is None:
+                from graphrag_agent.pipelines.ingestion.image_processor import ImageProcessor
+                self._image_processor = ImageProcessor(use_gpu=False, lang="ch")
+                logger.info("ImageProcessor initialized")
+
+            text, metadata = self._image_processor.process_image(file_path)
+
+            if not text:
+                logger.warning(f"No text extracted from image: {file_path}")
+                return "[图像中未检测到文字]"
+
+            # 添加元数据到文本
+            header = f"[图像OCR结果 - 置信度: {metadata.get('avg_confidence', 0):.2f}]\n"
+            return header + text
+
+        except ImportError as e:
+            logger.error(f"OCR dependencies not installed: {e}")
+            return f"[OCR依赖未安装: {e}]"
+        except Exception as e:
+            logger.error(f"读取图像文件 {os.path.basename(file_path)} 失败: {e}")
+            return f"[无法读取图像文件: {e}]"
+
+    def _read_audio(self, file_path: str) -> str:
+        """使用ASR读取音频文件并返回转录的文字"""
+        if not self.enable_asr:
+            logger.warning(f"ASR is disabled. Skipping audio file: {file_path}")
+            return f"[ASR未启用，跳过音频文件: {os.path.basename(file_path)}]"
+
+        try:
+            # 延迟导入和初始化
+            if self._audio_processor is None:
+                from graphrag_agent.pipelines.ingestion.audio_processor import AudioProcessor
+                self._audio_processor = AudioProcessor(model_size="base", device="cpu")
+                logger.info("AudioProcessor initialized")
+
+            text, metadata = self._audio_processor.process_audio(file_path)
+
+            if not text:
+                logger.warning(f"No speech detected in audio: {file_path}")
+                return "[音频中未检测到语音]"
+
+            # 添加元数据到文本
+            header = f"[音频ASR结果 - 语言: {metadata.get('detected_language', 'unknown')}]\n"
+            return header + text
+
+        except ImportError as e:
+            logger.error(f"ASR dependencies not installed: {e}")
+            return f"[ASR依赖未安装: {e}]"
+        except Exception as e:
+            logger.error(f"读取音频文件 {os.path.basename(file_path)} 失败: {e}")
+            return f"[无法读取音频文件: {e}]"
+
     def read_yaml_as_dict(self, file_path: str) -> Dict:
         """
         读取YAML文件并返回字典对象
