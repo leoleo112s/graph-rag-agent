@@ -1,10 +1,11 @@
 import time
+import logging
 import concurrent.futures
 from typing import List, Dict, Any, Optional
 from langchain_community.vectorstores import Neo4jVector
 
 from graphrag_agent.models.get_models import get_embeddings_model
-from graphrag_agent.graph.core import BaseIndexer, connection_manager
+from graphrag_agent.graph.core import BaseIndexer, connection_manager, retry
 from graphrag_agent.config.settings import (
     CHUNK_BATCH_SIZE,
     MAX_WORKERS as DEFAULT_MAX_WORKERS,
@@ -13,6 +14,9 @@ from graphrag_agent.config.settings import (
     VECTOR_SIMILARITY_FUNCTION,
     CLEAN_LEGACY_INDEXES,
 )
+
+# 配置日志
+logger = logging.getLogger(__name__)
 
 class ChunkIndexManager(BaseIndexer):
     """
@@ -81,13 +85,13 @@ class ChunkIndexManager(BaseIndexer):
         """
         try:
             self.graph.query(query)
-            print(f"✅ Vector index created/verified: {CHUNK_VECTOR_INDEX}")
+            logger.info(f"✅ Vector index created/verified: {CHUNK_VECTOR_INDEX}")
         except Exception as e:
             # 索引可能已存在，这不是错误
             if "already exists" in str(e).lower() or "equivalent" in str(e).lower():
-                print(f"✅ Vector index already exists: {CHUNK_VECTOR_INDEX}")
+                logger.info(f"✅ Vector index already exists: {CHUNK_VECTOR_INDEX}")
             else:
-                print(f"⚠️ Vector index creation warning: {e}")
+                logger.warning(f"⚠️ Vector index creation warning: {e}")
                 raise
 
     def create_chunk_index(self,
@@ -124,17 +128,17 @@ class ChunkIndexManager(BaseIndexer):
         )
 
         if not chunks:
-            print("没有找到需要处理的文本块节点（可能已存在 embeddings）")
+            logger.info("没有找到需要处理的文本块节点（可能已存在 embeddings）")
             # 即使没有新的节点，也确保 vector index 存在
             try:
                 self.create_vector_index(node_label, embedding_property)
-                print("✅ Vector index 已就绪（无新节点需要处理）")
+                logger.info("✅ Vector index 已就绪（无新节点需要处理）")
                 return True
             except Exception as e:
-                print(f"❌ Vector index 创建失败: {e}")
+                logger.error(f"❌ Vector index 创建失败: {e}", exc_info=True)
                 return False
 
-        print(f"开始为 {len(chunks)} 个文本块生成 embeddings")
+        logger.info(f"开始为 {len(chunks)} 个文本块生成 embeddings")
 
         # 步骤 1: 批量计算并更新 embeddings
         self._process_embeddings_in_batches(chunks, node_label, text_property, embedding_property)
@@ -144,12 +148,12 @@ class ChunkIndexManager(BaseIndexer):
             self.create_vector_index(node_label, embedding_property)
 
             end_time = time.time()
-            print(f"\n✅ 索引创建成功，总耗时: {end_time - start_time:.2f}秒")
-            print(f"   其中: embedding计算: {self.embedding_time:.2f}秒, 数据库操作: {self.db_time:.2f}秒")
+            logger.info(f"\n✅ 索引创建成功，总耗时: {end_time - start_time:.2f}秒")
+            logger.info(f"   其中: embedding计算: {self.embedding_time:.2f}秒, 数据库操作: {self.db_time:.2f}秒")
 
             return True
         except Exception as e:
-            print(f"❌ Vector index 创建失败: {e}")
+            logger.error(f"❌ Vector index 创建失败: {e}", exc_info=True)
             return False
     
     def _process_embeddings_in_batches(self, chunks: List[Dict[str, Any]], 
@@ -192,65 +196,120 @@ class ChunkIndexManager(BaseIndexer):
             "处理文本块embedding"
         )
     
+    @retry(times=3, delay=1.0)
+    def _safe_embed_query(self, text: str) -> List[float]:
+        """
+        安全的单文本 embedding 计算（带重试）
+
+        Args:
+            text: 输入文本
+
+        Returns:
+            List[float]: embedding 向量
+        """
+        return self.embeddings.embed_query(text)
+
+    def _get_embedding_dimension(self) -> int:
+        """
+        获取 embedding 维度（优先使用配置，fallback 到自动探测）
+
+        Returns:
+            int: embedding 维度
+        """
+        # 优先使用全局配置
+        if EMBEDDING_DIM and EMBEDDING_DIM > 0:
+            return EMBEDDING_DIM
+
+        # Fallback: 从 embeddings 对象获取
+        if hasattr(self.embeddings, 'embedding_size'):
+            return self.embeddings.embedding_size
+
+        # 最后 fallback: 通用默认值（仅警告）
+        logger.warning("无法获取 embedding 维度配置，使用默认值 1536。建议在 settings.py 中配置 EMBEDDING_DIM")
+        return 1536
+
     def _compute_embeddings_batch(self, texts: List[str]) -> List[List[float]]:
         """
-        计算一批文本的embedding向量
-        
+        计算一批文本的embedding向量（并发安全 + 顺序保证）
+
         Args:
             texts: 文本列表
-            
+
         Returns:
-            List[List[float]]: embedding向量列表
+            List[List[float]]: embedding向量列表（顺序与输入严格对应）
         """
-        embeddings = []
-        
+        # 获取 embedding 维度（用于降级逻辑）
+        target_dim = self._get_embedding_dimension()
+
+        # 预创建嵌入任务（确保非空文本）
+        embedding_tasks = []
+        for text in texts:
+            safe_text = text if text and text.strip() else "empty chunk"
+            embedding_tasks.append(safe_text)
+
+        # 🔥 预分配结果列表（关键：确保顺序对齐）
+        embeddings = [None] * len(embedding_tasks)
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            # 预创建嵌入任务
-            embedding_tasks = []
-            for text in texts:
-                # 添加强健性处理，确保文本不为空
-                safe_text = text if text and text.strip() else "empty chunk"
-                embedding_tasks.append(safe_text)
-            
             # 分析批处理的最佳大小
             embed_batch_size = min(32, len(embedding_tasks))
-            
+
             # 批量执行嵌入任务
-            for i in range(0, len(embedding_tasks), embed_batch_size):
-                sub_batch = embedding_tasks[i:i+embed_batch_size]
+            for batch_start in range(0, len(embedding_tasks), embed_batch_size):
+                batch_end = min(batch_start + embed_batch_size, len(embedding_tasks))
+                sub_batch = embedding_tasks[batch_start:batch_end]
+
                 try:
-                    # 尝试使用批量嵌入方法
+                    # 策略 1: 尝试使用批量嵌入方法（最快）
                     if hasattr(self.embeddings, 'embed_documents'):
                         sub_batch_embeddings = self.embeddings.embed_documents(sub_batch)
-                        embeddings.extend(sub_batch_embeddings)
+                        # 填充到正确位置
+                        for offset, emb in enumerate(sub_batch_embeddings):
+                            embeddings[batch_start + offset] = emb
                     else:
-                        # 回退到单个嵌入
-                        futures = [executor.submit(self.embeddings.embed_query, text) for text in sub_batch]
-                        for future in concurrent.futures.as_completed(futures):
+                        # 策略 2: 并发单个嵌入（需要保证顺序）
+                        # 🔥 使用 future_to_index 确保顺序对齐
+                        future_to_index = {
+                            executor.submit(self._safe_embed_query, text): batch_start + i
+                            for i, text in enumerate(sub_batch)
+                        }
+
+                        for future in concurrent.futures.as_completed(future_to_index):
+                            global_idx = future_to_index[future]
                             try:
-                                embeddings.append(future.result())
+                                # ✅ 按索引填充，而非追加
+                                embeddings[global_idx] = future.result()
                             except Exception as e:
-                                print(f"嵌入计算失败: {e}")
-                                # 添加零向量作为备用
-                                if hasattr(self.embeddings, 'embedding_size'):
-                                    embeddings.append([0.0] * self.embeddings.embedding_size)
-                                else:
-                                    # 假设使用通用嵌入大小
-                                    embeddings.append([0.0] * 1536)
+                                logger.error(
+                                    f"嵌入计算最终失败 (索引: {global_idx}, 文本: {embedding_tasks[global_idx][:30]}...): {e}",
+                                    exc_info=True
+                                )
+                                # 降级处理：填充零向量
+                                embeddings[global_idx] = [0.0] * target_dim
+
                 except Exception as e:
-                    print(f"批量嵌入处理失败: {e}")
-                    # 尝试单个嵌入作为回退
-                    for text in sub_batch:
+                    logger.error(f"批量嵌入处理失败 (批次起始: {batch_start}): {e}", exc_info=True)
+                    # 回退策略：逐个尝试（不使用并发）
+                    for offset, text in enumerate(sub_batch):
+                        global_idx = batch_start + offset
                         try:
-                            embeddings.append(self.embeddings.embed_query(text))
+                            embeddings[global_idx] = self._safe_embed_query(text)
                         except Exception as e2:
-                            print(f"单个嵌入计算失败: {e2}")
-                            # 添加零向量作为备用
-                            if hasattr(self.embeddings, 'embedding_size'):
-                                embeddings.append([0.0] * self.embeddings.embedding_size)
-                            else:
-                                embeddings.append([0.0] * 1536)
-        
+                            logger.error(
+                                f"单个嵌入计算失败 (索引: {global_idx}, 文本: {text[:30]}...): {e2}",
+                                exc_info=True
+                            )
+                            # 降级处理：填充零向量
+                            embeddings[global_idx] = [0.0] * target_dim
+
+        # 🔥 验证完整性：确保没有 None 值
+        none_indices = [i for i, emb in enumerate(embeddings) if emb is None]
+        if none_indices:
+            logger.error(f"严重错误：存在 {len(none_indices)} 个未填充的 embedding 槽位 (索引: {none_indices[:10]})")
+            # 修复：填充零向量
+            for idx in none_indices:
+                embeddings[idx] = [0.0] * target_dim
+
         return embeddings
     
     def _get_chunk_texts_batch(self, chunks: List[Dict[str, Any]], text_property: str) -> List[str]:
@@ -318,7 +377,7 @@ class ChunkIndexManager(BaseIndexer):
                 """
                 self.graph.query(query, params={"updates": update_data})
             except Exception as e:
-                print(f"批量更新embeddings失败: {e}")
+                logger.error(f"批量更新embeddings失败: {e}", exc_info=True)
                 # 回退到单个更新模式
                 for update in update_data:
                     try:
@@ -331,4 +390,4 @@ class ChunkIndexManager(BaseIndexer):
                             "embedding": update["embedding"]
                         })
                     except Exception as e2:
-                        print(f"单个embedding更新失败 (ID: {update['id']}): {e2}")
+                        logger.error(f"单个embedding更新失败 (ID: {update['id']}): {e2}", exc_info=True)

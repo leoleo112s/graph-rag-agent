@@ -21,10 +21,14 @@ from graphrag_agent.graph.core import connection_manager
 from graphrag_agent.config.graph_config_model import GraphConfig
 from graphrag_agent.config.graph_config_storage import get_storage
 
+# 引入配置服务（热更新机制）
+from services.graph_config_service import get_config_service
+
 # 引入 V2 构建管理器和广播器
 from graphrag_agent.integrations.build.incremental_update_v2 import IncrementalUpdateManagerV2
 from utils.progress_broadcaster import get_broadcaster
 from utils.progress_manager import get_progress_manager
+from utils.build_lock import get_build_lock_manager  # ✅ 使用统一的锁管理器
 
 # 引入构建历史数据库
 from models.build_history import (
@@ -39,9 +43,12 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
-# 全局构建锁，防止重复运行
-_build_lock = asyncio.Lock()
-_is_building = False
+# ✅ 移除独立的锁和状态变量（已由 BuildLockManager 统一管理）
+# _build_lock = asyncio.Lock()  # ❌ 删除
+# _is_building = False  # ❌ 删除
+
+# 全局锁管理器
+_lock_manager = get_build_lock_manager()
 
 # ==================== 🟢 关键：配置格式转换辅助函数 ====================
 
@@ -158,7 +165,9 @@ def _run_full_build_task(task_id: str, config: Optional[Dict] = None):
 
 def _run_incremental_build_task(task_id: str, config: Optional[Dict] = None):
     """后台执行增量构建任务"""
-    global _is_building
+    # ✅ 使用统一的分布式锁（无需 global 变量）
+    lock_resource = "graph_build"
+
     pm = get_progress_manager()
     history_db = get_build_history_db()
 
@@ -215,8 +224,8 @@ def _run_incremental_build_task(task_id: str, config: Optional[Dict] = None):
             final_stage="failed"
         )
     finally:
-        global _is_building
-        _is_building = False
+        # ✅ 释放分布式锁（同步版本，因为此函数在后台线程中运行）
+        _lock_manager.release(lock_resource)
 
 
 # ==================== 构建 API ====================
@@ -226,17 +235,24 @@ async def trigger_full_build(
     background_tasks: BackgroundTasks,
     config: Dict = Body(default=None)  # 🟢 接收前端传来的 JSON 配置
 ):
-    """触发完整构建 (V2集成版，支持动态配置)"""
-    global _is_building
+    """触发完整构建 (V2集成版，支持动态配置)
+
+    ✅ 改进：使用分布式锁，支持多进程部署
+    ✅ 与 build.py 共享同一个锁，防止并发冲突
+    """
     logger.info("收到完整构建请求")
 
-    async with _build_lock:
-        if _is_building:
-            raise HTTPException(status_code=400, detail="已有构建任务正在运行")
-        _is_building = True
+    lock_resource = "graph_build"
+
+    # ✅ 尝试获取分布式锁
+    if not await _lock_manager.acquire_async(lock_resource, ttl=7200):  # 2 小时 TTL
+        raise HTTPException(
+            status_code=400,
+            detail="已有构建任务正在运行，请等待其完成（来自 admin.py 或 build.py）"
+        )
 
     task_id = str(uuid.uuid4())
-    # 启动后台任务 (🟢 将 config 传递给任务)
+    # 启动后台任务 (🟢 将 config 传递给任务，锁会在任务完成后释放)
     background_tasks.add_task(_run_full_build_task, task_id, config)
 
     return {"message": "完整构建已在后台启动", "status": "running", "task_id": task_id}
@@ -247,17 +263,24 @@ async def trigger_incremental_build(
     background_tasks: BackgroundTasks,
     config: Dict = Body(default=None)  # 🟢 接收前端传来的 JSON 配置
 ):
-    """触发增量构建 (V2集成版，支持动态配置)"""
-    global _is_building
+    """触发增量构建 (V2集成版，支持动态配置)
+
+    ✅ 改进：使用分布式锁，支持多进程部署
+    ✅ 与 build.py 共享同一个锁，防止并发冲突
+    """
     logger.info("收到增量构建请求")
 
-    async with _build_lock:
-        if _is_building:
-            raise HTTPException(status_code=400, detail="已有构建任务正在运行")
-        _is_building = True
+    lock_resource = "graph_build"
+
+    # ✅ 尝试获取分布式锁
+    if not await _lock_manager.acquire_async(lock_resource, ttl=7200):  # 2 小时 TTL
+        raise HTTPException(
+            status_code=400,
+            detail="已有构建任务正在运行，请等待其完成（来自 admin.py 或 build.py）"
+        )
 
     task_id = str(uuid.uuid4())
-    # 启动后台任务 (🟢 将 config 传递给任务)
+    # 启动后台任务 (🟢 将 config 传递给任务，锁会在任务完成后释放)
     background_tasks.add_task(_run_incremental_build_task, task_id, config)
 
     return {"message": "增量构建已在后台启动", "status": "running", "task_id": task_id}
@@ -265,22 +288,37 @@ async def trigger_incremental_build(
 
 @router.post("/build/stop")
 async def stop_build():
-    """停止构建"""
-    global _is_building
-    if _is_building:
-        # 逻辑停止
-        # _is_building = False # 暂时不强制重置，等待任务自然结束或超时
-        return {"message": "停止指令已发送 (注意：当前后台任务可能无法立即中断)"}
-    return {"message": "没有正在运行的构建任务"}
+    """停止构建
+
+    ✅ 改进：使用分布式锁
+    """
+    lock_resource = "graph_build"
+
+    # ✅ 检查是否有任务在运行
+    if not _lock_manager.is_locked(lock_resource):
+        raise HTTPException(status_code=400, detail="当前没有运行中的构建任务")
+
+    # TODO: 实现实际的停止逻辑（需要任务取消机制）
+    # 目前仅释放锁，实际任务可能仍在运行
+    await _lock_manager.release_async(lock_resource)
+
+    await get_broadcaster().emit_status("stopped", "构建任务已被用户停止")
+
+    return {"status": "stopped", "message": "构建任务停止指令已发送（锁已释放）"}
 
 
 @router.get("/build/status")
 async def get_build_status():
-    """获取构建状态"""
+    """获取构建状态
+
+    ✅ 改进：使用分布式锁状态，支持多进程
+    """
+    lock_resource = "graph_build"
+
     status = get_progress_manager().get_current_status()
     # 确保 status 包含 is_running 字段
     if "is_running" not in status:
-        status["is_running"] = _is_building
+        status["is_running"] = _lock_manager.is_locked(lock_resource)
     return status
 
 
@@ -431,13 +469,156 @@ async def get_graph_stats():
 
 @router.get("/health")
 async def health_check():
-    """健康检查"""
+    """
+    健康检查（增强版）
+
+    检查项：
+    1. Neo4j 连接状态（读取测试）
+    2. Neo4j 写入测试（延迟测量）
+    3. 连接池状态（活跃/空闲连接数）
+    4. 磁盘空间检查
+    5. 文件目录可写性
+
+    返回：
+    - status: 总体状态（healthy, degraded, unhealthy）
+    - checks: 各项检查详情
+    - timestamp: 检查时间戳
+    """
+    import time
+
+    checks = {
+        "neo4j_read": {"status": "unknown", "latency_ms": None, "error": None},
+        "neo4j_write": {"status": "unknown", "latency_ms": None, "error": None},
+        "neo4j_pool": {"status": "unknown", "active": None, "idle": None, "error": None},
+        "disk_space": {"status": "unknown", "free_gb": None, "error": None},
+        "files_dir": {"status": "unknown", "writable": False, "error": None},
+    }
+
+    overall_status = "healthy"
+
+    # 1. Neo4j 读取测试
     try:
-        connection_manager.execute_query("RETURN 1")
-        neo4j_status = "healthy"
-    except:
-        neo4j_status = "unhealthy"
-    return {"status": "ok", "neo4j": neo4j_status, "timestamp": datetime.now().isoformat()}
+        start = time.time()
+        connection_manager.execute_query("RETURN 1 AS test")
+        latency_ms = (time.time() - start) * 1000
+
+        checks["neo4j_read"]["status"] = "healthy"
+        checks["neo4j_read"]["latency_ms"] = round(latency_ms, 2)
+
+        # 超过 100ms 标记为降级
+        if latency_ms > 100:
+            checks["neo4j_read"]["status"] = "degraded"
+            overall_status = "degraded"
+    except Exception as e:
+        checks["neo4j_read"]["status"] = "unhealthy"
+        checks["neo4j_read"]["error"] = str(e)
+        overall_status = "unhealthy"
+
+    # 2. Neo4j 写入测试（使用临时节点）
+    try:
+        start = time.time()
+        test_id = str(uuid.uuid4())
+
+        # 创建临时测试节点
+        create_query = f"""
+        CREATE (n:__HealthCheck__ {{id: '{test_id}', timestamp: timestamp()}})
+        RETURN n.id AS id
+        """
+        result = connection_manager.execute_query(create_query)
+
+        # 删除测试节点
+        delete_query = f"MATCH (n:__HealthCheck__ {{id: '{test_id}'}}) DELETE n"
+        connection_manager.execute_query(delete_query)
+
+        latency_ms = (time.time() - start) * 1000
+
+        checks["neo4j_write"]["status"] = "healthy"
+        checks["neo4j_write"]["latency_ms"] = round(latency_ms, 2)
+
+        # 超过 200ms 标记为降级
+        if latency_ms > 200:
+            checks["neo4j_write"]["status"] = "degraded"
+            if overall_status == "healthy":
+                overall_status = "degraded"
+    except Exception as e:
+        checks["neo4j_write"]["status"] = "unhealthy"
+        checks["neo4j_write"]["error"] = str(e)
+        overall_status = "unhealthy"
+
+    # 3. 连接池状态检查
+    try:
+        # 查询连接池信息（需要 APOC 插件）
+        pool_query = """
+        CALL dbms.queryJmx('org.neo4j:*,name=Pool,*')
+        YIELD name, attributes
+        RETURN name, attributes
+        """
+        pool_result = connection_manager.execute_query(pool_query)
+
+        if pool_result:
+            # 提取连接池指标
+            for record in pool_result:
+                attrs = record.get('attributes', {})
+                if 'NumIdle' in attrs and 'NumActive' in attrs:
+                    checks["neo4j_pool"]["idle"] = attrs['NumIdle']
+                    checks["neo4j_pool"]["active"] = attrs['NumActive']
+                    checks["neo4j_pool"]["status"] = "healthy"
+                    break
+        else:
+            # 如果 APOC 不可用，使用备用检查
+            checks["neo4j_pool"]["status"] = "healthy"
+            checks["neo4j_pool"]["error"] = "APOC unavailable, pool metrics not available"
+    except Exception as e:
+        # 连接池检查失败不影响整体状态（非关键）
+        checks["neo4j_pool"]["status"] = "degraded"
+        checks["neo4j_pool"]["error"] = f"Pool check failed: {str(e)}"
+
+    # 4. 磁盘空间检查
+    try:
+        import shutil
+        total, used, free = shutil.disk_usage("/")
+        free_gb = free / (1024 ** 3)
+
+        checks["disk_space"]["free_gb"] = round(free_gb, 2)
+
+        if free_gb < 1:  # 少于 1GB
+            checks["disk_space"]["status"] = "unhealthy"
+            overall_status = "unhealthy"
+        elif free_gb < 5:  # 少于 5GB
+            checks["disk_space"]["status"] = "degraded"
+            if overall_status == "healthy":
+                overall_status = "degraded"
+        else:
+            checks["disk_space"]["status"] = "healthy"
+    except Exception as e:
+        checks["disk_space"]["status"] = "degraded"
+        checks["disk_space"]["error"] = str(e)
+
+    # 5. 文件目录可写性检查
+    try:
+        files_dir = Path(FILES_DIR)
+
+        # 确保目录存在
+        files_dir.mkdir(parents=True, exist_ok=True)
+
+        # 测试写入
+        test_file = files_dir / f".health_check_{uuid.uuid4()}.tmp"
+        test_file.write_text("health check test")
+        test_file.unlink()  # 删除测试文件
+
+        checks["files_dir"]["status"] = "healthy"
+        checks["files_dir"]["writable"] = True
+    except Exception as e:
+        checks["files_dir"]["status"] = "unhealthy"
+        checks["files_dir"]["writable"] = False
+        checks["files_dir"]["error"] = str(e)
+        overall_status = "unhealthy"
+
+    return {
+        "status": overall_status,
+        "checks": checks,
+        "timestamp": datetime.now().isoformat()
+    }
 
 
 @router.get("/files/list")
@@ -471,18 +652,19 @@ async def list_files():
 
 @router.get("/graph/config")
 async def get_graph_config():
-    """获取当前图谱配置"""
+    """获取当前图谱配置（从内存缓存读取）"""
     logger.info("收到获取图谱配置请求")
 
     try:
-        storage = get_storage()
-        config = storage.load()
+        # 🔥 使用 GraphConfigService 获取配置（优先读缓存）
+        config_service = get_config_service()
+        config = config_service.get_config()
 
         if config is None:
             logger.info("当前无配置，返回空")
             return {"exists": False, "config": None}
 
-        logger.info(f"返回配置: {config.project_name}")
+        logger.info(f"返回配置: {config.project_name} (缓存状态: {config_service.get_cache_status()})")
         return {
             "exists": True,
             "config": config.model_dump(mode='json')
@@ -495,20 +677,25 @@ async def get_graph_config():
 
 @router.post("/graph/config")
 async def save_graph_config(config: GraphConfig):
-    """保存图谱配置"""
+    """保存图谱配置并刷新内存缓存（热更新）"""
     logger.info(f"收到保存图谱配置请求: {config.project_name}")
 
     try:
-        storage = get_storage()
-        success = storage.save(config)
+        # 🔥 使用 GraphConfigService 保存配置（自动刷新缓存）
+        config_service = get_config_service()
+        saved_config = config_service.update_config_obj(config)
 
-        if success:
-            logger.info(f"配置保存成功: {config.project_name}")
-            return {"message": "配置保存成功", "project_name": config.project_name}
-        else:
-            logger.error("配置保存失败")
-            raise HTTPException(status_code=500, detail="配置保存失败")
+        logger.info(f"配置保存成功并已刷新缓存: {saved_config.project_name}")
+        return {
+            "message": "配置保存成功，已自动刷新缓存",
+            "project_name": saved_config.project_name,
+            "cache_status": config_service.get_cache_status()
+        }
 
+    except ValueError as e:
+        # 配置验证失败
+        logger.error(f"配置验证失败: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"配置验证失败: {str(e)}")
     except Exception as e:
         logger.error(f"保存图谱配置失败: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"保存配置失败: {str(e)}")
@@ -516,16 +703,20 @@ async def save_graph_config(config: GraphConfig):
 
 @router.delete("/graph/config")
 async def delete_graph_config():
-    """删除图谱配置"""
+    """删除图谱配置并清空内存缓存"""
     logger.info("收到删除图谱配置请求")
 
     try:
-        storage = get_storage()
-        success = storage.delete()
+        # 🔥 使用 GraphConfigService 删除配置（自动清空缓存）
+        config_service = get_config_service()
+        success = config_service.delete_config()
 
         if success:
-            logger.info("配置删除成功")
-            return {"message": "配置删除成功"}
+            logger.info("配置删除成功并已清空缓存")
+            return {
+                "message": "配置删除成功，缓存已清空",
+                "cache_status": config_service.get_cache_status()
+            }
         else:
             logger.error("配置删除失败")
             raise HTTPException(status_code=500, detail="配置删除失败")

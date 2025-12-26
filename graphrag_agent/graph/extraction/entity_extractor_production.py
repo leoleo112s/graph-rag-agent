@@ -251,7 +251,7 @@ class EntityRelationExtractor:
                  cache_dir="./cache/graph", max_workers=4, batch_size=5,
                  graph_config=None):
         """
-        初始化实体关系提取器（+ GraphConfig 支持）
+        初始化实体关系提取器（+ GraphConfig 支持 + 缓存版本隔离）
 
         Args:
             llm: 语言模型
@@ -259,8 +259,8 @@ class EntityRelationExtractor:
             human_template: 用户提示模板
             entity_types: 实体类型列表（兼容性，实际使用白名单）
             relationship_types: 关系类型列表（兼容性，实际使用白名单）
-            cache_dir: 缓存目录
-            max_workers: 并行工作线程数
+            cache_dir: 缓存目录（支持版本隔离）
+            max_workers: 并行工作线程数（支持 "auto" 或 0 表示自动计算）
             batch_size: 批处理大小
             graph_config: GraphConfig 实例（可选，用于 Schema-aware routing）
         """
@@ -271,6 +271,13 @@ class EntityRelationExtractor:
 
         # 🔥 新增：GraphConfig 支持
         self.graph_config = graph_config
+
+        # 🔥 新增：保存模板用于缓存版本控制
+        self.system_template = system_template
+        self.human_template = human_template
+
+        # 🔥 新增：提取 model_name 用于缓存隔离
+        self.model_name = self._extract_model_name(llm)
 
         # 设置分隔符（兼容旧格式）
         self.tuple_delimiter = " : "
@@ -290,16 +297,26 @@ class EntityRelationExtractor:
         # 创建处理链
         self.chain = self.chat_prompt | self.llm
 
-        # 缓存设置
-        self.cache_dir = cache_dir
+        # 🔥 缓存设置（版本隔离）
+        # 计算 prompt 版本 hash（混合 system 和 human template）
+        self.prompt_version = generate_hash(system_template + human_template)[:8]
+
+        # 构建带版本隔离的缓存目录
+        # 格式: cache_dir/model_name/prompt_version/
+        self.cache_dir = os.path.join(
+            cache_dir,
+            self.model_name,
+            self.prompt_version
+        )
         self.enable_cache = True
 
         # 确保缓存目录存在
-        if not os.path.exists(cache_dir):
-            os.makedirs(cache_dir)
+        if not os.path.exists(self.cache_dir):
+            os.makedirs(self.cache_dir)
+            print(f"创建缓存目录（版本隔离）: {self.cache_dir}")
 
-        # 并行处理配置
-        self.max_workers = max_workers or DEFAULT_MAX_WORKERS
+        # 🔥 并行处理配置（支持动态线程数）
+        self.max_workers = self._compute_max_workers(max_workers)
         self.batch_size = batch_size or DEFAULT_BATCH_SIZE
 
         # 缓存统计
@@ -307,9 +324,69 @@ class EntityRelationExtractor:
         self.cache_misses = 0
 
         print(f"🔥 生产级实体提取器已初始化")
+        print(f"   - Model: {self.model_name}")
+        print(f"   - Prompt Version: {self.prompt_version}")
+        print(f"   - Cache Dir: {self.cache_dir}")
+        print(f"   - Max Workers: {self.max_workers}")
         print(f"   - 实体类型白名单：{ALLOWED_ENTITY_TYPES}")
         print(f"   - 关系类型白名单：{ALLOWED_RELATION_TYPES}")
         print(f"   - 最小实体频率：{MIN_ENTITY_FREQUENCY}")
+
+    def _extract_model_name(self, llm) -> str:
+        """
+        从 LLM 对象中提取模型名称
+
+        尝试策略：
+        1. llm.model_name (LangChain ChatOpenAI)
+        2. llm.model (某些 LLM 实现)
+        3. llm.__class__.__name__ (fallback)
+
+        Returns:
+            str: 模型名称（用于缓存隔离）
+        """
+        # 策略 1: model_name 属性
+        if hasattr(llm, 'model_name') and llm.model_name:
+            return str(llm.model_name).replace('/', '_')  # 避免路径问题
+
+        # 策略 2: model 属性
+        if hasattr(llm, 'model') and llm.model:
+            return str(llm.model).replace('/', '_')
+
+        # 策略 3: 类名 fallback
+        return llm.__class__.__name__
+
+    def _compute_max_workers(self, max_workers) -> int:
+        """
+        计算实际的最大工作线程数
+
+        支持：
+        - 整数 N: 使用 N 个线程
+        - "auto" 或 0: 自动计算（CPU 核数 + 4，最多 32）
+        - None: 使用默认配置
+
+        Returns:
+            int: 实际线程数
+        """
+        # 如果是 "auto" 或 0，动态计算
+        if max_workers == "auto" or max_workers == 0:
+            # 使用 Python ThreadPoolExecutor 的默认策略
+            # min(32, (cpu_count or 1) + 4)
+            cpu_count = os.cpu_count() or 1
+            computed = min(32, cpu_count + 4)
+            print(f"动态计算线程数：CPU 核数 {cpu_count} → {computed} 个线程")
+            return computed
+
+        # 如果是 None，使用默认配置
+        if max_workers is None:
+            return DEFAULT_MAX_WORKERS
+
+        # 如果是整数，直接使用
+        if isinstance(max_workers, int) and max_workers > 0:
+            return max_workers
+
+        # 其他情况，fallback 到默认值
+        print(f"⚠️ 无效的 max_workers 值: {max_workers}，使用默认值 {DEFAULT_MAX_WORKERS}")
+        return DEFAULT_MAX_WORKERS
 
     def _generate_cache_key(self, text: str) -> str:
         """生成文本的缓存键"""
@@ -431,8 +508,17 @@ class EntityRelationExtractor:
             # 确保缓存结果是dict
             if isinstance(cached_result, dict):
                 return cached_result
-            # 兼容旧的字符串缓存格式
-            print(f"⚠️ 缓存格式为字符串，返回空结果")
+            # ✅ 兼容旧的字符串缓存格式 - 尝试解析为 JSON
+            if isinstance(cached_result, str):
+                obj = _extract_json_dict(cached_result)
+                if isinstance(obj, dict) and ("entities" in obj or "relationships" in obj or "relations" in obj):
+                    # 成功解析出有效的实体/关系数据
+                    return obj
+                # 如果字符串无法解析为有效 JSON
+                print(f"⚠️ 缓存字符串无法解析为有效JSON，返回空结果")
+                return {"entities": [], "relations": [], "relationships": []}
+            # 其他类型的缓存（不应该发生）
+            print(f"⚠️ 缓存格式异常(type={type(cached_result)})，返回空结果")
             return {"entities": [], "relations": [], "relationships": []}
 
         # 未缓存，调用 LLM 处理
@@ -622,7 +708,15 @@ class EntityRelationExtractor:
                                     time.sleep(1)
 
                             if cached_results[cache_keys[chunk_idx]] is None:
-                                cached_results[cache_keys[chunk_idx]] = ""
+                                # ✅ 重试失败后返回空的 dict 结构，而不是字符串
+                                cached_results[cache_keys[chunk_idx]] = {
+                                    "entities": [],
+                                    "relations": [],
+                                    "relationships": [],
+                                    "domains": [],
+                                    "bridges": [],
+                                    "raw": ""
+                                }
 
             ordered_results = [cached_results[key] for key in cache_keys]
             file_content.append(ordered_results)
@@ -634,29 +728,173 @@ class EntityRelationExtractor:
         print(f"所有chunks处理完成, 总耗时: {process_time:.2f}秒, 平均每chunk: {process_time/total_chunks:.2f}秒")
         return file_contents
 
+    def _extract_one_chunk(self, chunk_text: str, allowed_entity_types: set, allowed_relation_types: set) -> Dict[str, Any]:
+        """
+        包装单 chunk 抽取逻辑，供 batch 调用。
+
+        Args:
+            chunk_text: chunk 文本
+            allowed_entity_types: 允许的实体类型集合
+            allowed_relation_types: 允许的关系类型集合
+
+        Returns:
+            Dict: 包含 entities, relations, relationships 等字段的字典
+        """
+        return self._process_single_chunk(chunk_text, allowed_entity_types, allowed_relation_types)
+
     def process_chunks_batch(self, file_contents: List[Tuple], progress_callback=None) -> List[Tuple]:
         """
-        批量处理chunks（修复硬 Bug）
+        Batch 版：保证 chunk 与 LLM 抽取结果严格对齐。
 
-        🔥 修复：之前是空实现（pass），导致"空跑"
-        现在直接调用 process_chunks，复用所有逻辑（包括 Schema-aware routing）
+        Args:
+            file_contents: [ [filename, content, chunks], ... ]
+
+        Returns:
+            [(fname, orig_chunks, proc_chunks), ...]
+              - orig_chunks: List[str]  # 每个 chunk 的原文
+              - proc_chunks: List[Dict]  # 每个 chunk 的抽取结果
         """
-        processed = self.process_chunks(file_contents, progress_callback)
-        if len(processed) != len(file_contents):
-            raise ValueError("process_chunks_batch: 文件数量与输入不一致")
 
-        total_chunks = 0
-        empty_chunks = 0
-        mismatch_files = []
-        for (fname, orig_chunks), (_, proc_chunks) in zip(file_contents, processed):
-            if len(orig_chunks) != len(proc_chunks):
-                mismatch_files.append(fname)
-            total_chunks += len(proc_chunks)
-            empty_chunks += sum(1 for c in proc_chunks if not c)
+        def _pick_chunks_from_fc(fc):
+            """
+            从 fc 中提取 filename 和 chunk 文本列表。
+            fc 可能是：
+              - dict: {"filename": ..., "chunks": [...]}
+              - tuple/list: [fname, content, chunks] 或其他变体
+            """
+            if isinstance(fc, dict):
+                fname = fc.get("filename") or fc.get("fname") or fc.get("file") or ""
+                chunks = fc.get("chunks") or fc.get("orig_chunks") or []
+                return fname, chunks
 
-        if mismatch_files:
-            raise ValueError(f"process_chunks_batch: 块数量不匹配的文件: {mismatch_files}")
-        if total_chunks and (empty_chunks / total_chunks) > 0.2:
-            raise ValueError("process_chunks_batch: 空结果比例超过20%，可能存在抽取异常")
+            fname = fc[0] if len(fc) > 0 else ""
 
-        return processed
+            # ✅ 优先找"像 chunk 列表"的那个字段：list 且元素是 str/list 且每个元素长度明显>1
+            for idx in range(1, len(fc)):
+                v = fc[idx]
+                if isinstance(v, list) and v:
+                    # chunk 可能是 str 或 list（带分隔符的）
+                    if all(isinstance(x, str) for x in v):
+                        avg_len = sum(len(x) for x in v) / max(1, len(v))
+                        if avg_len >= 20:   # chunk 一般不会是单字
+                            return fname, v
+                    elif all(isinstance(x, list) for x in v):
+                        # chunks 是 [[text, sep1, sep2], ...] 这种格式
+                        # 提取每个 chunk 的文本部分
+                        chunk_texts = []
+                        for chunk_item in v:
+                            if isinstance(chunk_item, list) and len(chunk_item) > 0:
+                                # 取第一个元素作为文本，或者拼接所有元素
+                                text = ''.join(chunk_item) if all(isinstance(x, str) for x in chunk_item) else str(chunk_item[0])
+                                chunk_texts.append(text)
+                            else:
+                                chunk_texts.append(str(chunk_item))
+                        if chunk_texts:
+                            return fname, chunk_texts
+
+            # 如果没找到，返回空
+            return fname, []
+
+        # 1) 提取每个文件的 chunks
+        normalized = []
+        for fc in file_contents:
+            fname, chunks = _pick_chunks_from_fc(fc)
+            normalized.append((fname, chunks))
+
+        bad = [fn for fn, ch in normalized if not ch]
+        if bad:
+            raise ValueError(f"process_chunks_batch: 未能从输入中解析出 chunk 列表，出问题的文件: {bad[:5]} (共{len(bad)}个)")
+
+        # 2) 准备每个文件的 schema（使用 GraphConfig 的 route_domain）
+        file_schema_map: Dict[str, Tuple[set, set]] = {}
+        graph_config = self._get_graph_config()
+
+        for fc in file_contents:
+            filename = fc[0]
+            content = fc[1] if len(fc) > 1 else ""
+
+            if graph_config:
+                domain_name = graph_config.route_domain(filename, content or "")
+                domain_def = graph_config.get_domain(domain_name)
+                if domain_def:
+                    ent_types = set(domain_def.entity_types)
+                    rel_types = set(domain_def.relation_types)
+                else:
+                    ent_types = set(self.entity_types) or DEFAULT_ALLOWED_ENTITY_TYPES
+                    rel_types = set(self.relationship_types) or DEFAULT_ALLOWED_RELATION_TYPES
+            else:
+                ent_types = set(self.entity_types) or DEFAULT_ALLOWED_ENTITY_TYPES
+                rel_types = set(self.relationship_types) or DEFAULT_ALLOWED_RELATION_TYPES
+
+            file_schema_map[filename] = (ent_types, rel_types)
+
+        # 3) 扁平化所有 chunks，记录每个文件的范围
+        flat_chunks = []
+        flat_schemas = []
+        spans = []   # (fname, start, end)
+        cursor = 0
+
+        for fname, chunks in normalized:
+            start = cursor
+            allowed_entity_types, allowed_relation_types = file_schema_map.get(
+                fname,
+                (set(self.entity_types) or DEFAULT_ALLOWED_ENTITY_TYPES,
+                 set(self.relationship_types) or DEFAULT_ALLOWED_RELATION_TYPES)
+            )
+
+            for chunk_text in chunks:
+                flat_chunks.append(chunk_text)
+                flat_schemas.append((allowed_entity_types, allowed_relation_types))
+
+            cursor += len(chunks)
+            spans.append((fname, start, cursor))
+
+        # 4) 批量调用 LLM 抽取（使用并发）
+        print(f"开始批量抽取 {len(flat_chunks)} 个 chunks...")
+        llm_results = [None] * len(flat_chunks)
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            futures = {
+                executor.submit(
+                    self._extract_one_chunk,
+                    flat_chunks[idx],
+                    flat_schemas[idx][0],
+                    flat_schemas[idx][1]
+                ): idx
+                for idx in range(len(flat_chunks))
+            }
+
+            completed = 0
+            for fut in concurrent.futures.as_completed(futures):
+                idx = futures[fut]
+                try:
+                    res = fut.result()
+                    llm_results[idx] = res
+                except Exception as e:
+                    print(f'Chunk {idx} 处理异常: {e}')
+                    llm_results[idx] = {
+                        "entities": [],
+                        "relations": [],
+                        "relationships": [],
+                        "domains": [],
+                        "bridges": [],
+                        "raw": ""
+                    }
+
+                completed += 1
+                if progress_callback:
+                    progress_callback(completed)
+
+        if None in llm_results:
+            raise ValueError(f"process_chunks_batch: 部分 chunk 抽取失败")
+
+        print(f"批量抽取完成，共 {len(llm_results)} 个结果")
+
+        # 5) 切片回填到每个文件，保证对齐
+        processed_file_contents = []
+        for fname, start, end in spans:
+            orig_chunks = flat_chunks[start:end]
+            proc_chunks = llm_results[start:end]
+            processed_file_contents.append((fname, orig_chunks, proc_chunks))
+
+        return processed_file_contents

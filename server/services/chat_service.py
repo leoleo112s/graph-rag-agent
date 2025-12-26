@@ -10,16 +10,19 @@ from services.agent_service import agent_manager
 from services.kg_service import extract_kg_from_message
 from utils.concurrent import chat_manager, feedback_manager
 from utils.semantic_cache import get_semantic_cache
+from utils.index_status import get_index_status, IndexStatus  # ✅ 导入索引状态检查
 
 # 导入 embeddings 模型（用于语义缓存）
 from graphrag_agent.models.get_models import get_embeddings_model
 
 
-async def process_chat(message: str, session_id: str, debug: bool = False, agent_type: str = "hybrid_agent", 
+async def process_chat(message: str, session_id: str, debug: bool = False, agent_type: str = "hybrid_agent",
                        use_deeper_tool: bool = True, show_thinking: bool = False) -> Dict:
     """
     处理聊天请求
-    
+
+    ✅ 改进：添加索引就绪状态检查，优雅降级
+
     Args:
         message: 用户消息
         session_id: 会话ID
@@ -27,19 +30,62 @@ async def process_chat(message: str, session_id: str, debug: bool = False, agent
         agent_type: Agent类型
         use_deeper_tool: 是否使用增强版研究工具 (for deep_research_agent)
         show_thinking: 是否显示思考过程 (for deep_research_agent)
-        
+
     Returns:
         Dict: 聊天响应结果
     """
+    # ========== ✅ 索引状态检查（优雅降级） ==========
+    try:
+        index_status = get_index_status()
+
+        if index_status["status"] == IndexStatus.BUILDING:
+            # 构建中：返回 503 Service Unavailable + 进度信息
+            build_progress = index_status["details"].get("build_progress", {})
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "message": index_status["message"],
+                    "status": "building",
+                    "progress": build_progress.get("percent", 0),
+                    "stage": build_progress.get("stage", "unknown"),
+                    "details": build_progress.get("details", "构建中..."),
+                    "retry_after": index_status.get("retry_after", 10)
+                }
+            )
+
+        elif index_status["status"] == IndexStatus.EMPTY:
+            # 索引为空：返回 400 Bad Request + 友好提示
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "message": index_status["message"],
+                    "status": "empty",
+                    "action_required": "请先构建知识图谱"
+                }
+            )
+
+        elif index_status["status"] == IndexStatus.ERROR:
+            # 检查失败：记录日志但继续执行（优雅降级）
+            print(f"⚠️ 索引状态检查失败（继续执行）: {index_status.get('message')}")
+
+        # status == READY or ERROR (with fallback)：继续正常流程
+    except HTTPException:
+        # 重新抛出 HTTPException
+        raise
+    except Exception as e:
+        # 索引检查异常：记录日志但不阻塞用户请求
+        print(f"⚠️ 索引状态检查异常（继续执行）: {e}")
+
+    # ========== 聊天锁控制 ==========
     # 生成锁的键
     lock_key = f"{session_id}_chat"
-    
+
     # 非阻塞方式尝试获取锁
     lock_acquired = chat_manager.try_acquire_lock(lock_key)
     if not lock_acquired:
         # 如果无法获取锁，说明有另一个请求正在处理
         raise HTTPException(
-            status_code=429, 
+            status_code=429,
             detail="当前有其他请求正在处理，请稍后再试"
         )
     
@@ -265,16 +311,18 @@ async def process_chat(message: str, session_id: str, debug: bool = False, agent
         chat_manager.cleanup_expired_locks()
 
 async def process_chat_stream(
-    message: str, 
-    session_id: str, 
-    debug: bool = False, 
+    message: str,
+    session_id: str,
+    debug: bool = False,
     agent_type: str = "hybrid_agent",
-    use_deeper_tool: bool = True, 
+    use_deeper_tool: bool = True,
     show_thinking: bool = False
 ) -> AsyncGenerator[str, None]:
     """
     处理聊天请求，返回流式输出
-    
+
+    ✅ 改进：添加索引就绪状态检查，优雅降级
+
     Args:
         message: 用户消息
         session_id: 会话ID
@@ -282,13 +330,49 @@ async def process_chat_stream(
         agent_type: Agent类型
         use_deeper_tool: 是否使用增强版研究工具
         show_thinking: 是否显示思考过程
-        
+
     Yields:
         流式文本块或状态更新
     """
+    # ========== ✅ 索引状态检查（优雅降级） ==========
+    try:
+        index_status = get_index_status()
+
+        if index_status["status"] == IndexStatus.BUILDING:
+            # 构建中：返回构建进度信息
+            build_progress = index_status["details"].get("build_progress", {})
+            yield json.dumps({
+                "status": "building",
+                "message": index_status["message"],
+                "progress": build_progress.get("percent", 0),
+                "stage": build_progress.get("stage", "unknown"),
+                "details": build_progress.get("details", "构建中..."),
+                "retry_after": index_status.get("retry_after", 10)
+            })
+            return
+
+        elif index_status["status"] == IndexStatus.EMPTY:
+            # 索引为空：返回友好提示
+            yield json.dumps({
+                "status": "empty",
+                "message": index_status["message"],
+                "action_required": "请先构建知识图谱"
+            })
+            return
+
+        elif index_status["status"] == IndexStatus.ERROR:
+            # 检查失败：记录日志但继续执行
+            print(f"⚠️ 索引状态检查失败（继续执行）: {index_status.get('message')}")
+
+        # status == READY or ERROR (with fallback)：继续正常流程
+    except Exception as e:
+        # 索引检查异常：记录日志但不阻塞用户请求
+        print(f"⚠️ 索引状态检查异常（继续执行）: {e}")
+
+    # ========== 聊天锁控制 ==========
     # 生成锁的键
     lock_key = f"{session_id}_chat"
-    
+
     # 非阻塞方式尝试获取锁
     lock_acquired = chat_manager.try_acquire_lock(lock_key)
     if not lock_acquired:
