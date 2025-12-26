@@ -20,6 +20,13 @@ frontend/
 │   │   └── visualization.py        # 知识图谱可视化组件
 │   ├── sidebar.py                  # 侧边栏组件
 │   └── styles.py                   # 全局样式定义
+├── page_components/                # 🆕 管理页面组件
+│   ├── document_manager.py         # 📚 文档管理页面
+│   ├── config_manager.py           # ⚙️ 配置管理页面
+│   ├── build_manager.py            # 🏗️ 构建管理页面
+│   ├── ai_config_wizard.py         # 🤖 AI 配置向导页面
+│   ├── template_marketplace.py     # 🆕 🏪 模板市场页面（v2.1）
+│   └── model_hub.py                # 🆕 🧠 模型中心页面（v2.1）
 ├── frontend_config/                # 前端配置
 │   ├── __init__.py
 │   └── settings.py                 # 前端设置文件
@@ -109,3 +116,15 @@ frontend/
 5. **反馈机制**：允许用户对回答提供反馈，提高系统质量
 6. **知识图谱管理**：直接在UI中管理实体和关系
 7. **性能监控**：提供详细的API性能监控和分析工具
+8. **🆕 模板市场（v2.1）**：图谱配置模板的浏览和应用
+   - 模板卡片网格展示，按领域筛选和排序
+   - 模板详情侧边栏，完整配置预览
+   - 一键应用模板到当前项目
+   - 模板评分系统（1-5星 + 评论）
+   - 发布当前配置为可复用模板
+9. **🆕 模型中心（v2.1）**：动态模型管理界面
+   - 分页显示LLM和Embedding模型
+   - 模型注册对话框，支持多提供商
+   - 一键激活/删除模型
+   - 查看当前活跃模型
+   - API Key自动脱敏显示
