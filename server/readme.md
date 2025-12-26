@@ -9,13 +9,16 @@ server/
 ├── main.py                   # FastAPI应用入口文件
 ├── models/                   # 数据模型定义
 │   ├── __init__.py
-│   └── schemas.py            # Pydantic模型定义，用于请求和响应校验
+│   ├── schemas.py            # Pydantic模型定义，用于请求和响应校验
+│   └── graph_template.py     # 🆕 图谱模板数据模型（模板市场）
 ├── routers/                  # API路由定义
 │   ├── __init__.py           # 总路由器，包含子路由
 │   ├── chat.py               # 聊天相关API路由
 │   ├── feedback.py           # 用户反馈API路由
 │   ├── knowledge_graph.py    # 知识图谱操作API路由
-│   ├── admin.py              # 🆕 管理API路由（文档/配置/构建管理，V2引擎集成）
+│   ├── admin.py              # 管理API路由（文档/配置/构建管理，V2引擎集成）
+│   ├── templates.py          # 🆕 模板市场API路由（v2.1）
+│   ├── models.py             # 🆕 模型管理API路由（v2.1）
 │   └── source.py             # 源内容获取API路由
 ├── server_config/            # 服务器配置
 │   ├── __init__.py
@@ -44,6 +47,8 @@ server/
 - `知识图谱`：提供图谱查询、操作和推理功能
 - `源内容`：获取知识来源的原始内容
 - `管理`：文档管理、配置管理、构建管理（集成V2增量更新引擎）
+- `模板市场`（v2.1新增）：图谱配置模板的发布、评分、应用和下载
+- `模型管理`（v2.1新增）：LLM和Embedding模型的动态注册、切换和管理
 
 ### 2. Agent系统设计
 
@@ -119,3 +124,15 @@ server/
    - 实时进度推送：WebSocket广播构建进度和文件状态
    - 全量构建优化：清空数据库 + 重建图谱的完整流程
    - 增强的日志输出：便于调试和监控后台任务
+7. **模板市场（v2.1新增）**：图谱配置模板的共享和复用
+   - 模板发布：将当前配置发布为可复用模板
+   - 评分系统：1-5星评价 + 用户评论
+   - 领域筛选：按行业（法务、医疗、电商等）分类
+   - 一键应用：直接替换当前项目配置
+   - SQLite数据库：templates和template_ratings表
+8. **模型管理中心（v2.1新增）**：动态模型管理无需重启
+   - 模型注册：支持OpenAI、本地模型、自定义端点
+   - 动态切换：无需重启即可更换LLM/Embedding
+   - 持久化存储：模型配置保存在data/model_registry.json
+   - 多提供商支持：OpenAI、DeepSeek、Claude、本地.gguf模型
+   - 默认保护：不允许删除从.env加载的默认模型
