@@ -1,5 +1,6 @@
 from typing import Any, Optional
 import threading
+import atexit
 from graphrag_agent.config.neo4jdb import get_db_manager
 from graphrag_agent.config.settings import CHUNK_VECTOR_INDEX, ENTITY_VECTOR_INDEX, CLEAN_LEGACY_INDEXES
 from graphrag_agent.utils.logging_config import get_logger
@@ -58,6 +59,9 @@ class GraphConnectionManager:
                 self.graph = db_manager.graph
                 # 保存 driver 引用以便后续关闭
                 self.driver = getattr(db_manager, 'driver', None)
+
+                # 注册退出钩子，确保程序退出时安全关闭连接
+                atexit.register(self.close)
 
                 logger.info("GraphConnectionManager initialized successfully")
             except Exception as e:

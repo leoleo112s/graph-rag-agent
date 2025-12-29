@@ -231,6 +231,14 @@ NEO4J_USER = os.getenv("NEO4J_USER") or os.getenv("NEO4J_USERNAME") or ""
 NEO4J_USERNAME = NEO4J_USER  # 保持旧变量可用
 
 NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "")
+
+# 连接池配置
+NEO4J_MAX_CONNECTION_POOL_SIZE = _get_env_int("NEO4J_MAX_CONNECTION_POOL_SIZE", 100) or 100
+NEO4J_CONNECTION_TIMEOUT = _get_env_int("NEO4J_CONNECTION_TIMEOUT", 30) or 30
+NEO4J_MAX_CONNECTION_LIFETIME = _get_env_int("NEO4J_MAX_CONNECTION_LIFETIME", 3600) or 3600
+NEO4J_CONNECTION_ACQUISITION_TIMEOUT = _get_env_int("NEO4J_CONNECTION_ACQUISITION_TIMEOUT", 60) or 60
+
+# 向后兼容
 NEO4J_MAX_POOL_SIZE = _get_env_int("NEO4J_MAX_POOL_SIZE", 10) or 10
 NEO4J_REFRESH_SCHEMA = _get_env_bool("NEO4J_REFRESH_SCHEMA", False)
 
@@ -240,7 +248,11 @@ NEO4J_CONFIG = {
     "uri": NEO4J_URI,
     "username": NEO4J_USER,      # ✅ 统一使用 NEO4J_USER
     "password": NEO4J_PASSWORD,
-    "max_pool_size": NEO4J_MAX_POOL_SIZE,
+    "max_connection_pool_size": NEO4J_MAX_CONNECTION_POOL_SIZE,
+    "connection_timeout": NEO4J_CONNECTION_TIMEOUT,
+    "max_connection_lifetime": NEO4J_MAX_CONNECTION_LIFETIME,
+    "connection_acquisition_timeout": NEO4J_CONNECTION_ACQUISITION_TIMEOUT,
+    "max_pool_size": NEO4J_MAX_POOL_SIZE,  # 向后兼容
     "refresh_schema": NEO4J_REFRESH_SCHEMA,
     "database": NEO4J_DATABASE,  # ✅ 如果你的 neo4jdb.py 支持 database 字段就会用到
 }

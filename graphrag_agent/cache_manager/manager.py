@@ -1,4 +1,5 @@
 import time
+import threading
 from typing import Any, Dict, Optional, Callable
 from pathlib import Path
 
@@ -90,8 +91,9 @@ class CacheManager:
             )
         else:
             self.vector_matcher = None
-        
-        # 性能指标收集
+
+        # 性能指标收集（线程安全）
+        self._metrics_lock = threading.RLock()
         self.performance_metrics = {
             'exact_hits': 0,
             'vector_hits': 0,
@@ -129,126 +131,171 @@ class CacheManager:
     def get(self, query: str, skip_validation: bool = False, **kwargs) -> Optional[Any]:
         """获取缓存内容，支持精确匹配和向量相似性匹配"""
         start_time = time.time()
-        self.performance_metrics['total_queries'] += 1
-        
+
+        with self._metrics_lock:
+            self.performance_metrics['total_queries'] += 1
+
         # 生成缓存键
         key = self._get_consistent_key(query, **kwargs)
-        
+
         # 首先尝试精确匹配
         cached_data = self.storage.get(key)
         if cached_data is not None:
-            self.performance_metrics['exact_hits'] += 1
             cache_item = CacheItem.from_any(cached_data)
-            cache_item.update_access_stats()
-            
-            # 验证逻辑
-            if skip_validation or cache_item.is_high_quality():
+
+            # 检查是否过期
+            if cache_item.is_expired():
+                # 过期缓存自动删除
+                self.storage.delete(key)
+                # 继续尝试向量匹配，不直接返回
+            else:
+                with self._metrics_lock:
+                    self.performance_metrics['exact_hits'] += 1
+
+                cache_item.update_access_stats()
+
+                # 验证逻辑
+                if skip_validation or cache_item.is_high_quality():
+                    content = cache_item.get_content()
+                    with self._metrics_lock:
+                        self.performance_metrics["get_time"] = time.time() - start_time
+                    return content
+
                 content = cache_item.get_content()
-                self.performance_metrics["get_time"] = time.time() - start_time
+                with self._metrics_lock:
+                    self.performance_metrics["get_time"] = time.time() - start_time
                 return content
-            
-            content = cache_item.get_content()
-            self.performance_metrics["get_time"] = time.time() - start_time
-            return content
-        
+
         # 如果精确匹配失败且启用了向量相似性，尝试向量匹配
         if self.enable_vector_similarity and self.vector_matcher:
             context_info = self._extract_context_info(**kwargs)
             similar_keys = self.vector_matcher.find_similar(query, context_info, top_k=3)
-            
+
             for similar_key, similarity_score in similar_keys:
                 cached_data = self.storage.get(similar_key)
                 if cached_data is not None:
-                    self.performance_metrics['vector_hits'] += 1
                     cache_item = CacheItem.from_any(cached_data)
+
+                    # 检查是否过期
+                    if cache_item.is_expired():
+                        # 过期缓存自动删除
+                        self.storage.delete(similar_key)
+                        if self.vector_matcher:
+                            self.vector_matcher.remove_vector(similar_key)
+                        continue  # 跳过此项，尝试下一个相似结果
+
+                    with self._metrics_lock:
+                        self.performance_metrics['vector_hits'] += 1
+
                     cache_item.update_access_stats()
-                    
+
                     # 添加相似性信息到元数据
                     cache_item.metadata['similarity_score'] = similarity_score
                     cache_item.metadata['original_query'] = query
                     cache_item.metadata['matched_via_vector'] = True
-                    
+
                     if skip_validation or cache_item.is_high_quality():
                         content = cache_item.get_content()
-                        self.performance_metrics["get_time"] = time.time() - start_time
+                        with self._metrics_lock:
+                            self.performance_metrics["get_time"] = time.time() - start_time
                         return content
-                    
+
                     content = cache_item.get_content()
-                    self.performance_metrics["get_time"] = time.time() - start_time
+                    with self._metrics_lock:
+                        self.performance_metrics["get_time"] = time.time() - start_time
                     return content
-        
+
         # 未找到匹配的缓存
-        self.performance_metrics['misses'] += 1
-        self.performance_metrics["get_time"] = time.time() - start_time
+        with self._metrics_lock:
+            self.performance_metrics['misses'] += 1
+            self.performance_metrics["get_time"] = time.time() - start_time
         return None
     
     def get_fast(self, query: str, **kwargs) -> Optional[Any]:
         """快速获取高质量缓存内容"""
         start_time = time.time()
-        
+
         # 生成缓存键
         key = self._get_consistent_key(query, **kwargs)
-        
+
         # 获取缓存项
         cached_data = self.storage.get(key)
         if cached_data is not None:
             cache_item = CacheItem.from_any(cached_data)
-            
-            # 只返回高质量缓存
-            if cache_item.is_high_quality():
-                cache_item.update_access_stats()
-                
-                # 更新上下文历史
-                self._update_strategy_history(query, **kwargs)
-                
-                content = cache_item.get_content()
-                self.performance_metrics["fast_get_time"] = time.time() - start_time
-                return content
-        
+
+            # 检查是否过期
+            if cache_item.is_expired():
+                # 过期缓存自动删除
+                self.storage.delete(key)
+                # 继续尝试向量匹配
+            else:
+                # 只返回高质量缓存
+                if cache_item.is_high_quality():
+                    cache_item.update_access_stats()
+
+                    # 更新上下文历史
+                    self._update_strategy_history(query, **kwargs)
+
+                    content = cache_item.get_content()
+                    with self._metrics_lock:
+                        self.performance_metrics["fast_get_time"] = time.time() - start_time
+                    return content
+
         # 尝试向量相似性匹配高质量缓存
         if self.enable_vector_similarity and self.vector_matcher:
             context_info = self._extract_context_info(**kwargs)
             similar_keys = self.vector_matcher.find_similar(query, context_info, top_k=1)
-            
+
             for similar_key, similarity_score in similar_keys:
                 cached_data = self.storage.get(similar_key)
                 if cached_data is not None:
                     cache_item = CacheItem.from_any(cached_data)
-                    
+
+                    # 检查是否过期
+                    if cache_item.is_expired():
+                        # 过期缓存自动删除
+                        self.storage.delete(similar_key)
+                        if self.vector_matcher:
+                            self.vector_matcher.remove_vector(similar_key)
+                        continue  # 跳过此项，尝试下一个相似结果
+
                     if cache_item.is_high_quality():
                         cache_item.update_access_stats()
                         cache_item.metadata['similarity_score'] = similarity_score
                         cache_item.metadata['matched_via_vector'] = True
-                        
+
                         content = cache_item.get_content()
-                        self.performance_metrics["fast_get_time"] = time.time() - start_time
+                        with self._metrics_lock:
+                            self.performance_metrics["fast_get_time"] = time.time() - start_time
                         return content
-        
-        self.performance_metrics["fast_get_time"] = time.time() - start_time
+
+        with self._metrics_lock:
+            self.performance_metrics["fast_get_time"] = time.time() - start_time
         return None
     
     def set(self, query: str, result: Any, **kwargs) -> None:
         """设置缓存内容"""
         start_time = time.time()
-        
+
         # 更新策略历史
         self._update_strategy_history(query, **kwargs)
-        
+
         # 生成缓存键
         key = self._get_consistent_key(query, **kwargs)
-        
+
         # 包装缓存项
         cache_item = self._wrap_cache_item(result)
-        
+
         # 存储缓存项
         self.storage.set(key, cache_item.to_dict())
-        
+
         # 添加到向量索引
         if self.enable_vector_similarity and self.vector_matcher:
             context_info = self._extract_context_info(**kwargs)
             self.vector_matcher.add_vector(key, query, context_info)
-        
-        self.performance_metrics["set_time"] = time.time() - start_time
+
+        with self._metrics_lock:
+            self.performance_metrics["set_time"] = time.time() - start_time
     
     def _update_strategy_history(self, query: str, **kwargs):
         """更新策略历史"""
@@ -266,30 +313,32 @@ class CacheManager:
     def mark_quality(self, query: str, is_positive: bool, **kwargs) -> bool:
         """标记缓存质量"""
         start_time = time.time()
-        
+
         # 生成缓存键
         key = self._get_consistent_key(query, **kwargs)
-        
+
         # 获取缓存项
         cached_data = self.storage.get(key)
         if cached_data is None:
-            self.performance_metrics["mark_time"] = time.time() - start_time
+            with self._metrics_lock:
+                self.performance_metrics["mark_time"] = time.time() - start_time
             return False
-        
+
         # 包装为缓存项
         cache_item = CacheItem.from_any(cached_data)
-        
+
         # 标记质量
         cache_item.mark_quality(is_positive)
-        
+
         # 更新缓存
         item_dict = cache_item.to_dict()
         if is_positive and cache_item.is_high_quality():
             item_dict["metadata"]["fast_path_eligible"] = True
-        
+
         self.storage.set(key, item_dict)
-        
-        self.performance_metrics["mark_time"] = time.time() - start_time
+
+        with self._metrics_lock:
+            self.performance_metrics["mark_time"] = time.time() - start_time
         return True
     
     def delete(self, query: str, **kwargs) -> bool:
@@ -331,13 +380,14 @@ class CacheManager:
             self.vector_matcher.save_index()
     
     def get_metrics(self) -> Dict[str, Any]:
-        """获取性能指标"""
-        metrics = self.performance_metrics.copy()
-        if metrics['total_queries'] > 0:
-            metrics['exact_hit_rate'] = metrics['exact_hits'] / metrics['total_queries']
-            metrics['vector_hit_rate'] = metrics['vector_hits'] / metrics['total_queries']
-            metrics['total_hit_rate'] = (metrics['exact_hits'] + metrics['vector_hits']) / metrics['total_queries']
-            metrics['miss_rate'] = metrics['misses'] / metrics['total_queries']
+        """获取性能指标（线程安全）"""
+        with self._metrics_lock:
+            metrics = self.performance_metrics.copy()
+            if metrics['total_queries'] > 0:
+                metrics['exact_hit_rate'] = metrics['exact_hits'] / metrics['total_queries']
+                metrics['vector_hit_rate'] = metrics['vector_hits'] / metrics['total_queries']
+                metrics['total_hit_rate'] = (metrics['exact_hits'] + metrics['vector_hits']) / metrics['total_queries']
+                metrics['miss_rate'] = metrics['misses'] / metrics['total_queries']
         return metrics
     
     def validate_answer(self, query: str, answer: str, validator: Callable[[str, str], bool] = None, **kwargs) -> bool:

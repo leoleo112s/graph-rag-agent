@@ -14,9 +14,10 @@ class CacheItem:
     def _initialize_metadata(self, metadata: Optional[Dict[str, Any]]) -> Dict[str, Any]:
         """初始化元数据，确保包含必要字段"""
         meta = metadata or {}
-        
+
         defaults = {
             "created_at": time.time(),
+            "expires_at": None,  # None 表示永不过期，可设置为时间戳
             "quality_score": 0,
             "user_verified": False,
             "access_count": 0,
@@ -26,12 +27,12 @@ class CacheItem:
             "matched_via_vector": False,
             "original_query": None
         }
-        
+
         # 合并默认值和提供的元数据
         for key, default_value in defaults.items():
             if key not in meta:
                 meta[key] = default_value
-        
+
         return meta
     
     def get_content(self) -> Any:
@@ -141,10 +142,39 @@ class CacheItem:
         """获取缓存项的年龄（秒）"""
         created_at = self.metadata.get("created_at", time.time())
         return time.time() - created_at
+
+    def set_ttl(self, ttl_seconds: float) -> None:
+        """
+        设置缓存项的生存时间（TTL）
+
+        Args:
+            ttl_seconds: 生存时间（秒），从当前时间开始计算
+        """
+        self.metadata["expires_at"] = time.time() + ttl_seconds
     
-    def is_expired(self, max_age: float) -> bool:
-        """检查缓存项是否过期"""
-        return self.get_age() > max_age
+    def is_expired(self, max_age: float = None) -> bool:
+        """
+        检查缓存项是否过期
+
+        优先使用 expires_at 时间戳，如果未设置则使用 max_age 参数
+
+        Args:
+            max_age: 可选的最大年龄（秒），用于兼容旧代码
+
+        Returns:
+            bool: 是否已过期
+        """
+        # 优先使用 expires_at 时间戳
+        expires_at = self.metadata.get("expires_at")
+        if expires_at is not None:
+            return time.time() > expires_at
+
+        # 如果没有设置 expires_at，使用 max_age 参数（向后兼容）
+        if max_age is not None:
+            return self.get_age() > max_age
+
+        # 如果两者都没有，默认不过期
+        return False
     
     def __repr__(self) -> str:
         """字符串表示"""
