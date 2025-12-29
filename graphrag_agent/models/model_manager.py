@@ -19,6 +19,9 @@ from graphrag_agent.config.settings import (
     OPENAI_EMBEDDING_CONFIG,
     TIKTOKEN_CACHE_DIR
 )
+from graphrag_agent.utils.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 class ModelConfig(BaseModel):
@@ -87,7 +90,7 @@ class ModelManager:
                         model_config = ModelConfig(**model_data)
                         self.models[model_config.id] = model_config
             except Exception as e:
-                print(f"加载模型注册表失败: {e}")
+                logger.error(f"加载模型注册表失败: {e}", exc_info=True)
 
     def _save_registry(self):
         """保存模型注册表到文件"""
@@ -96,7 +99,7 @@ class ModelManager:
                 data = [model.model_dump() for model in self.models.values()]
                 json.dump(data, f, ensure_ascii=False, indent=2)
         except Exception as e:
-            print(f"保存模型注册表失败: {e}")
+            logger.error(f"保存模型注册表失败: {e}", exc_info=True)
 
     def _register_default_models(self):
         """注册默认模型（从环境变量）"""

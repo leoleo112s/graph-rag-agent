@@ -6,6 +6,9 @@ from langchain_core.documents import Document
 from graphrag_agent.graph.core import connection_manager, generate_hash
 from graphrag_agent.config.settings import BATCH_SIZE as DEFAULT_BATCH_SIZE
 from graphrag_agent.config.settings import MAX_WORKERS as DEFAULT_MAX_WORKERS
+from graphrag_agent.utils.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 class GraphStructureBuilder:
     """
@@ -135,10 +138,10 @@ class GraphStructureBuilder:
         # 处理剩余的数据
         if batch_data:
             self._process_batch(file_name, batch_data, relationships)
-        
+
         t1 = time.time()
-        print(f"创建关系耗时: {t1-t0:.2f}秒")
-        
+        logger.info(f"创建关系耗时: {t1-t0:.2f}秒")
+
         return lst_chunks_including_hash
     
     def _process_batch(self, file_name: str, batch_data: List[Dict], relationships: List[Dict]):
@@ -253,7 +256,7 @@ class GraphStructureBuilder:
             }
             chunk_batches.append(batch_data)
 
-        print(f"并行处理 {len(chunks)} 个块，每批次 {batch_size} 个，共 {len(chunk_batches)} 批次")
+        logger.info(f"并行处理 {len(chunks)} 个块，每批次 {batch_size} 个，共 {len(chunk_batches)} 批次")
 
         # 定义处理函数（纯函数，不依赖外部列表状态）
         def process_chunk_batch(data):
@@ -349,7 +352,7 @@ class GraphStructureBuilder:
                     all_results.extend(res["results"])
                     batch_link_info.append((res["batch_index"], res["first_id"], res["last_id"]))
                 except Exception as e:
-                    print(f"[ERROR] 批次处理失败: {e}")
+                    logger.error(f"批次处理失败: {e}", exc_info=True)
                     # 生产环境建议在这里抛出异常或记录严重错误，否则会导致数据丢失
 
         # 4. 缝合批次 (Stitch Batches)
@@ -369,7 +372,7 @@ class GraphStructureBuilder:
             all_rels.append(stitch_rel)
 
         # 5. 批量写入数据库 (优化过滤性能 + 重试机制)
-        print(f"并行处理完成，开始写入 {len(all_nodes)} 个节点和 {len(all_rels)} 条关系")
+        logger.info(f"并行处理完成，开始写入 {len(all_nodes)} 个节点和 {len(all_rels)} 条关系")
         self._batch_write_to_db(file_name, all_nodes, all_rels)
 
         return all_results
@@ -435,9 +438,9 @@ class GraphStructureBuilder:
                 return
             except Exception as e:
                 if attempt == max_retries - 1:
-                    print(f"[CRITICAL] {desc} 失败，已重试 {max_retries} 次: {e}")
+                    logger.error(f"{desc} 失败，已重试 {max_retries} 次: {e}", exc_info=True)
                     raise e
-                print(f"[WARN] {desc} 失败，正在重试 ({attempt+1}/{max_retries}): {e}")
+                logger.warning(f"{desc} 失败，正在重试 ({attempt+1}/{max_retries}): {e}")
                 time.sleep(1 * (attempt + 1))
 
     # --- 拆分出的原子查询函数 ---
