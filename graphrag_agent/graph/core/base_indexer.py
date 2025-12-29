@@ -3,6 +3,10 @@ import concurrent.futures
 from typing import List, Any, Optional
 
 from graphrag_agent.config.settings import MAX_WORKERS as CONFIG_MAX_WORKERS
+from graphrag_agent.utils.logging_config import get_logger
+from graphrag_agent.utils.process_result import ProcessResult
+
+logger = get_logger(__name__)
 
 class BaseIndexer:
     """
@@ -50,15 +54,15 @@ class BaseIndexer:
             desc: 进度描述
         """
         if not items:
-            print(f"没有找到需要处理的项目")
+            logger.warning(f"没有找到需要处理的项目")
             return
-            
+
         # 计算批处理参数
         item_count = len(items)
         optimal_batch_size = batch_size or self.get_optimal_batch_size(item_count)
         total_batches = (item_count + optimal_batch_size - 1) // optimal_batch_size
-        
-        print(f"{desc}: 共{item_count}项，批次大小: {optimal_batch_size}, 总批次: {total_batches}")
+
+        logger.info(f"{desc}: 共{item_count}项，批次大小: {optimal_batch_size}, 总批次: {total_batches}")
         
         # 保存每个批次的处理时间
         batch_times = []
@@ -83,33 +87,34 @@ class BaseIndexer:
             avg_time = sum(batch_times) / len(batch_times)
             remaining_batches = total_batches - (batch_index + 1)
             estimated_remaining = avg_time * remaining_batches
-            
-            print(f"已处理批次 {batch_index+1}/{total_batches}, "
-                  f"批次耗时: {batch_time:.2f}秒, "
-                  f"平均: {avg_time:.2f}秒/批, "
-                  f"预计剩余: {estimated_remaining:.2f}秒")
+
+            logger.info(f"已处理批次 {batch_index+1}/{total_batches}, "
+                       f"批次耗时: {batch_time:.2f}秒, "
+                       f"平均: {avg_time:.2f}秒/批, "
+                       f"预计剩余: {estimated_remaining:.2f}秒")
     
-    def process_in_parallel(self, items: List[Any], process_func) -> List[Any]:
+    def process_in_parallel(self, items: List[Any], process_func) -> List[ProcessResult]:
         """
-        并行处理项目（修复顺序错乱问题）
+        并行处理项目（改进版，支持结构化错误处理）
 
         使用预分配列表 + 按索引填充的方式确保：
         1. 结果顺序与输入 items 严格一致
-        2. 即使部分任务失败，列表长度也保持一致（失败位置为 None）
+        2. 每个结果包含成功/失败状态和详细错误信息
+        3. 支持错误分类（临时错误/数据库错误/未知错误）
 
         Args:
             items: 待处理项目列表
             process_func: 处理单个项目的函数
 
         Returns:
-            List[Any]: 处理结果列表，顺序与 items 一致。如果某项处理失败，该位置为 None。
+            List[ProcessResult]: 处理结果列表，顺序与 items 一致
         """
         if not items:
             return []
 
         max_workers = min(self.max_workers, CONFIG_MAX_WORKERS)
-        # 1. 预分配固定长度的列表，确保索引对齐
-        results = [None] * len(items)
+        # 预分配固定长度的列表，确保索引对齐
+        results: List[ProcessResult] = [None] * len(items)
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             # 记录 Future -> Index 的映射
@@ -122,11 +127,26 @@ class BaseIndexer:
                 index = future_to_index[future]
                 try:
                     result = future.result()
-                    # 2. 按原始索引归位
-                    results[index] = result
+                    # 成功：按原始索引归位
+                    results[index] = ProcessResult.success_result(data=result, index=index)
+                except TimeoutError as e:
+                    # 临时错误：超时（可重试）
+                    logger.warning(f"并行处理超时 (索引 {index}): {e}")
+                    results[index] = ProcessResult.failure_result(
+                        error=e, index=index, error_type="transient"
+                    )
+                except ConnectionError as e:
+                    # 临时错误：连接问题（可重试）
+                    logger.warning(f"并行处理连接错误 (索引 {index}): {e}")
+                    results[index] = ProcessResult.failure_result(
+                        error=e, index=index, error_type="transient"
+                    )
                 except Exception as e:
-                    print(f"并行处理出错 (索引 {index}): {e}")
-                    # 出错时保留 None，确保列表长度不变
-                    results[index] = None
+                    # 检查是否为数据库相关错误
+                    error_type = "database" if "neo4j" in str(type(e)).lower() or "database" in str(e).lower() else "unknown"
+                    logger.error(f"并行处理出错 (索引 {index}, 类型: {error_type}): {e}", exc_info=True)
+                    results[index] = ProcessResult.failure_result(
+                        error=e, index=index, error_type=error_type
+                    )
 
         return results

@@ -2,6 +2,9 @@ from typing import Any, Optional
 import threading
 from graphrag_agent.config.neo4jdb import get_db_manager
 from graphrag_agent.config.settings import CHUNK_VECTOR_INDEX, ENTITY_VECTOR_INDEX, CLEAN_LEGACY_INDEXES
+from graphrag_agent.utils.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 class GraphConnectionManager:
     """
@@ -56,9 +59,9 @@ class GraphConnectionManager:
                 # 保存 driver 引用以便后续关闭
                 self.driver = getattr(db_manager, 'driver', None)
 
-                print("✅ GraphConnectionManager initialized successfully.")
+                logger.info("GraphConnectionManager initialized successfully")
             except Exception as e:
-                print(f"❌ Failed to initialize GraphConnectionManager: {e}")
+                logger.error(f"Failed to initialize GraphConnectionManager: {e}", exc_info=True)
                 raise e
             finally:
                 # 无论成功与否都标记为已初始化，避免重复尝试
@@ -119,18 +122,18 @@ class GraphConnectionManager:
         """
         try:
             self.graph.query(f"DROP INDEX {index_name} IF EXISTS")
-            print(f"已删除索引 {index_name}（如果存在）")
+            logger.info(f"已删除索引 {index_name}（如果存在）")
         except Exception as e:
-            print(f"删除索引 {index_name} 时出错 (可忽略): {e}")
+            logger.warning(f"删除索引 {index_name} 时出错 (可忽略): {e}")
 
     def drop_all_indexes(self) -> None:
         """
         删除所有索引（包括普通索引和向量索引）
         在开始构建流程前调用，确保清理所有旧索引
         """
-        print("\n" + "="*60)
-        print("开始清理所有索引...")
-        print("="*60)
+        logger.info("="*60)
+        logger.info("开始清理所有索引...")
+        logger.info("="*60)
 
         try:
             # 获取所有索引
@@ -141,7 +144,7 @@ class GraphConnectionManager:
             """)
 
             if result:
-                print(f"发现 {len(result)} 个索引，开始删除...")
+                logger.info(f"发现 {len(result)} 个索引，开始删除...")
 
                 for index_info in result:
                     index_name = index_info.get('name')
@@ -150,17 +153,17 @@ class GraphConnectionManager:
                     if index_name:
                         try:
                             self.graph.query(f"DROP INDEX {index_name} IF EXISTS")
-                            print(f"  已删除索引: {index_name} (类型: {index_type})")
+                            logger.info(f"  已删除索引: {index_name} (类型: {index_type})")
                         except Exception as e:
-                            print(f"  删除索引 {index_name} 失败: {e}")
+                            logger.warning(f"  删除索引 {index_name} 失败: {e}")
 
-                print(f"\n索引清理完成，共删除 {len(result)} 个索引")
+                logger.info(f"索引清理完成，共删除 {len(result)} 个索引")
             else:
-                print("未发现任何索引")
+                logger.info("未发现任何索引")
 
         except Exception as e:
-            print(f"获取索引列表时出错: {e}")
-            print("尝试删除常见的索引名称...")
+            logger.error(f"获取索引列表时出错: {e}", exc_info=True)
+            logger.info("尝试删除常见的索引名称...")
 
             # 备用方案：尝试删除常见的索引（兼容清理受 CLEAN_LEGACY_INDEXES 控制）
             common_indexes = [
@@ -181,11 +184,11 @@ class GraphConnectionManager:
             for index_name in common_indexes:
                 try:
                     self.graph.query(f"DROP INDEX {index_name} IF EXISTS")
-                    print(f"  已尝试删除: {index_name}")
+                    logger.info(f"  已尝试删除: {index_name}")
                 except Exception as e:
-                    print(f"  删除 {index_name} 失败: {e}")
+                    logger.warning(f"  删除 {index_name} 失败: {e}")
 
-        print("="*60 + "\n")
+        logger.info("="*60)
 
     def close(self):
         """
@@ -200,18 +203,18 @@ class GraphConnectionManager:
                     # 尝试关闭 graph 连接
                     if hasattr(self.graph, 'close'):
                         self.graph.close()
-                        print("✅ Graph connection closed successfully.")
+                        logger.info("Graph connection closed successfully")
                 except Exception as e:
-                    print(f"⚠️ Error closing graph connection: {e}")
+                    logger.warning(f"Error closing graph connection: {e}")
 
             if hasattr(self, 'driver') and self.driver:
                 try:
                     # 尝试关闭 driver 连接
                     if hasattr(self.driver, 'close'):
                         self.driver.close()
-                        print("✅ Driver connection closed successfully.")
+                        logger.info("Driver connection closed successfully")
                 except Exception as e:
-                    print(f"⚠️ Error closing driver connection: {e}")
+                    logger.warning(f"Error closing driver connection: {e}")
 
             # 重置状态，允许重新创建实例
             self._initialized = False
