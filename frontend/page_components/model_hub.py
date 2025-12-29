@@ -49,18 +49,36 @@ def render_llm_models():
     st.divider()
 
     # 操作按钮
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
         if st.button("➕ 注册新LLM模型", use_container_width=True):
             st.session_state.show_register_llm_dialog = True
 
     with col2:
+        if st.button("⚙️ 调整参数", use_container_width=True):
+            st.session_state.show_adjust_llm_params_dialog = True
+
+    with col3:
         if st.button("🔄 重新加载模型", use_container_width=True):
             reload_models()
 
     # 注册对话框
     if st.session_state.get("show_register_llm_dialog", False):
         render_register_model_dialog("llm")
+
+    # 参数调整对话框
+    if st.session_state.get("show_adjust_llm_params_dialog", False):
+        try:
+            response = requests.get(f"{API_URL}/admin/models/active/llm")
+            if response.status_code == 200:
+                active_model = response.json()["model"]
+                render_adjust_params_dialog(active_model)
+            else:
+                st.error("无法获取活跃模型信息")
+                st.session_state.show_adjust_llm_params_dialog = False
+        except Exception as e:
+            st.error(f"获取模型信息失败: {e}")
+            st.session_state.show_adjust_llm_params_dialog = False
 
     st.divider()
 
@@ -342,3 +360,125 @@ def reload_models():
 
     except Exception as e:
         st.error(f"重新加载失败: {e}")
+
+
+def render_adjust_params_dialog(model: Dict[str, Any]):
+    """渲染参数调整对话框"""
+    st.subheader(f"⚙️ 调整模型参数: {model['name']}")
+    st.caption("调整当前活跃模型的生成参数")
+
+    config = model["config"]
+
+    with st.form("adjust_params_form"):
+        st.markdown("**生成参数:**")
+
+        # Temperature
+        current_temp = config.get("temperature", 0.7)
+        temperature = st.slider(
+            "Temperature",
+            min_value=0.0,
+            max_value=2.0,
+            value=float(current_temp),
+            step=0.1,
+            help="控制输出的随机性。较低的值（如 0.2）使输出更确定，较高的值（如 1.5）使输出更有创造性。",
+        )
+
+        # Max Tokens
+        current_max_tokens = config.get("max_tokens", 4096)
+        max_tokens = st.number_input(
+            "Max Tokens",
+            min_value=1,
+            max_value=128000,
+            value=int(current_max_tokens),
+            step=512,
+            help="生成的最大token数量",
+        )
+
+        # Top P
+        current_top_p = config.get("top_p", 1.0)
+        top_p = st.slider(
+            "Top P",
+            min_value=0.0,
+            max_value=1.0,
+            value=float(current_top_p),
+            step=0.05,
+            help="核采样参数。控制模型考虑的token范围。较低的值使输出更集中。",
+        )
+
+        # Frequency Penalty
+        current_freq_penalty = config.get("frequency_penalty", 0.0)
+        frequency_penalty = st.slider(
+            "Frequency Penalty",
+            min_value=-2.0,
+            max_value=2.0,
+            value=float(current_freq_penalty),
+            step=0.1,
+            help="降低重复词汇的概率。正值减少重复，负值增加重复。",
+        )
+
+        # Presence Penalty
+        current_pres_penalty = config.get("presence_penalty", 0.0)
+        presence_penalty = st.slider(
+            "Presence Penalty",
+            min_value=-2.0,
+            max_value=2.0,
+            value=float(current_pres_penalty),
+            step=0.1,
+            help="鼓励模型探索新话题。正值增加新话题，负值保持当前话题。",
+        )
+
+        st.divider()
+
+        # 显示参数变化
+        changes = []
+        if temperature != current_temp:
+            changes.append(f"Temperature: {current_temp} → {temperature}")
+        if max_tokens != current_max_tokens:
+            changes.append(f"Max Tokens: {current_max_tokens} → {max_tokens}")
+        if top_p != current_top_p:
+            changes.append(f"Top P: {current_top_p} → {top_p}")
+        if frequency_penalty != current_freq_penalty:
+            changes.append(f"Frequency Penalty: {current_freq_penalty} → {frequency_penalty}")
+        if presence_penalty != current_pres_penalty:
+            changes.append(f"Presence Penalty: {current_pres_penalty} → {presence_penalty}")
+
+        if changes:
+            st.markdown("**参数变化:**")
+            for change in changes:
+                st.markdown(f"- {change}")
+        else:
+            st.info("未检测到参数变化")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            submit = st.form_submit_button("✅ 保存", use_container_width=True, type="primary")
+        with col2:
+            cancel = st.form_submit_button("❌ 取消", use_container_width=True)
+
+        if cancel:
+            st.session_state.show_adjust_llm_params_dialog = False
+            st.rerun()
+
+        if submit:
+            # 更新配置
+            new_config = config.copy()
+            new_config["temperature"] = temperature
+            new_config["max_tokens"] = max_tokens
+            new_config["top_p"] = top_p
+            new_config["frequency_penalty"] = frequency_penalty
+            new_config["presence_penalty"] = presence_penalty
+
+            try:
+                response = requests.post(
+                    f"{API_URL}/admin/models/{model['id']}/update_config", json={"config": new_config}
+                )
+
+                if response.status_code == 200:
+                    st.success("✅ 参数已更新！")
+                    st.session_state.show_adjust_llm_params_dialog = False
+                    st.rerun()
+                else:
+                    st.error(f"更新失败: {response.text}")
+
+            except Exception as e:
+                st.error(f"更新失败: {e}")

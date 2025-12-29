@@ -34,6 +34,12 @@ class ActivateModelRequest(BaseModel):
     model_id: str
 
 
+class UpdateConfigRequest(BaseModel):
+    """更新模型配置请求"""
+
+    config: Dict[str, Any]
+
+
 @router.get("/")
 async def list_models(
     model_type: Optional[str] = None, provider: Optional[str] = None, active_only: bool = False
@@ -173,6 +179,51 @@ async def activate_model(request: ActivateModelRequest) -> Dict[str, Any]:
         raise
     except Exception as e:
         logger.error(f"Failed to activate model: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{model_id}/update_config")
+async def update_model_config(model_id: str, request: UpdateConfigRequest) -> Dict[str, Any]:
+    """
+    更新模型配置（参数调整）
+
+    Args:
+        model_id: 模型ID
+        request: 更新请求
+
+    Returns:
+        更新结果
+    """
+    try:
+        manager = get_model_manager()
+
+        # 验证模型是否存在
+        model = manager.get_model(model_id)
+        if not model:
+            raise HTTPException(status_code=404, detail="Model not found")
+
+        # 更新配置
+        success = manager.update_model_config(model_id, request.config)
+
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to update model config")
+
+        # 重新加载模型实例
+        manager.reload_models()
+
+        # 获取更新后的模型
+        updated_model = manager.get_model(model_id)
+
+        return {
+            "status": "success",
+            "message": f"Model '{model.name}' config updated successfully",
+            "model": updated_model.model_dump() if updated_model else None,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update model config: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

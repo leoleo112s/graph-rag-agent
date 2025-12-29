@@ -248,6 +248,36 @@ class ModelManager:
         self._save_registry()
         return True
 
+    def update_model_config(self, model_id: str, new_config: Dict[str, Any]) -> bool:
+        """
+        更新模型配置（参数调整）
+
+        Args:
+            model_id: 模型ID
+            new_config: 新的配置参数
+
+        Returns:
+            是否成功
+        """
+        model = self.models.get(model_id)
+        if not model:
+            return False
+
+        # 更新配置
+        model.config.update(new_config)
+        model.updated_at = datetime.now().isoformat()
+
+        # 如果是活跃模型，清空缓存实例以强制重新加载
+        if model.is_active:
+            if model.model_type == "llm":
+                self._active_llm = None
+            elif model.model_type == "embedding":
+                self._active_embedding = None
+
+        self._save_registry()
+        logger.info(f"Updated config for model {model.name} ({model_id})")
+        return True
+
     def delete_model(self, model_id: str) -> bool:
         """
         删除模型
