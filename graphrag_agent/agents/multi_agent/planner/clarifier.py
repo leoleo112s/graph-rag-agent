@@ -3,17 +3,18 @@
 
 负责根据用户原始查询识别模糊点并生成澄清问题
 """
-from typing import Optional, Any, Dict, List
-import logging
 
-from pydantic import BaseModel, Field
+import logging
+from typing import Any, Dict, List, Optional
+
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage
+from pydantic import BaseModel, Field
 
-from graphrag_agent.config.prompts import CLARIFY_PROMPT
-from graphrag_agent.models.get_models import get_llm_model
 from graphrag_agent.agents.multi_agent.core.state import PlanContext
 from graphrag_agent.agents.multi_agent.tools.json_parser import parse_json_text
+from graphrag_agent.config.prompts import CLARIFY_PROMPT
+from graphrag_agent.models.get_models import get_llm_model
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -22,6 +23,7 @@ class ClarificationResult(BaseModel):
     """
     澄清结果数据模型
     """
+
     needs_clarification: bool = Field(default=False, description="是否需要额外澄清")
     questions: List[str] = Field(default_factory=list, description="需要向用户提出的澄清问题列表")
     ambiguity_types: List[str] = Field(default_factory=list, description="检测到的模糊类型标签")
@@ -39,9 +41,7 @@ class ClarificationResult(BaseModel):
             return True
 
         answered_questions = {
-            item.get("question"): item.get("answer")
-            for item in context.clarification_history
-            if item.get("question")
+            item.get("question"): item.get("answer") for item in context.clarification_history if item.get("question")
         }
         for question in self.questions:
             answer = answered_questions.get(question)

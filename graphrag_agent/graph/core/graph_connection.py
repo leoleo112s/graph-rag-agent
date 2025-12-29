@@ -1,11 +1,13 @@
-from typing import Any, Optional
-import threading
 import atexit
+import threading
+from typing import Any, Optional
+
 from graphrag_agent.config.neo4jdb import get_db_manager
-from graphrag_agent.config.settings import CHUNK_VECTOR_INDEX, ENTITY_VECTOR_INDEX, CLEAN_LEGACY_INDEXES
+from graphrag_agent.config.settings import CHUNK_VECTOR_INDEX, CLEAN_LEGACY_INDEXES, ENTITY_VECTOR_INDEX
 from graphrag_agent.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
+
 
 class GraphConnectionManager:
     """
@@ -58,7 +60,7 @@ class GraphConnectionManager:
                 db_manager = get_db_manager()
                 self.graph = db_manager.graph
                 # 保存 driver 引用以便后续关闭
-                self.driver = getattr(db_manager, 'driver', None)
+                self.driver = getattr(db_manager, "driver", None)
 
                 # 注册退出钩子，确保程序退出时安全关闭连接
                 atexit.register(self.close)
@@ -71,52 +73,52 @@ class GraphConnectionManager:
                 # 无论成功与否都标记为已初始化，避免重复尝试
                 self._initialized = True
             # --- 初始化逻辑结束 ---
-    
+
     def get_connection(self):
         """
         获取图数据库连接
-        
+
         Returns:
             连接到Neo4j数据库的对象
         """
         return self.graph
-    
+
     def refresh_schema(self):
         """刷新图数据库模式"""
         self.graph.refresh_schema()
-    
+
     def execute_query(self, query: str, params: Optional[dict] = None) -> Any:
         """
         执行图数据库查询
-        
+
         Args:
             query: 查询语句
             params: 查询参数
-            
+
         Returns:
             查询结果
         """
         return self.graph.query(query, params or {})
-    
+
     def create_index(self, index_query: str) -> None:
         """
         创建索引
-        
+
         Args:
             index_query: 索引创建查询
         """
         self.graph.query(index_query)
-        
+
     def create_multiple_indexes(self, index_queries: list) -> None:
         """
         创建多个索引
-        
+
         Args:
             index_queries: 索引创建查询列表
         """
         for query in index_queries:
             self.create_index(query)
-            
+
     def drop_index(self, index_name: str) -> None:
         """
         删除索引
@@ -135,24 +137,26 @@ class GraphConnectionManager:
         删除所有索引（包括普通索引和向量索引）
         在开始构建流程前调用，确保清理所有旧索引
         """
-        logger.info("="*60)
+        logger.info("=" * 60)
         logger.info("开始清理所有索引...")
-        logger.info("="*60)
+        logger.info("=" * 60)
 
         try:
             # 获取所有索引
-            result = self.graph.query("""
+            result = self.graph.query(
+                """
                 SHOW INDEXES
                 YIELD name, type
                 RETURN name, type
-            """)
+            """
+            )
 
             if result:
                 logger.info(f"发现 {len(result)} 个索引，开始删除...")
 
                 for index_info in result:
-                    index_name = index_info.get('name')
-                    index_type = index_info.get('type', 'UNKNOWN')
+                    index_name = index_info.get("name")
+                    index_type = index_info.get("type", "UNKNOWN")
 
                     if index_name:
                         try:
@@ -192,7 +196,7 @@ class GraphConnectionManager:
                 except Exception as e:
                     logger.warning(f"  删除 {index_name} 失败: {e}")
 
-        logger.info("="*60)
+        logger.info("=" * 60)
 
     def close(self):
         """
@@ -202,19 +206,19 @@ class GraphConnectionManager:
         调用后允许重新创建实例。
         """
         with self._lock:
-            if hasattr(self, 'graph') and self.graph:
+            if hasattr(self, "graph") and self.graph:
                 try:
                     # 尝试关闭 graph 连接
-                    if hasattr(self.graph, 'close'):
+                    if hasattr(self.graph, "close"):
                         self.graph.close()
                         logger.info("Graph connection closed successfully")
                 except Exception as e:
                     logger.warning(f"Error closing graph connection: {e}")
 
-            if hasattr(self, 'driver') and self.driver:
+            if hasattr(self, "driver") and self.driver:
                 try:
                     # 尝试关闭 driver 连接
-                    if hasattr(self.driver, 'close'):
+                    if hasattr(self.driver, "close"):
                         self.driver.close()
                         logger.info("Driver connection closed successfully")
                 except Exception as e:
@@ -233,6 +237,7 @@ class GraphConnectionManager:
             GraphConnectionManager: 单例实例
         """
         return cls()
+
 
 # 创建全局连接管理器实例
 connection_manager = GraphConnectionManager()

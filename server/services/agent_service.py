@@ -1,7 +1,8 @@
-from typing import Dict, List
 import threading
 import time
-from langchain_core.messages import RemoveMessage, AIMessage, HumanMessage, ToolMessage
+from typing import Dict, List
+
+from langchain_core.messages import AIMessage, HumanMessage, RemoveMessage, ToolMessage
 
 
 # 创建Agent管理类
@@ -17,11 +18,11 @@ class AgentManager:
             enable_background_cleanup: 是否启用后台定期清理，默认启用
         """
         # 导入各种Agent
+        from graphrag_agent.agents.deep_research_agent import DeepResearchAgent
+        from graphrag_agent.agents.fusion_agent import FusionGraphRAGAgent
         from graphrag_agent.agents.graph_agent import GraphAgent
         from graphrag_agent.agents.hybrid_agent import HybridAgent
         from graphrag_agent.agents.naive_rag_agent import NaiveRagAgent
-        from graphrag_agent.agents.deep_research_agent import DeepResearchAgent
-        from graphrag_agent.agents.fusion_agent import FusionGraphRAGAgent
 
         # 初始化Agent类
         self.agent_classes = {
@@ -85,15 +86,12 @@ class AgentManager:
     def _cleanup_expired(self):
         """清理过期的 Agent 实例"""
         now = time.time()
-        expired_keys = [
-            k for k, t in self.access_times.items()
-            if now - t > self.ttl
-        ]
+        expired_keys = [k for k, t in self.access_times.items() if now - t > self.ttl]
 
         for key in expired_keys:
             try:
                 # 尝试关闭资源
-                if hasattr(self.agent_instances[key], 'close'):
+                if hasattr(self.agent_instances[key], "close"):
                     self.agent_instances[key].close()
 
                 # 删除实例
@@ -103,19 +101,19 @@ class AgentManager:
                 print(f"♻️  已回收过期 Agent: {key}")
             except Exception as e:
                 print(f"⚠️  回收资源失败 ({key}): {e}")
-    
+
     def clear_history(self, session_id: str) -> Dict:
         """
         清除特定会话的聊天历史
-        
+
         Args:
             session_id: 会话ID
-            
+
         Returns:
             Dict: 清除结果信息
         """
         remaining_text = ""
-        
+
         try:
             # 清除对应会话的所有agent实例历史
             with self.agent_lock:
@@ -124,14 +122,14 @@ class AgentManager:
                     if instance_key in self.agent_instances:
                         agent = self.agent_instances[instance_key]
                         config = {"configurable": {"thread_id": session_id}}
-                        
+
                         # 添加检查，防止None值报错
                         memory_content = agent.memory.get(config)
                         if memory_content is None or "channel_values" not in memory_content:
                             continue  # 跳过这个agent
-                            
+
                         messages = memory_content["channel_values"]["messages"]
-                        
+
                         # 如果消息少于2条，不进行删除操作
                         if len(messages) <= 2:
                             continue
@@ -144,18 +142,15 @@ class AgentManager:
                             i = i - 1
                             if i == 2:  # 保留前两条消息
                                 break
-            
+
             # 获取剩余消息
             remaining_text = "已清除会话历史"
-        
+
         except Exception as e:
             print(f"清除聊天历史时出错: {str(e)}")
-        
-        return {
-            "status": "success",
-            "remaining_messages": remaining_text
-        }
-    
+
+        return {"status": "success", "remaining_messages": remaining_text}
+
     def cleanup_session(self, session_id: str):
         """
         手动清理特定会话的所有 Agent 实例
@@ -164,14 +159,11 @@ class AgentManager:
             session_id: 会话ID
         """
         with self.agent_lock:
-            keys_to_remove = [
-                k for k in self.agent_instances.keys()
-                if k.endswith(f":{session_id}")
-            ]
+            keys_to_remove = [k for k in self.agent_instances.keys() if k.endswith(f":{session_id}")]
 
             for key in keys_to_remove:
                 try:
-                    if hasattr(self.agent_instances[key], 'close'):
+                    if hasattr(self.agent_instances[key], "close"):
                         self.agent_instances[key].close()
 
                     del self.agent_instances[key]
@@ -200,11 +192,12 @@ class AgentManager:
                 "active_instances": active,
                 "expired_instances": expired,
                 "ttl_seconds": self.ttl,
-                "instances": list(self.agent_instances.keys())
+                "instances": list(self.agent_instances.keys()),
             }
 
     def _start_background_cleanup(self):
         """启动后台清理线程"""
+
         def cleanup_loop():
             # 每 5 分钟或 TTL/2 时间（取较小值）检查一次
             interval = min(300, self.ttl // 2)
@@ -214,11 +207,7 @@ class AgentManager:
                     with self.agent_lock:
                         self._cleanup_expired()
 
-        self._cleanup_thread = threading.Thread(
-            target=cleanup_loop,
-            daemon=True,
-            name="AgentManager-Cleanup"
-        )
+        self._cleanup_thread = threading.Thread(target=cleanup_loop, daemon=True, name="AgentManager-Cleanup")
         self._cleanup_thread.start()
         print(f"🔄 后台清理任务已启动（间隔: {min(300, self.ttl // 2)}秒）")
 
@@ -233,7 +222,7 @@ class AgentManager:
         with self.agent_lock:
             for instance_key, agent in self.agent_instances.items():
                 try:
-                    if hasattr(agent, 'close'):
+                    if hasattr(agent, "close"):
                         agent.close()
                     print(f"✅ 已关闭 {instance_key} 资源")
                 except Exception as e:
@@ -251,10 +240,10 @@ agent_manager = AgentManager()
 def format_messages_for_response(messages: List[Dict]) -> str:
     """
     将消息格式化为字符串
-    
+
     Args:
         messages: 消息列表
-    
+
     Returns:
         str: 格式化后的消息字符串
     """
@@ -269,17 +258,17 @@ def format_messages_for_response(messages: List[Dict]) -> str:
 def format_execution_log(log: List[Dict]) -> List[Dict]:
     """
     格式化执行日志用于JSON响应
-    
+
     Args:
         log: 原始执行日志
-    
+
     Returns:
         List[Dict]: 格式化后的执行日志
     """
     formatted_log = []
     for entry in log:
         formatted_entry = {"node": entry["node"]}
-        
+
         # 处理输入
         if "input" in entry:
             if isinstance(entry["input"], dict):
@@ -294,6 +283,7 @@ def format_execution_log(log: List[Dict]) -> List[Dict]:
                         # 安全处理其他类型
                         try:
                             import json
+
                             json.dumps(v)  # 测试是否可序列化
                             input_str[k] = v
                         except:
@@ -304,7 +294,7 @@ def format_execution_log(log: List[Dict]) -> List[Dict]:
             else:
                 input_str = str(entry["input"])
             formatted_entry["input"] = input_str
-            
+
         # 处理输出
         if "output" in entry:
             if isinstance(entry["output"], dict):
@@ -319,6 +309,7 @@ def format_execution_log(log: List[Dict]) -> List[Dict]:
                         # 安全处理其他类型
                         try:
                             import json
+
                             json.dumps(v)  # 测试是否可序列化
                             output_str[k] = v
                         except:
@@ -329,6 +320,6 @@ def format_execution_log(log: List[Dict]) -> List[Dict]:
             else:
                 output_str = str(entry["output"])
             formatted_entry["output"] = output_str
-        
+
         formatted_log.append(formatted_entry)
     return formatted_log

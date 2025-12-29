@@ -2,8 +2,8 @@ from typing import Any, Dict, List, Optional
 
 from langchain_core.tools import BaseTool
 
-from graphrag_agent.models.get_models import get_llm_model, get_embeddings_model
 from graphrag_agent.graph.core import connection_manager
+from graphrag_agent.models.get_models import get_embeddings_model, get_llm_model
 from graphrag_agent.search.retrieval_adapter import (
     merge_retrieval_results,
     results_from_documents,
@@ -45,21 +45,15 @@ class ChainOfExplorationTool:
             exploration_width=exploration_width or self.exploration_width,
         )
 
-        entity_results = results_from_entities(
-            results.get("entities", []), source="chain_exploration"
-        )
-        relation_results = results_from_relationships(
-            results.get("relationships", []), source="chain_exploration"
-        )
+        entity_results = results_from_entities(results.get("entities", []), source="chain_exploration")
+        relation_results = results_from_relationships(results.get("relationships", []), source="chain_exploration")
         content_results = results_from_documents(
             results.get("content", []),
             source="chain_exploration",
             granularity="Chunk",
         )
 
-        merged_results = merge_retrieval_results(
-            entity_results, relation_results, content_results
-        )
+        merged_results = merge_retrieval_results(entity_results, relation_results, content_results)
 
         summary = {
             "exploration_path": results.get("exploration_path", []),

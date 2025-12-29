@@ -30,24 +30,20 @@ TRANSLATIONS = {
         "title": "GraphRAG 智能问答系统",
         "system_title": "🤖 GraphRAG 系统",
         "welcome": "欢迎使用",
-
         # 导航菜单
         "nav_chat": "💬 智能问答",
         "nav_docs": "📚 文档管理",
         "nav_ai_wizard": "🤖 AI 配置向导",
         "nav_config": "⚙️ 配置管理",
         "nav_build": "🏗️ 构建管理",
-
         # 设置
         "language": "语言",
         "zh_cn": "中文",
         "en_us": "English",
-
         # 聊天界面
         "chat_input_placeholder": "请输入您的问题...",
         "chat_send": "发送",
         "chat_clear": "清空对话",
-
         # Agent 选择
         "agent_selector": "选择 Agent",
         "agent_naive": "Naive RAG",
@@ -55,35 +51,29 @@ TRANSLATIONS = {
         "agent_hybrid": "Hybrid Agent",
         "agent_deep": "Deep Research",
         "agent_fusion": "Fusion Agent",
-
         # 调试模式
         "debug_mode": "调试模式",
         "debug_panel": "调试信息",
-
         # 文档管理
         "docs_upload": "上传文档",
         "docs_list": "文档列表",
         "docs_delete": "删除",
-
         # 构建管理
         "build_mode": "构建模式",
         "build_full": "全量构建",
         "build_incremental": "增量构建",
         "build_start": "开始构建",
         "build_status": "构建状态",
-
         # 状态提示
         "status_success": "成功",
         "status_error": "错误",
         "status_warning": "警告",
         "status_info": "信息",
-
         # 按钮
         "btn_confirm": "确认",
         "btn_cancel": "取消",
         "btn_save": "保存",
         "btn_reset": "重置",
-
         # 错误提示
         "error_network": "网络错误",
         "error_server": "服务器错误",
@@ -94,24 +84,20 @@ TRANSLATIONS = {
         "title": "GraphRAG AI Q&A System",
         "system_title": "🤖 GraphRAG System",
         "welcome": "Welcome",
-
         # Navigation
         "nav_chat": "💬 Chat Assistant",
         "nav_docs": "📚 Documents",
         "nav_ai_wizard": "🤖 AI Wizard",
         "nav_config": "⚙️ Settings",
         "nav_build": "🏗️ Build",
-
         # Settings
         "language": "Language",
         "zh_cn": "中文",
         "en_us": "English",
-
         # Chat Interface
         "chat_input_placeholder": "Enter your question...",
         "chat_send": "Send",
         "chat_clear": "Clear Chat",
-
         # Agent Selection
         "agent_selector": "Select Agent",
         "agent_naive": "Naive RAG",
@@ -119,46 +105,41 @@ TRANSLATIONS = {
         "agent_hybrid": "Hybrid Agent",
         "agent_deep": "Deep Research",
         "agent_fusion": "Fusion Agent",
-
         # Debug Mode
         "debug_mode": "Debug Mode",
         "debug_panel": "Debug Info",
-
         # Document Management
         "docs_upload": "Upload",
         "docs_list": "Document List",
         "docs_delete": "Delete",
-
         # Build Management
         "build_mode": "Build Mode",
         "build_full": "Full Build",
         "build_incremental": "Incremental Build",
         "build_start": "Start Build",
         "build_status": "Build Status",
-
         # Status Messages
         "status_success": "Success",
         "status_error": "Error",
         "status_warning": "Warning",
         "status_info": "Info",
-
         # Buttons
         "btn_confirm": "Confirm",
         "btn_cancel": "Cancel",
         "btn_save": "Save",
         "btn_reset": "Reset",
-
         # Error Messages
         "error_network": "Network Error",
         "error_server": "Server Error",
         "error_timeout": "Request Timeout",
-    }
+    },
 }
 
 
 # ============================================================================
 # 核心函数
 # ============================================================================
+
 
 def init_i18n():
     """
@@ -251,6 +232,7 @@ def add_translation(lang_code: str, translations: dict):
 # 语言切换组件
 # ============================================================================
 
+
 def render_language_switcher():
     """
     渲染语言切换按钮（放在侧边栏）
@@ -268,20 +250,12 @@ def render_language_switcher():
 
     with col1:
         # 中文按钮
-        if st.button(
-            "🇨🇳 中文",
-            use_container_width=True,
-            type="primary" if current_lang == "zh" else "secondary"
-        ):
+        if st.button("🇨🇳 中文", use_container_width=True, type="primary" if current_lang == "zh" else "secondary"):
             set_language("zh")
             st.rerun()
 
     with col2:
         # 英文按钮
-        if st.button(
-            "🇺🇸 EN",
-            use_container_width=True,
-            type="primary" if current_lang == "en" else "secondary"
-        ):
+        if st.button("🇺🇸 EN", use_container_width=True, type="primary" if current_lang == "en" else "secondary"):
             set_language("en")
             st.rerun()

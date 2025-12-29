@@ -4,18 +4,20 @@
 使用 SQLite 存储构建任务的历史记录，支持查询、统计和错误追踪。
 """
 
-import sqlite3
 import json
+import sqlite3
 import uuid
 from datetime import datetime
-from pathlib import Path
-from typing import Optional, List, Dict, Any
 from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel
 
 
 class BuildStatus(str, Enum):
     """构建状态枚举"""
+
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
@@ -24,12 +26,14 @@ class BuildStatus(str, Enum):
 
 class BuildType(str, Enum):
     """构建类型枚举"""
+
     FULL = "full"
     INCREMENTAL = "incremental"
 
 
 class BuildStage(str, Enum):
     """构建阶段枚举（标准化）"""
+
     IDLE = "idle"
     INITIALIZING = "initializing"
     DETECTING_CHANGES = "detecting_changes"
@@ -44,6 +48,7 @@ class BuildStage(str, Enum):
 
 class BuildRecord(BaseModel):
     """构建记录模型"""
+
     id: str
     task_type: BuildType
     status: BuildStatus
@@ -73,7 +78,8 @@ class BuildHistoryDB:
     def _init_db(self):
         """初始化数据库表"""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS build_records (
                     id TEXT PRIMARY KEY,
                     task_type TEXT NOT NULL,
@@ -87,14 +93,11 @@ class BuildHistoryDB:
                     final_stage TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
+            """
+            )
             conn.commit()
 
-    def create_record(
-        self,
-        task_type: BuildType,
-        config_snapshot: Optional[Dict] = None
-    ) -> str:
+    def create_record(self, task_type: BuildType, config_snapshot: Optional[Dict] = None) -> str:
         """
         创建新的构建记录
 
@@ -120,8 +123,8 @@ class BuildHistoryDB:
                     task_type.value,
                     BuildStatus.RUNNING.value,
                     start_time,
-                    json.dumps(config_snapshot) if config_snapshot else None
-                )
+                    json.dumps(config_snapshot) if config_snapshot else None,
+                ),
             )
             conn.commit()
 
@@ -133,7 +136,7 @@ class BuildHistoryDB:
         status: Optional[BuildStatus] = None,
         error_msg: Optional[str] = None,
         stats: Optional[Dict[str, int]] = None,
-        final_stage: Optional[str] = None
+        final_stage: Optional[str] = None,
     ):
         """
         更新构建记录
@@ -160,10 +163,7 @@ class BuildHistoryDB:
 
                 # 计算持续时间
                 with sqlite3.connect(self.db_path) as conn:
-                    cursor = conn.execute(
-                        "SELECT start_time FROM build_records WHERE id = ?",
-                        (record_id,)
-                    )
+                    cursor = conn.execute("SELECT start_time FROM build_records WHERE id = ?", (record_id,))
                     row = cursor.fetchone()
                     if row:
                         start = datetime.fromisoformat(row[0])
@@ -206,10 +206,7 @@ class BuildHistoryDB:
         """
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
-            cursor = conn.execute(
-                "SELECT * FROM build_records WHERE id = ?",
-                (record_id,)
-            )
+            cursor = conn.execute("SELECT * FROM build_records WHERE id = ?", (record_id,))
             row = cursor.fetchone()
 
             if not row:
@@ -222,7 +219,7 @@ class BuildHistoryDB:
         limit: int = 50,
         offset: int = 0,
         status: Optional[BuildStatus] = None,
-        task_type: Optional[BuildType] = None
+        task_type: Optional[BuildType] = None,
     ) -> List[BuildRecord]:
         """
         列出构建记录
@@ -270,13 +267,11 @@ class BuildHistoryDB:
 
             # 成功/失败次数
             completed = conn.execute(
-                "SELECT COUNT(*) FROM build_records WHERE status = ?",
-                (BuildStatus.COMPLETED.value,)
+                "SELECT COUNT(*) FROM build_records WHERE status = ?", (BuildStatus.COMPLETED.value,)
             ).fetchone()[0]
 
             failed = conn.execute(
-                "SELECT COUNT(*) FROM build_records WHERE status = ?",
-                (BuildStatus.FAILED.value,)
+                "SELECT COUNT(*) FROM build_records WHERE status = ?", (BuildStatus.FAILED.value,)
             ).fetchone()[0]
 
             # 平均构建时长（秒）
@@ -286,9 +281,7 @@ class BuildHistoryDB:
 
             # 最近一次构建
             conn.row_factory = sqlite3.Row
-            cursor = conn.execute(
-                "SELECT * FROM build_records ORDER BY start_time DESC LIMIT 1"
-            )
+            cursor = conn.execute("SELECT * FROM build_records ORDER BY start_time DESC LIMIT 1")
             last_build_row = cursor.fetchone()
             last_build = self._row_to_record(last_build_row) if last_build_row else None
 
@@ -298,7 +291,7 @@ class BuildHistoryDB:
                 "failed_builds": failed,
                 "success_rate": round(completed / total * 100, 2) if total > 0 else 0,
                 "avg_duration_seconds": int(avg_duration) if avg_duration else 0,
-                "last_build": last_build.model_dump() if last_build else None
+                "last_build": last_build.model_dump() if last_build else None,
             }
 
     def _row_to_record(self, row: sqlite3.Row) -> BuildRecord:
@@ -321,7 +314,7 @@ class BuildHistoryDB:
             config_snapshot=json.loads(row["config_snapshot"]) if row["config_snapshot"] else None,
             error_msg=row["error_msg"],
             stats=json.loads(row["stats"]) if row["stats"] else None,
-            final_stage=row["final_stage"]
+            final_stage=row["final_stage"],
         )
 
 

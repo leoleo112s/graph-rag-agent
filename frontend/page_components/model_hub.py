@@ -4,10 +4,11 @@
 提供LLM和Embedding模型的查看、注册、切换功能。
 """
 
-import streamlit as st
-import requests
-from typing import Dict, Any, List, Optional
 import json
+from typing import Any, Dict, List, Optional
+
+import requests
+import streamlit as st
 
 # API 基础 URL
 API_URL = "http://localhost:8000"
@@ -156,13 +157,13 @@ def render_model_list(models: List[Dict[str, Any]], model_type: str):
                 # 激活按钮
                 if not model.get("is_active"):
                     if st.button("激活", key=f"activate_{model['id']}", use_container_width=True):
-                        activate_model(model['id'], model['name'])
+                        activate_model(model["id"], model["name"])
 
             with col3:
                 # 删除按钮
                 if not model.get("is_default"):
                     if st.button("🗑️", key=f"delete_{model['id']}", use_container_width=True):
-                        delete_model(model['id'], model['name'])
+                        delete_model(model["id"], model["name"])
 
             # 描述
             if model.get("description"):
@@ -171,18 +172,22 @@ def render_model_list(models: List[Dict[str, Any]], model_type: str):
             # 配置详情
             with st.expander("查看配置", expanded=False):
                 # 隐藏API key
-                config_display = model['config'].copy()
-                if 'api_key' in config_display:
-                    config_display['api_key'] = "***" + config_display['api_key'][-4:] if len(config_display['api_key']) > 4 else "***"
+                config_display = model["config"].copy()
+                if "api_key" in config_display:
+                    config_display["api_key"] = (
+                        "***" + config_display["api_key"][-4:] if len(config_display["api_key"]) > 4 else "***"
+                    )
 
                 st.json(config_display)
 
             # 标签
             if model.get("tags"):
-                tags_html = " ".join([
-                    f'<span style="background-color: #e1e4e8; padding: 2px 6px; border-radius: 3px; font-size: 12px; margin-right: 4px;">{tag}</span>'
-                    for tag in model["tags"]
-                ])
+                tags_html = " ".join(
+                    [
+                        f'<span style="background-color: #e1e4e8; padding: 2px 6px; border-radius: 3px; font-size: 12px; margin-right: 4px;">{tag}</span>'
+                        for tag in model["tags"]
+                    ]
+                )
                 st.markdown(tags_html, unsafe_allow_html=True)
 
             st.divider()
@@ -203,7 +208,7 @@ def render_register_model_dialog(model_type: str):
             provider = st.selectbox(
                 "提供商*",
                 options=[p["value"] for p in provider_options],
-                format_func=lambda x: next(p["label"] for p in provider_options if p["value"] == x)
+                format_func=lambda x: next(p["label"] for p in provider_options if p["value"] == x),
             )
         else:
             provider = "openai"
@@ -212,23 +217,14 @@ def render_register_model_dialog(model_type: str):
 
         # 模型标识
         model_name = st.text_input(
-            "模型标识*",
-            placeholder="例如: gpt-4o, text-embedding-3-large",
-            help="模型的API标识符"
+            "模型标识*", placeholder="例如: gpt-4o, text-embedding-3-large", help="模型的API标识符"
         )
 
         # API配置
-        api_key = st.text_input(
-            "API Key",
-            type="password",
-            placeholder="sk-...",
-            help="留空则使用环境变量"
-        )
+        api_key = st.text_input("API Key", type="password", placeholder="sk-...", help="留空则使用环境变量")
 
         base_url = st.text_input(
-            "Base URL",
-            placeholder="https://api.openai.com/v1",
-            help="API端点URL，留空则使用默认值"
+            "Base URL", placeholder="https://api.openai.com/v1", help="API端点URL，留空则使用默认值"
         )
 
         # LLM特有参数
@@ -263,9 +259,7 @@ def render_register_model_dialog(model_type: str):
                 st.error("请填写所有必填字段（标*）")
             else:
                 # 构建配置
-                config = {
-                    "model": model_name
-                }
+                config = {"model": model_name}
 
                 if api_key:
                     config["api_key"] = api_key
@@ -287,7 +281,7 @@ def render_register_model_dialog(model_type: str):
                     "config": config,
                     "description": description,
                     "tags": tags,
-                    "set_active": set_active
+                    "set_active": set_active,
                 }
 
                 try:
@@ -308,10 +302,7 @@ def render_register_model_dialog(model_type: str):
 def activate_model(model_id: str, model_name: str):
     """激活模型"""
     try:
-        response = requests.post(
-            f"{API_URL}/admin/models/activate",
-            json={"model_id": model_id}
-        )
+        response = requests.post(f"{API_URL}/admin/models/activate", json={"model_id": model_id})
 
         if response.status_code == 200:
             st.success(f"✅ 模型 '{model_name}' 已激活！")

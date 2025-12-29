@@ -12,13 +12,15 @@
 - Frontend: 直接展示 answer（不解析 JSON）
 """
 
-from typing import List, Dict, Any, Optional, Union
-from pydantic import BaseModel, Field
 from datetime import datetime
+from typing import Any, Dict, List, Optional, Union
+
+from pydantic import BaseModel, Field
 
 
 class ReferenceData(BaseModel):
     """引用数据结构"""
+
     chunks: List[str] = Field(default_factory=list, description="引用的文本块 ID 列表")
     entities: List[str] = Field(default_factory=list, description="引用的实体 ID 列表")
     communities: List[str] = Field(default_factory=list, description="引用的社区 ID 列表")
@@ -27,6 +29,7 @@ class ReferenceData(BaseModel):
 
 class MetaData(BaseModel):
     """元数据结构"""
+
     retriever: str = Field(..., description="使用的检索器类型: naive | graph | hybrid | deep_research")
     search_time: Optional[float] = Field(None, description="搜索耗时（秒）")
     llm_time: Optional[float] = Field(None, description="LLM 生成耗时（秒）")
@@ -54,6 +57,7 @@ class SearchResponse(BaseModel):
     ... )
     >>> response.model_dump()
     """
+
     answer: str = Field(..., description="生成的回答文本")
     references: ReferenceData = Field(default_factory=ReferenceData, description="引用的资源")
     meta: MetaData = Field(..., description="元数据信息")
@@ -66,7 +70,7 @@ class SearchResponse(BaseModel):
                     "chunks": ["chunk_001", "chunk_045"],
                     "entities": ["entity_student_001"],
                     "communities": [],
-                    "relationships": []
+                    "relationships": [],
                 },
                 "meta": {
                     "retriever": "naive",
@@ -76,8 +80,8 @@ class SearchResponse(BaseModel):
                     "scores": [0.89, 0.76],
                     "top_k": 10,
                     "cache_hit": False,
-                    "timestamp": "2025-12-17T10:30:00"
-                }
+                    "timestamp": "2025-12-17T10:30:00",
+                },
             }
         }
 
@@ -115,7 +119,7 @@ class ResponseBuilder:
             "total_time": None,
             "scores": None,
             "top_k": None,
-            "cache_hit": False
+            "cache_hit": False,
         }
 
     def add_chunks(self, chunk_ids: List[str]) -> "ResponseBuilder":
@@ -148,10 +152,9 @@ class ResponseBuilder:
         self.meta_data["top_k"] = top_k
         return self
 
-    def set_timing(self,
-                   search_time: Optional[float] = None,
-                   llm_time: Optional[float] = None,
-                   total_time: Optional[float] = None) -> "ResponseBuilder":
+    def set_timing(
+        self, search_time: Optional[float] = None, llm_time: Optional[float] = None, total_time: Optional[float] = None
+    ) -> "ResponseBuilder":
         """
         设置性能指标
 
@@ -184,11 +187,7 @@ class ResponseBuilder:
             SearchResponse: 标准化的响应对象
         """
         meta = MetaData(**self.meta_data)
-        return SearchResponse(
-            answer=answer,
-            references=self.references,
-            meta=meta
-        )
+        return SearchResponse(answer=answer, references=self.references, meta=meta)
 
     def build_dict(self, answer: str) -> Dict[str, Any]:
         """
@@ -204,11 +203,7 @@ class ResponseBuilder:
         return response.model_dump()
 
 
-def create_error_response(
-    retriever_name: str,
-    error_message: str,
-    error_type: str = "search_error"
-) -> Dict[str, Any]:
+def create_error_response(retriever_name: str, error_message: str, error_type: str = "search_error") -> Dict[str, Any]:
     """
     创建错误响应（工程级实践）
 

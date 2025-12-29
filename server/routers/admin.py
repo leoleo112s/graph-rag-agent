@@ -8,35 +8,32 @@ import logging
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Optional, List, Any
+from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Body
+from fastapi import APIRouter, BackgroundTasks, Body, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
 
-# 引入配置
-from graphrag_agent.config.settings import FILES_DIR
-from graphrag_agent.config.neo4jdb import get_db_manager
-from graphrag_agent.graph.core import connection_manager
-from graphrag_agent.config.graph_config_model import GraphConfig
-from graphrag_agent.config.graph_config_storage import get_storage
+# 引入构建历史数据库
+from models.build_history import BuildStage as HistoryBuildStage
+from models.build_history import BuildStatus, BuildType, get_build_history_db
+from pydantic import BaseModel
 
 # 引入配置服务（热更新机制）
 from services.graph_config_service import get_config_service
+from utils.build_lock import get_build_lock_manager  # ✅ 使用统一的锁管理器
+from utils.progress_broadcaster import get_broadcaster
+from utils.progress_manager import get_progress_manager
+
+from graphrag_agent.config.graph_config_model import GraphConfig
+from graphrag_agent.config.graph_config_storage import get_storage
+from graphrag_agent.config.neo4jdb import get_db_manager
+
+# 引入配置
+from graphrag_agent.config.settings import FILES_DIR
+from graphrag_agent.graph.core import connection_manager
 
 # 引入 V2 构建管理器和广播器
 from graphrag_agent.integrations.build.incremental_update_v2 import IncrementalUpdateManagerV2
-from utils.progress_broadcaster import get_broadcaster
-from utils.progress_manager import get_progress_manager
-from utils.build_lock import get_build_lock_manager  # ✅ 使用统一的锁管理器
-
-# 引入构建历史数据库
-from models.build_history import (
-    get_build_history_db,
-    BuildType,
-    BuildStatus,
-    BuildStage as HistoryBuildStage
-)
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -51,6 +48,7 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 _lock_manager = get_build_lock_manager()
 
 # ==================== 🟢 关键：配置格式转换辅助函数 ====================
+
 
 def _process_config_for_pipeline(raw_config: Optional[Dict]) -> Dict:
     """
@@ -67,19 +65,19 @@ def _process_config_for_pipeline(raw_config: Optional[Dict]) -> Dict:
     # 兼容旧格式（直接在根目录）
     if raw_config.get("entity_types"):
         entities.update(raw_config["entity_types"])
-    
+
     # 处理新格式（从 domain_definitions 里提取）
     domains = raw_config.get("domain_definitions", [])
     for domain in domains:
         schema = domain.get("schema", {})
         if schema.get("entities"):
             entities.update(schema["entities"])
-    
+
     # 2. 提取关系类型
     relations = set()
     if raw_config.get("relationship_types"):
         relations.update(raw_config["relationship_types"])
-        
+
     for domain in domains:
         schema = domain.get("schema", {})
         if schema.get("relations"):
@@ -90,14 +88,16 @@ def _process_config_for_pipeline(raw_config: Optional[Dict]) -> Dict:
     if entities:
         result["entity_types"] = list(entities)
         print(f"DEBUG: [Admin] 提取到 {len(entities)} 种实体类型: {list(entities)[:5]}...")
-    
+
     if relations:
         result["relationship_types"] = list(relations)
         print(f"DEBUG: [Admin] 提取到 {len(relations)} 种关系类型")
-        
+
     return result
 
+
 # ==================== 核心构建逻辑 (V2 集成) ====================
+
 
 def _run_full_build_task(task_id: str, config: Optional[Dict] = None):
     """后台执行全量构建任务"""
@@ -106,10 +106,7 @@ def _run_full_build_task(task_id: str, config: Optional[Dict] = None):
     history_db = get_build_history_db()
 
     # 创建历史记录
-    record_id = history_db.create_record(
-        task_type=BuildType.FULL,
-        config_snapshot=config
-    )
+    record_id = history_db.create_record(task_type=BuildType.FULL, config_snapshot=config)
     logger.info(f"创建构建历史记录: {record_id}")
 
     try:
@@ -127,23 +124,17 @@ def _run_full_build_task(task_id: str, config: Optional[Dict] = None):
         result = asyncio.run(manager.run_full_pipeline())
 
         # 4. 更新状态和历史
-        l0_count = result.get('l0', {}).get('files_processed', 0)
-        l1_count = result.get('l1', {}).get('submitted_count', 0)
+        l0_count = result.get("l0", {}).get("files_processed", 0)
+        l1_count = result.get("l1", {}).get("submitted_count", 0)
 
-        stats = {
-            "l0_files": l0_count,
-            "l1_tasks": l1_count
-        }
+        stats = {"l0_files": l0_count, "l1_tasks": l1_count}
 
         msg = f"全量构建完成: 处理 {l0_count} 个文件, 提交 {l1_count} 个图谱任务"
         pm.update_status("completed", 100, msg)
 
         # 更新历史记录为成功
         history_db.update_record(
-            record_id=record_id,
-            status=BuildStatus.COMPLETED,
-            stats=stats,
-            final_stage="completed"
+            record_id=record_id, status=BuildStatus.COMPLETED, stats=stats, final_stage="completed"
         )
 
     except Exception as e:
@@ -153,10 +144,7 @@ def _run_full_build_task(task_id: str, config: Optional[Dict] = None):
 
         # 更新历史记录为失败
         history_db.update_record(
-            record_id=record_id,
-            status=BuildStatus.FAILED,
-            error_msg=error_msg,
-            final_stage="failed"
+            record_id=record_id, status=BuildStatus.FAILED, error_msg=error_msg, final_stage="failed"
         )
     finally:
         global _is_building
@@ -172,10 +160,7 @@ def _run_incremental_build_task(task_id: str, config: Optional[Dict] = None):
     history_db = get_build_history_db()
 
     # 创建历史记录
-    record_id = history_db.create_record(
-        task_type=BuildType.INCREMENTAL,
-        config_snapshot=config
-    )
+    record_id = history_db.create_record(task_type=BuildType.INCREMENTAL, config_snapshot=config)
     logger.info(f"创建构建历史记录: {record_id}")
 
     try:
@@ -192,23 +177,17 @@ def _run_incremental_build_task(task_id: str, config: Optional[Dict] = None):
         result = asyncio.run(manager.run_full_pipeline())
 
         # 4. 更新状态和历史
-        l0_count = result.get('l0', {}).get('files_processed', 0)
-        l1_count = result.get('l1', {}).get('submitted_count', 0)
+        l0_count = result.get("l0", {}).get("files_processed", 0)
+        l1_count = result.get("l1", {}).get("submitted_count", 0)
 
-        stats = {
-            "l0_files": l0_count,
-            "l1_tasks": l1_count
-        }
+        stats = {"l0_files": l0_count, "l1_tasks": l1_count}
 
         msg = f"增量构建完成: 处理 {l0_count} 个文件, 提交 {l1_count} 个图谱任务"
         pm.update_status("completed", 100, msg)
 
         # 更新历史记录为成功
         history_db.update_record(
-            record_id=record_id,
-            status=BuildStatus.COMPLETED,
-            stats=stats,
-            final_stage="completed"
+            record_id=record_id, status=BuildStatus.COMPLETED, stats=stats, final_stage="completed"
         )
 
     except Exception as e:
@@ -218,10 +197,7 @@ def _run_incremental_build_task(task_id: str, config: Optional[Dict] = None):
 
         # 更新历史记录为失败
         history_db.update_record(
-            record_id=record_id,
-            status=BuildStatus.FAILED,
-            error_msg=error_msg,
-            final_stage="failed"
+            record_id=record_id, status=BuildStatus.FAILED, error_msg=error_msg, final_stage="failed"
         )
     finally:
         # ✅ 释放分布式锁（同步版本，因为此函数在后台线程中运行）
@@ -230,10 +206,10 @@ def _run_incremental_build_task(task_id: str, config: Optional[Dict] = None):
 
 # ==================== 构建 API ====================
 
+
 @router.post("/build/full")
 async def trigger_full_build(
-    background_tasks: BackgroundTasks,
-    config: Dict = Body(default=None)  # 🟢 接收前端传来的 JSON 配置
+    background_tasks: BackgroundTasks, config: Dict = Body(default=None)  # 🟢 接收前端传来的 JSON 配置
 ):
     """触发完整构建 (V2集成版，支持动态配置)
 
@@ -246,10 +222,7 @@ async def trigger_full_build(
 
     # ✅ 尝试获取分布式锁
     if not await _lock_manager.acquire_async(lock_resource, ttl=7200):  # 2 小时 TTL
-        raise HTTPException(
-            status_code=400,
-            detail="已有构建任务正在运行，请等待其完成（来自 admin.py 或 build.py）"
-        )
+        raise HTTPException(status_code=400, detail="已有构建任务正在运行，请等待其完成（来自 admin.py 或 build.py）")
 
     task_id = str(uuid.uuid4())
     # 启动后台任务 (🟢 将 config 传递给任务，锁会在任务完成后释放)
@@ -260,8 +233,7 @@ async def trigger_full_build(
 
 @router.post("/build/incremental")
 async def trigger_incremental_build(
-    background_tasks: BackgroundTasks,
-    config: Dict = Body(default=None)  # 🟢 接收前端传来的 JSON 配置
+    background_tasks: BackgroundTasks, config: Dict = Body(default=None)  # 🟢 接收前端传来的 JSON 配置
 ):
     """触发增量构建 (V2集成版，支持动态配置)
 
@@ -274,10 +246,7 @@ async def trigger_incremental_build(
 
     # ✅ 尝试获取分布式锁
     if not await _lock_manager.acquire_async(lock_resource, ttl=7200):  # 2 小时 TTL
-        raise HTTPException(
-            status_code=400,
-            detail="已有构建任务正在运行，请等待其完成（来自 admin.py 或 build.py）"
-        )
+        raise HTTPException(status_code=400, detail="已有构建任务正在运行，请等待其完成（来自 admin.py 或 build.py）")
 
     task_id = str(uuid.uuid4())
     # 启动后台任务 (🟢 将 config 传递给任务，锁会在任务完成后释放)
@@ -352,20 +321,13 @@ async def stream_build_progress():
     return StreamingResponse(
         event_stream(),
         media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no"
-        }
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
     )
 
 
 @router.get("/build/history")
 async def get_build_history(
-    limit: int = 50,
-    offset: int = 0,
-    status: Optional[str] = None,
-    task_type: Optional[str] = None
+    limit: int = 50, offset: int = 0, status: Optional[str] = None, task_type: Optional[str] = None
 ):
     """
     获取构建历史记录
@@ -388,19 +350,9 @@ async def get_build_history(
         status_filter = BuildStatus(status) if status else None
         type_filter = BuildType(task_type) if task_type else None
 
-        records = history_db.list_records(
-            limit=limit,
-            offset=offset,
-            status=status_filter,
-            task_type=type_filter
-        )
+        records = history_db.list_records(limit=limit, offset=offset, status=status_filter, task_type=type_filter)
 
-        return {
-            "records": [r.model_dump() for r in records],
-            "count": len(records),
-            "limit": limit,
-            "offset": offset
-        }
+        return {"records": [r.model_dump() for r in records], "count": len(records), "limit": limit, "offset": offset}
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"无效的过滤参数: {str(e)}")
@@ -431,6 +383,7 @@ async def get_build_statistics():
 
 # ==================== 统计与文件 API ====================
 
+
 @router.get("/graph/stats")
 async def get_graph_stats():
     """获取图谱统计信息"""
@@ -439,17 +392,19 @@ async def get_graph_stats():
         # 查询实体数量
         entity_count_query = "MATCH (n) RETURN count(n) as count"
         entity_result = connection_manager.execute_query(entity_count_query)
-        entity_count = entity_result[0]['count'] if entity_result else 0
+        entity_count = entity_result[0]["count"] if entity_result else 0
 
         # 查询关系数量
         relationship_count_query = "MATCH ()-[r]->() RETURN count(r) as count"
         relationship_result = connection_manager.execute_query(relationship_count_query)
-        relationship_count = relationship_result[0]['count'] if relationship_result else 0
+        relationship_count = relationship_result[0]["count"] if relationship_result else 0
 
         # 查询社区数量
-        community_count_query = "MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count"
+        community_count_query = (
+            "MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count"
+        )
         community_result = connection_manager.execute_query(community_count_query)
-        community_count = community_result[0]['count'] if community_result else 0
+        community_count = community_result[0]["count"] if community_result else 0
 
         # 统计文档数量
         files_dir = Path(FILES_DIR)
@@ -460,7 +415,7 @@ async def get_graph_stats():
             "relationship_count": relationship_count,
             "community_count": community_count,
             "document_count": document_count,
-            "last_build_time": datetime.now().isoformat() if entity_count > 0 else None
+            "last_build_time": datetime.now().isoformat() if entity_count > 0 else None,
         }
     except Exception as e:
         logger.error(f"获取图谱统计失败: {str(e)}", exc_info=True)
@@ -558,10 +513,10 @@ async def health_check():
         if pool_result:
             # 提取连接池指标
             for record in pool_result:
-                attrs = record.get('attributes', {})
-                if 'NumIdle' in attrs and 'NumActive' in attrs:
-                    checks["neo4j_pool"]["idle"] = attrs['NumIdle']
-                    checks["neo4j_pool"]["active"] = attrs['NumActive']
+                attrs = record.get("attributes", {})
+                if "NumIdle" in attrs and "NumActive" in attrs:
+                    checks["neo4j_pool"]["idle"] = attrs["NumIdle"]
+                    checks["neo4j_pool"]["active"] = attrs["NumActive"]
                     checks["neo4j_pool"]["status"] = "healthy"
                     break
         else:
@@ -576,8 +531,9 @@ async def health_check():
     # 4. 磁盘空间检查
     try:
         import shutil
+
         total, used, free = shutil.disk_usage("/")
-        free_gb = free / (1024 ** 3)
+        free_gb = free / (1024**3)
 
         checks["disk_space"]["free_gb"] = round(free_gb, 2)
 
@@ -614,11 +570,7 @@ async def health_check():
         checks["files_dir"]["error"] = str(e)
         overall_status = "unhealthy"
 
-    return {
-        "status": overall_status,
-        "checks": checks,
-        "timestamp": datetime.now().isoformat()
-    }
+    return {"status": overall_status, "checks": checks, "timestamp": datetime.now().isoformat()}
 
 
 @router.get("/files/list")
@@ -634,13 +586,15 @@ async def list_files():
         for file_path in files_dir.iterdir():
             if file_path.is_file():
                 stat = file_path.stat()
-                files.append({
-                    "name": file_path.name,
-                    "path": str(file_path),
-                    "size": stat.st_size,
-                    "created_at": datetime.fromtimestamp(stat.st_ctime).isoformat(),
-                    "modified_at": datetime.fromtimestamp(stat.st_mtime).isoformat()
-                })
+                files.append(
+                    {
+                        "name": file_path.name,
+                        "path": str(file_path),
+                        "size": stat.st_size,
+                        "created_at": datetime.fromtimestamp(stat.st_ctime).isoformat(),
+                        "modified_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                    }
+                )
         files.sort(key=lambda x: x["modified_at"], reverse=True)
         return {"files": files, "count": len(files), "directory": str(files_dir)}
     except Exception as e:
@@ -649,6 +603,7 @@ async def list_files():
 
 
 # ==================== 图谱配置管理 API ====================
+
 
 @router.get("/graph/config")
 async def get_graph_config():
@@ -665,10 +620,7 @@ async def get_graph_config():
             return {"exists": False, "config": None}
 
         logger.info(f"返回配置: {config.project_name} (缓存状态: {config_service.get_cache_status()})")
-        return {
-            "exists": True,
-            "config": config.model_dump(mode='json')
-        }
+        return {"exists": True, "config": config.model_dump(mode="json")}
 
     except Exception as e:
         logger.error(f"获取图谱配置失败: {str(e)}", exc_info=True)
@@ -689,7 +641,7 @@ async def save_graph_config(config: GraphConfig):
         return {
             "message": "配置保存成功，已自动刷新缓存",
             "project_name": saved_config.project_name,
-            "cache_status": config_service.get_cache_status()
+            "cache_status": config_service.get_cache_status(),
         }
 
     except ValueError as e:
@@ -713,10 +665,7 @@ async def delete_graph_config():
 
         if success:
             logger.info("配置删除成功并已清空缓存")
-            return {
-                "message": "配置删除成功，缓存已清空",
-                "cache_status": config_service.get_cache_status()
-            }
+            return {"message": "配置删除成功，缓存已清空", "cache_status": config_service.get_cache_status()}
         else:
             logger.error("配置删除失败")
             raise HTTPException(status_code=500, detail="配置删除失败")
@@ -757,7 +706,7 @@ async def get_graph_template(template_name: str):
             raise HTTPException(status_code=404, detail=f"模板 '{template_name}' 不存在")
 
         logger.info(f"返回模板: {template_name}")
-        return {"config": config.model_dump(mode='json')}
+        return {"config": config.model_dump(mode="json")}
 
     except HTTPException:
         raise
@@ -768,9 +717,7 @@ async def get_graph_template(template_name: str):
 
 @router.post("/graph/config/from-template")
 async def create_config_from_template(
-    template_name: str,
-    project_name: Optional[str] = None,
-    created_by: Optional[str] = None
+    template_name: str, project_name: Optional[str] = None, created_by: Optional[str] = None
 ):
     """从模板创建并保存配置"""
     logger.info(f"收到从模板创建配置请求: {template_name}")
@@ -778,9 +725,7 @@ async def create_config_from_template(
     try:
         storage = get_storage()
         success = storage.save_from_template(
-            template_name=template_name,
-            project_name=project_name,
-            created_by=created_by
+            template_name=template_name, project_name=project_name, created_by=created_by
         )
 
         if success:
@@ -788,14 +733,11 @@ async def create_config_from_template(
             return {
                 "message": "配置创建成功",
                 "template_name": template_name,
-                "project_name": project_name or f"{template_name}_project"
+                "project_name": project_name or f"{template_name}_project",
             }
         else:
             logger.error(f"模板不存在或保存失败: {template_name}")
-            raise HTTPException(
-                status_code=400,
-                detail=f"模板 '{template_name}' 不存在或保存失败"
-            )
+            raise HTTPException(status_code=400, detail=f"模板 '{template_name}' 不存在或保存失败")
 
     except HTTPException:
         raise
@@ -806,11 +748,9 @@ async def create_config_from_template(
 
 # ==================== AI Copilot API ====================
 
+
 @router.post("/ai-copilot/analyze-documents")
-async def analyze_documents_for_config(
-    industry_hint: Optional[str] = None,
-    num_clusters: Optional[int] = None
-):
+async def analyze_documents_for_config(industry_hint: Optional[str] = None, num_clusters: Optional[int] = None):
     """
     分析已上传的文档，生成配置推荐
 
@@ -824,10 +764,10 @@ async def analyze_documents_for_config(
     logger.info("收到 AI Copilot 文档分析请求")
 
     try:
-        from graphrag_agent.models.get_models import get_llm_model, get_embeddings_model
         from graphrag_agent.ai_copilot import DocumentAnalyzer
+        from graphrag_agent.config.settings import CHUNK_SIZE, FILES_DIR, OVERLAP
+        from graphrag_agent.models.get_models import get_embeddings_model, get_llm_model
         from graphrag_agent.pipelines.ingestion.document_processor import DocumentProcessor
-        from graphrag_agent.config.settings import FILES_DIR, CHUNK_SIZE, OVERLAP
 
         # 初始化模型
         llm = get_llm_model()
@@ -845,13 +785,7 @@ async def analyze_documents_for_config(
             raise HTTPException(status_code=400, detail="没有找到可分析的文档，请先上传文档")
 
         # 准备文档数据
-        documents = [
-            {
-                "filename": doc["filename"],
-                "content": doc["content"]
-            }
-            for doc in processed_docs
-        ]
+        documents = [{"filename": doc["filename"], "content": doc["content"]} for doc in processed_docs]
 
         logger.info(f"开始分析 {len(documents)} 个文档")
 
@@ -866,10 +800,7 @@ async def analyze_documents_for_config(
 
         logger.info("配置推荐生成完成")
 
-        return {
-            "analysis": analysis_result,
-            "recommendations": recommendations
-        }
+        return {"analysis": analysis_result, "recommendations": recommendations}
 
     except HTTPException:
         raise
@@ -879,10 +810,7 @@ async def analyze_documents_for_config(
 
 
 @router.post("/ai-copilot/refine-config")
-async def refine_configuration(
-    user_feedback: str,
-    current_config: Optional[Dict] = None
-):
+async def refine_configuration(user_feedback: str, current_config: Optional[Dict] = None):
     """
     基于用户反馈优化配置
 
@@ -896,8 +824,8 @@ async def refine_configuration(
     logger.info("收到 AI Copilot 配置优化请求")
 
     try:
-        from graphrag_agent.models.get_models import get_llm_model, get_embeddings_model
         from graphrag_agent.ai_copilot import DocumentAnalyzer
+        from graphrag_agent.models.get_models import get_embeddings_model, get_llm_model
 
         # 初始化模型
         llm = get_llm_model()
@@ -912,7 +840,7 @@ async def refine_configuration(
             config_obj = storage.load()
             if config_obj is None:
                 raise HTTPException(status_code=400, detail="当前无配置，请先创建配置")
-            current_config = config_obj.model_dump(mode='json')
+            current_config = config_obj.model_dump(mode="json")
 
         logger.info(f"开始优化配置，用户反馈: {user_feedback[:100]}...")
 
@@ -932,10 +860,7 @@ async def refine_configuration(
 
 @router.post("/ai-copilot/apply-recommendations")
 async def apply_ai_recommendations(
-    recommendations: Dict,
-    project_name: str,
-    industry: Optional[str] = None,
-    description: Optional[str] = None
+    recommendations: Dict, project_name: str, industry: Optional[str] = None, description: Optional[str] = None
 ):
     """
     将 AI 推荐应用为新配置
@@ -959,7 +884,7 @@ async def apply_ai_recommendations(
             "description": description or "基于 AI 推荐创建",
             "industry": industry or "通用",
             "bridge_definitions": recommendations.get("recommended_bridges", []),
-            "domain_definitions": recommendations.get("recommended_domains", [])
+            "domain_definitions": recommendations.get("recommended_domains", []),
         }
 
         # 验证并保存
@@ -969,10 +894,7 @@ async def apply_ai_recommendations(
 
         if success:
             logger.info(f"AI 推荐配置已保存: {project_name}")
-            return {
-                "message": "配置创建成功",
-                "config": config.model_dump(mode='json')
-            }
+            return {"message": "配置创建成功", "config": config.model_dump(mode="json")}
         else:
             raise HTTPException(status_code=500, detail="配置保存失败")
 

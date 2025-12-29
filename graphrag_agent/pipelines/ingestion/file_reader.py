@@ -1,15 +1,16 @@
 import codecs
+import csv
+import importlib.util
+import json
+import logging
 import os
 import sys
-import logging
-import importlib.util
-from typing import List, Tuple, Dict, Optional
+from typing import Dict, List, Optional, Tuple
+
 import PyPDF2
-from docx import Document
-import csv
-import json
 import yaml
-import logging
+from docx import Document
+
 try:
     from yaml import CLoader as Loader
 except ImportError:
@@ -23,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 class FileReadError(Exception):
     """文件读取失败异常"""
+
     def __init__(self, message: str, file_path: str = None, original_error: Exception = None):
         self.file_path = file_path
         self.original_error = original_error
@@ -58,44 +60,44 @@ class FileReader:
         self.enable_asr = enable_asr
         self._image_processor = None
         self._audio_processor = None
-        
+
     def read_files(self, file_extensions: Optional[List[str]] = None, recursive: bool = True) -> List[Tuple[str, str]]:
         """
         读取指定扩展名的文件
-        
+
         Args:
             file_extensions: 文件扩展名列表，如 ['.txt', '.pdf']，如不指定则读取所有支持的格式
             recursive: 是否递归读取子目录，默认为True
-            
+
         Returns:
             List[Tuple[str, str]]: 文件名和内容的元组列表
         """
         supported_extensions = {
-            '.txt': self._read_txt,
-            '.pdf': self._read_pdf,
-            '.md': self._read_markdown,
-            '.docx': self._read_docx,
-            '.doc': self._read_doc,
-            '.csv': self._read_csv,
-            '.json': self._read_json,
-            '.yaml': self._read_yaml,
-            '.yml': self._read_yaml,
+            ".txt": self._read_txt,
+            ".pdf": self._read_pdf,
+            ".md": self._read_markdown,
+            ".docx": self._read_docx,
+            ".doc": self._read_doc,
+            ".csv": self._read_csv,
+            ".json": self._read_json,
+            ".yaml": self._read_yaml,
+            ".yml": self._read_yaml,
             # 图像文件 (需要OCR)
-            '.png': self._read_image,
-            '.jpg': self._read_image,
-            '.jpeg': self._read_image,
-            '.bmp': self._read_image,
-            '.tiff': self._read_image,
-            '.tif': self._read_image,
+            ".png": self._read_image,
+            ".jpg": self._read_image,
+            ".jpeg": self._read_image,
+            ".bmp": self._read_image,
+            ".tiff": self._read_image,
+            ".tif": self._read_image,
             # 音频文件 (需要ASR)
-            '.mp3': self._read_audio,
-            '.wav': self._read_audio,
-            '.m4a': self._read_audio,
-            '.mp4': self._read_audio,  # 音频格式MP4
-            '.ogg': self._read_audio,
-            '.flac': self._read_audio,
+            ".mp3": self._read_audio,
+            ".wav": self._read_audio,
+            ".m4a": self._read_audio,
+            ".mp4": self._read_audio,  # 音频格式MP4
+            ".ogg": self._read_audio,
+            ".flac": self._read_audio,
         }
-        
+
         # 如未指定扩展名，则使用所有支持的扩展名
         if file_extensions is None:
             file_extensions = list(supported_extensions.keys())
@@ -105,14 +107,18 @@ class FileReader:
         try:
             if recursive:
                 # 递归读取所有文件
-                results, failed_files = self._read_files_recursive(self.directory_path, file_extensions, supported_extensions)
+                results, failed_files = self._read_files_recursive(
+                    self.directory_path, file_extensions, supported_extensions
+                )
                 logger.info(f"递归读取目录完成，成功读取 {len(results)} 个文件，失败 {len(failed_files)} 个文件")
             else:
                 # 仅读取当前目录的文件
                 all_filenames = os.listdir(self.directory_path)
                 logger.info(f"当前目录中共有 {len(all_filenames)} 个文件")
 
-                results, failed_files = self._process_files_in_dir(self.directory_path, all_filenames, file_extensions, supported_extensions)
+                results, failed_files = self._process_files_in_dir(
+                    self.directory_path, all_filenames, file_extensions, supported_extensions
+                )
                 logger.info(f"成功读取 {len(results)} 个文件，失败 {len(failed_files)} 个文件")
         except Exception as e:
             logger.error(f"列出目录 {self.directory_path} 中的文件时出错: {str(e)}", exc_info=True)
@@ -124,8 +130,10 @@ class FileReader:
                 logger.warning(f"  ❌ {failed_file}: {error}")
 
         return results
-    
-    def _read_files_recursive(self, root_dir: str, file_extensions: List[str], supported_extensions: Dict) -> Tuple[List[Tuple[str, str]], List[Tuple[str, str]]]:
+
+    def _read_files_recursive(
+        self, root_dir: str, file_extensions: List[str], supported_extensions: Dict
+    ) -> Tuple[List[Tuple[str, str]], List[Tuple[str, str]]]:
         """
         递归读取目录及其子目录中的文件
 
@@ -150,7 +158,9 @@ class FileReader:
                 # 如果是目录，递归处理
                 if os.path.isdir(item_path):
                     logger.debug(f"递归进入子目录: {item_path}")
-                    sub_results, sub_failed = self._read_files_recursive(item_path, file_extensions, supported_extensions)
+                    sub_results, sub_failed = self._read_files_recursive(
+                        item_path, file_extensions, supported_extensions
+                    )
                     results.extend(sub_results)
                     failed_files.extend(sub_failed)
 
@@ -179,14 +189,17 @@ class FileReader:
                             except Exception as e:
                                 # 捕获其他未预期的异常
                                 failed_files.append((rel_path, str(e)))
-                                logger.error(f"❌ 读取文件时发生未预期错误 [跳过]: {rel_path}, 原因: {e}", exc_info=True)
+                                logger.error(
+                                    f"❌ 读取文件时发生未预期错误 [跳过]: {rel_path}, 原因: {e}", exc_info=True
+                                )
         except Exception as e:
             logger.error(f"列出目录 {root_dir} 中的文件时出错: {str(e)}", exc_info=True)
 
         return results, failed_files
-    
-    def _process_files_in_dir(self, directory: str, filenames: List[str], file_extensions: List[str],
-                              supported_extensions: Dict) -> Tuple[List[Tuple[str, str]], List[Tuple[str, str]]]:
+
+    def _process_files_in_dir(
+        self, directory: str, filenames: List[str], file_extensions: List[str], supported_extensions: Dict
+    ) -> Tuple[List[Tuple[str, str]], List[Tuple[str, str]]]:
         """
         处理指定目录中的文件（不递归）
 
@@ -226,44 +239,43 @@ class FileReader:
                         logger.error(f"❌ 读取文件时发生未预期错误 [跳过]: {filename}, 原因: {e}", exc_info=True)
 
         return results, failed_files
-    
+
     def _read_txt(self, file_path: str) -> str:
         """读取TXT文件"""
         try:
-            with codecs.open(file_path, 'r', encoding='utf-8', errors='replace') as file:
+            with codecs.open(file_path, "r", encoding="utf-8", errors="replace") as file:
                 content = file.read()
             return content
         except Exception as e:
             logger.debug(f"UTF-8 编码读取失败，尝试其他编码: {os.path.basename(file_path)}")
             # 尝试使用其他编码
             try:
-                with open(file_path, 'rb') as f:
+                with open(file_path, "rb") as f:
                     raw_data = f.read(10240)  # 读取前10KB
                     try:
                         import chardet
-                        result = chardet.detect(raw_data)
-                        encoding = result['encoding'] if result['encoding'] else 'gbk'
-                    except:
-                        encoding = 'gbk'  # 如果chardet不可用，默认使用gbk
 
-                with codecs.open(file_path, 'r', encoding=encoding, errors='replace') as file:
+                        result = chardet.detect(raw_data)
+                        encoding = result["encoding"] if result["encoding"] else "gbk"
+                    except:
+                        encoding = "gbk"  # 如果chardet不可用，默认使用gbk
+
+                with codecs.open(file_path, "r", encoding=encoding, errors="replace") as file:
                     content = file.read()
                 logger.debug(f"使用 {encoding} 编码成功读取文件")
                 return content
             except Exception as e2:
                 # 所有编码尝试失败，抛出异常
                 raise FileReadError(
-                    f"无法读取TXT文件（尝试了UTF-8和{encoding}编码）",
-                    file_path=file_path,
-                    original_error=e2
+                    f"无法读取TXT文件（尝试了UTF-8和{encoding}编码）", file_path=file_path, original_error=e2
                 )
-            
+
     def _read_pdf(self, file_path: str) -> str:
         """读取PDF文件"""
         try:
             text = ""
             failed_pages = []
-            with open(file_path, 'rb') as file:
+            with open(file_path, "rb") as file:
                 pdf_reader = PyPDF2.PdfReader(file)
                 total_pages = len(pdf_reader.pages)
 
@@ -278,10 +290,7 @@ class FileReader:
 
             # 如果所有页都失败，抛出异常
             if len(failed_pages) == total_pages:
-                raise FileReadError(
-                    f"PDF文件所有 {total_pages} 页均无法读取",
-                    file_path=file_path
-                )
+                raise FileReadError(f"PDF文件所有 {total_pages} 页均无法读取", file_path=file_path)
 
             # 如果部分页失败，记录警告但返回成功读取的内容
             if failed_pages:
@@ -291,25 +300,17 @@ class FileReader:
         except FileReadError:
             raise  # 重新抛出自定义异常
         except Exception as e:
-            raise FileReadError(
-                f"无法打开或读取PDF文件",
-                file_path=file_path,
-                original_error=e
-            )
-    
+            raise FileReadError(f"无法打开或读取PDF文件", file_path=file_path, original_error=e)
+
     def _read_markdown(self, file_path: str) -> str:
         """读取Markdown文件"""
         try:
-            with codecs.open(file_path, 'r', encoding='utf-8', errors='replace') as file:
+            with codecs.open(file_path, "r", encoding="utf-8", errors="replace") as file:
                 md_content = file.read()
                 return md_content
         except Exception as e:
-            raise FileReadError(
-                f"无法读取Markdown文件",
-                file_path=file_path,
-                original_error=e
-            )
-    
+            raise FileReadError(f"无法读取Markdown文件", file_path=file_path, original_error=e)
+
     def _read_docx(self, file_path: str) -> str:
         """读取Word文档(.docx)"""
         try:
@@ -317,14 +318,10 @@ class FileReader:
             full_text = []
             for para in doc.paragraphs:
                 full_text.append(para.text)
-            return '\n'.join(full_text)
+            return "\n".join(full_text)
         except Exception as e:
-            raise FileReadError(
-                f"无法读取Word文档(.docx)",
-                file_path=file_path,
-                original_error=e
-            )
-            
+            raise FileReadError(f"无法读取Word文档(.docx)", file_path=file_path, original_error=e)
+
     def _read_doc(self, file_path: str) -> str:
         """
         读取旧版Word文档(.doc)
@@ -366,8 +363,9 @@ class FileReader:
         if importlib.util.find_spec("textract") is not None:
             try:
                 import textract
+
                 logger.debug(f"尝试使用textract读取.doc文件: {os.path.basename(file_path)}")
-                content = textract.process(file_path).decode('utf-8')
+                content = textract.process(file_path).decode("utf-8")
 
                 if content and content.strip():
                     logger.debug(f"使用textract成功读取.doc文件")
@@ -382,12 +380,13 @@ class FileReader:
         # 方法3: 尝试使用python-docx (不完全兼容.doc，但有时可以部分读取)
         try:
             from docx import Document
+
             logger.debug(f"尝试使用python-docx读取.doc文件: {os.path.basename(file_path)}")
             doc = Document(file_path)
             full_text = []
             for para in doc.paragraphs:
                 full_text.append(para.text)
-            content = '\n'.join(full_text)
+            content = "\n".join(full_text)
 
             if content and content.strip():
                 logger.debug(f"使用python-docx部分读取.doc文件成功")
@@ -404,11 +403,8 @@ class FileReader:
             f"建议: 1) 安装相关依赖 (pip install textract 或 pypiwin32)\n"
             f"      2) 或将文件转换为.docx格式"
         )
-        raise FileReadError(
-            error_msg,
-            file_path=file_path
-        )
-    
+        raise FileReadError(error_msg, file_path=file_path)
+
     def _read_csv(self, file_path: str) -> str:
         """
         读取CSV文件并转换为文本
@@ -417,48 +413,47 @@ class FileReader:
         """
         try:
             text = []
-            with open(file_path, 'r', encoding='utf-8', errors='replace') as file:
+            with open(file_path, "r", encoding="utf-8", errors="replace") as file:
                 csv_reader = csv.reader(file)
                 for row in csv_reader:
-                    text.append(','.join(row))
-            return '\n'.join(text)
+                    text.append(",".join(row))
+            return "\n".join(text)
         except Exception as e:
             logger.debug(f"UTF-8 编码读取CSV失败，尝试其他编码: {os.path.basename(file_path)}")
             # 尝试其他编码
             try:
-                with open(file_path, 'rb') as f:
+                with open(file_path, "rb") as f:
                     try:
                         import chardet
+
                         raw_data = f.read(10240)
                         result = chardet.detect(raw_data)
-                        encoding = result['encoding'] if result['encoding'] else 'gbk'
+                        encoding = result["encoding"] if result["encoding"] else "gbk"
                     except:
-                        encoding = 'gbk'  # 如果chardet不可用，默认使用gbk
+                        encoding = "gbk"  # 如果chardet不可用，默认使用gbk
 
                 text = []
-                with open(file_path, 'r', encoding=encoding, errors='replace') as file:
+                with open(file_path, "r", encoding=encoding, errors="replace") as file:
                     csv_reader = csv.reader(file)
                     for row in csv_reader:
-                        text.append(','.join(row))
+                        text.append(",".join(row))
                 logger.debug(f"使用 {encoding} 编码成功读取CSV文件")
-                return '\n'.join(text)
+                return "\n".join(text)
             except Exception as e2:
                 raise FileReadError(
-                    f"无法读取CSV文件（尝试了UTF-8和{encoding}编码）",
-                    file_path=file_path,
-                    original_error=e2
+                    f"无法读取CSV文件（尝试了UTF-8和{encoding}编码）", file_path=file_path, original_error=e2
                 )
-    
+
     def read_csv_as_dicts(self, file_path: str) -> List[Dict]:
         """
         读取CSV文件并返回字典列表
-        
+
         Returns:
             List[Dict]: CSV数据的字典列表，每一行为一个字典
         """
         try:
             results = []
-            with open(file_path, 'r', encoding='utf-8', errors='replace') as file:
+            with open(file_path, "r", encoding="utf-8", errors="replace") as file:
                 csv_reader = csv.DictReader(file)
                 for row in csv_reader:
                     results.append(dict(row))
@@ -466,39 +461,35 @@ class FileReader:
         except Exception as e:
             print(f"读取CSV文件为字典列表时出错: {str(e)}")
             return []
-    
+
     def _read_json(self, file_path: str) -> str:
         """读取JSON文件并返回文本格式"""
         try:
-            with open(file_path, 'r', encoding='utf-8', errors='replace') as file:
+            with open(file_path, "r", encoding="utf-8", errors="replace") as file:
                 # 加载为对象然后再转为格式化的字符串，以便更好地处理和显示
                 data = json.load(file)
                 return json.dumps(data, ensure_ascii=False, indent=2)
         except Exception as e:
-            raise FileReadError(
-                f"无法读取JSON文件",
-                file_path=file_path,
-                original_error=e
-            )
-    
+            raise FileReadError(f"无法读取JSON文件", file_path=file_path, original_error=e)
+
     def read_json_as_dict(self, file_path: str) -> Dict:
         """
         读取JSON文件并返回字典/列表对象
-        
+
         Returns:
             Dict/List: JSON数据对象
         """
         try:
-            with open(file_path, 'r', encoding='utf-8', errors='replace') as file:
+            with open(file_path, "r", encoding="utf-8", errors="replace") as file:
                 return json.load(file)
         except Exception as e:
             print(f"读取JSON文件为字典时出错: {str(e)}")
             return {}
-    
+
     def _read_yaml(self, file_path: str) -> str:
         """读取YAML文件并返回文本格式"""
         try:
-            with open(file_path, 'r', encoding='utf-8', errors='replace') as file:
+            with open(file_path, "r", encoding="utf-8", errors="replace") as file:
                 data = yaml.load(file, Loader=Loader)
                 # 先转为JSON字符串以获得更易读的格式
                 return yaml.dump(data, allow_unicode=True, default_flow_style=False)
@@ -516,6 +507,7 @@ class FileReader:
             # 延迟导入和初始化
             if self._image_processor is None:
                 from graphrag_agent.pipelines.ingestion.image_processor import ImageProcessor
+
                 self._image_processor = ImageProcessor(use_gpu=False, lang="ch")
                 logger.info("ImageProcessor initialized")
 
@@ -546,6 +538,7 @@ class FileReader:
             # 延迟导入和初始化
             if self._audio_processor is None:
                 from graphrag_agent.pipelines.ingestion.audio_processor import AudioProcessor
+
                 self._audio_processor = AudioProcessor(model_size="base", device="cpu")
                 logger.info("AudioProcessor initialized")
 
@@ -569,33 +562,33 @@ class FileReader:
     def read_yaml_as_dict(self, file_path: str) -> Dict:
         """
         读取YAML文件并返回字典对象
-        
+
         Returns:
             Dict: YAML数据对象
         """
         try:
-            with open(file_path, 'r', encoding='utf-8', errors='replace') as file:
+            with open(file_path, "r", encoding="utf-8", errors="replace") as file:
                 return yaml.load(file, Loader=Loader)
         except Exception as e:
             print(f"读取YAML文件为字典时出错: {str(e)}")
             return {}
-    
+
     def read_txt_files(self) -> List[Tuple[str, str]]:
         """读取所有txt文件"""
-        return self.read_files(['.txt'])
-    
+        return self.read_files([".txt"])
+
     def list_all_files(self, recursive: bool = True) -> List[str]:
         """
         列出目录中的所有文件
-        
+
         Args:
             recursive: 是否递归列出子目录中的文件，默认为True
-            
+
         Returns:
             List[str]: 文件路径列表（相对于根目录）
         """
         files = []
-        
+
         try:
             if recursive:
                 # 递归遍历所有子目录
@@ -609,31 +602,31 @@ class FileReader:
                 files = os.listdir(self.directory_path)
         except Exception as e:
             print(f"列出目录文件时出错: {str(e)}")
-            
+
         return files
 
 
 # 测试代码
-if __name__ == '__main__':
+if __name__ == "__main__":
     print(f"FILES_DIR: {FILES_DIR}")
     reader = FileReader(FILES_DIR)
-    
+
     # 列出目录中的所有文件
     all_filenames = reader.list_all_files()
     print(f"目录中共有 {len(all_filenames)} 个文件:")
     for filename in all_filenames:
         print(f"  {filename}")
-    
+
     # 测试读取所有支持的文件
     all_files = reader.read_files()
     print(f"成功读取 {len(all_files)} 个文件")
-    
+
     # 显示每种类型文件的数量
     file_types = {}
     for file_name, _ in all_files:
         ext = os.path.splitext(file_name)[1].lower()
         file_types[ext] = file_types.get(ext, 0) + 1
-    
+
     print("Files by type:")
     for ext, count in file_types.items():
         print(f"  {ext}: {count}")

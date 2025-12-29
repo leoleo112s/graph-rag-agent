@@ -4,9 +4,9 @@
 定义ExecutionRecord及相关模型，记录任务执行过程
 """
 
-from typing import List, Dict, Any, Optional
-from datetime import datetime
 import uuid
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -17,6 +17,7 @@ class ToolCall(BaseModel):
 
     记录单次工具调用的详细信息
     """
+
     # 工具名称
     tool_name: str = Field(description="调用的工具名称")
 
@@ -45,22 +46,15 @@ class ReflectionResult(BaseModel):
 
     对执行结果进行反思和评估
     """
+
     # 执行是否成功
     success: bool = Field(description="任务执行是否成功")
 
     # 置信度评分 (0.0-1.0)
-    confidence: float = Field(
-        default=0.5,
-        ge=0.0,
-        le=1.0,
-        description="结果置信度 (0.0-1.0)"
-    )
+    confidence: float = Field(default=0.5, ge=0.0, le=1.0, description="结果置信度 (0.0-1.0)")
 
     # 改进建议
-    suggestions: List[str] = Field(
-        default_factory=list,
-        description="改进建议列表"
-    )
+    suggestions: List[str] = Field(default_factory=list, description="改进建议列表")
 
     # 是否需要重试
     needs_retry: bool = Field(default=False, description="是否需要重试")
@@ -78,6 +72,7 @@ class ExecutionMetadata(BaseModel):
 
     记录执行过程的性能指标和环境信息
     """
+
     # Worker类型
     worker_type: str = Field(description="执行此任务的Worker类型")
 
@@ -86,8 +81,7 @@ class ExecutionMetadata(BaseModel):
 
     # Token消耗
     token_usage: Dict[str, int] = Field(
-        default_factory=dict,
-        description="Token使用情况，如 {'prompt': 100, 'completion': 200}"
+        default_factory=dict, description="Token使用情况，如 {'prompt': 100, 'completion': 200}"
     )
 
     # 调用的工具数量
@@ -97,10 +91,7 @@ class ExecutionMetadata(BaseModel):
     evidence_count: int = Field(default=0, description="检索到的证据数量")
 
     # 执行环境信息
-    environment: Dict[str, Any] = Field(
-        default_factory=dict,
-        description="执行环境信息"
-    )
+    environment: Dict[str, Any] = Field(default_factory=dict, description="执行环境信息")
 
     # 创建时间
     timestamp: datetime = Field(default_factory=datetime.now)
@@ -112,11 +103,9 @@ class ExecutionRecord(BaseModel):
 
     记录单个任务的完整执行过程，包括输入、工具调用、证据和反思
     """
+
     # 记录唯一标识
-    record_id: str = Field(
-        default_factory=lambda: str(uuid.uuid4()),
-        description="执行记录唯一标识符"
-    )
+    record_id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="执行记录唯一标识符")
 
     # 关联的任务ID
     task_id: str = Field(description="关联到PlanSpec中的TaskGraph节点")
@@ -125,38 +114,25 @@ class ExecutionRecord(BaseModel):
     session_id: str = Field(description="关联到PlanExecuteState的session_id")
 
     # Worker类型
-    worker_type: str = Field(
-        description="执行此任务的Worker类型: retrieval_executor | research_executor | reflector"
-    )
+    worker_type: str = Field(description="执行此任务的Worker类型: retrieval_executor | research_executor | reflector")
 
     # 输入参数
-    inputs: Dict[str, Any] = Field(
-        default_factory=dict,
-        description="任务输入参数"
-    )
+    inputs: Dict[str, Any] = Field(default_factory=dict, description="任务输入参数")
 
     # 工具调用列表
-    tool_calls: List[ToolCall] = Field(
-        default_factory=list,
-        description="调用的工具列表"
-    )
+    tool_calls: List[ToolCall] = Field(default_factory=list, description="调用的工具列表")
 
     # 检索到的证据（RetrievalResult列表）
     evidence: List[Any] = Field(  # 类型为List[RetrievalResult]，避免循环依赖用Any
-        default_factory=list,
-        description="检索到的证据列表，元素为RetrievalResult对象"
+        default_factory=list, description="检索到的证据列表，元素为RetrievalResult对象"
     )
 
     # 反思结果
-    reflection: Optional[ReflectionResult] = Field(
-        default=None,
-        description="对执行结果的反思评估"
-    )
+    reflection: Optional[ReflectionResult] = Field(default=None, description="对执行结果的反思评估")
 
     # 执行元数据
     metadata: ExecutionMetadata = Field(
-        default_factory=lambda: ExecutionMetadata(worker_type="unknown"),
-        description="执行过程的元数据和性能指标"
+        default_factory=lambda: ExecutionMetadata(worker_type="unknown"), description="执行过程的元数据和性能指标"
     )
 
     # 创建时间
@@ -182,12 +158,12 @@ class ExecutionRecord(BaseModel):
         """
         return {
             "key": f"{self.session_id}:{self.task_id}:{self.record_id}",
-            "value": self.model_dump(mode='json'),
+            "value": self.model_dump(mode="json"),
             "metadata": {
                 "record_id": self.record_id,
                 "worker_type": self.worker_type,
-                "created_at": self.created_at.isoformat()
-            }
+                "created_at": self.created_at.isoformat(),
+            },
         }
 
     @classmethod
@@ -211,7 +187,7 @@ class ExecutionRecord(BaseModel):
             "tool_calls": len(self.tool_calls),
             "evidence_count": len(self.evidence),
             "success": self.reflection.success if self.reflection else True,
-            "timestamp": self.created_at.isoformat()
+            "timestamp": self.created_at.isoformat(),
         }
 
     def append_tool_call(self, tool_call: ToolCall):

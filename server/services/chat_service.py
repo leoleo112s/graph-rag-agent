@@ -1,23 +1,29 @@
-import time
-import re
-import traceback
-from typing import Dict, List, AsyncGenerator
-from fastapi import HTTPException
-import json
 import asyncio
+import json
+import re
+import time
+import traceback
+from typing import AsyncGenerator, Dict, List
 
+from fastapi import HTTPException
 from services.agent_service import agent_manager
 from services.kg_service import extract_kg_from_message
 from utils.concurrent import chat_manager, feedback_manager
+from utils.index_status import IndexStatus, get_index_status  # ✅ 导入索引状态检查
 from utils.semantic_cache import get_semantic_cache
-from utils.index_status import get_index_status, IndexStatus  # ✅ 导入索引状态检查
 
 # 导入 embeddings 模型（用于语义缓存）
 from graphrag_agent.models.get_models import get_embeddings_model
 
 
-async def process_chat(message: str, session_id: str, debug: bool = False, agent_type: str = "hybrid_agent",
-                       use_deeper_tool: bool = True, show_thinking: bool = False) -> Dict:
+async def process_chat(
+    message: str,
+    session_id: str,
+    debug: bool = False,
+    agent_type: str = "hybrid_agent",
+    use_deeper_tool: bool = True,
+    show_thinking: bool = False,
+) -> Dict:
     """
     处理聊天请求
 
@@ -49,19 +55,15 @@ async def process_chat(message: str, session_id: str, debug: bool = False, agent
                     "progress": build_progress.get("percent", 0),
                     "stage": build_progress.get("stage", "unknown"),
                     "details": build_progress.get("details", "构建中..."),
-                    "retry_after": index_status.get("retry_after", 10)
-                }
+                    "retry_after": index_status.get("retry_after", 10),
+                },
             )
 
         elif index_status["status"] == IndexStatus.EMPTY:
             # 索引为空：返回 400 Bad Request + 友好提示
             raise HTTPException(
                 status_code=400,
-                detail={
-                    "message": index_status["message"],
-                    "status": "empty",
-                    "action_required": "请先构建知识图谱"
-                }
+                detail={"message": index_status["message"], "status": "empty", "action_required": "请先构建知识图谱"},
             )
 
         elif index_status["status"] == IndexStatus.ERROR:
@@ -84,11 +86,8 @@ async def process_chat(message: str, session_id: str, debug: bool = False, agent
     lock_acquired = chat_manager.try_acquire_lock(lock_key)
     if not lock_acquired:
         # 如果无法获取锁，说明有另一个请求正在处理
-        raise HTTPException(
-            status_code=429,
-            detail="当前有其他请求正在处理，请稍后再试"
-        )
-    
+        raise HTTPException(status_code=429, detail="当前有其他请求正在处理，请稍后再试")
+
     try:
         # 更新操作时间戳
         chat_manager.update_timestamp(lock_key)
@@ -97,10 +96,7 @@ async def process_chat(message: str, session_id: str, debug: bool = False, agent
         try:
             selected_agent = agent_manager.get_agent(agent_type, session_id)
             # 使用多态接口配置Agent（所有Agent都支持，但只有需要的Agent会处理）
-            selected_agent.configure({
-                "use_deeper_tool": use_deeper_tool,
-                "show_thinking": show_thinking
-            })
+            selected_agent.configure({"use_deeper_tool": use_deeper_tool, "show_thinking": show_thinking})
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
 
@@ -120,12 +116,14 @@ async def process_chat(message: str, session_id: str, debug: bool = False, agent
 
                 # 调试模式需要提供额外信息
                 if debug:
-                    mock_log = [{
-                        "node": "semantic_cache_hit",
-                        "timestamp": time.time(),
-                        "input": message,
-                        "output": f"语义缓存命中（相似度 ≥ 0.95），跳过 Agent 执行"
-                    }]
+                    mock_log = [
+                        {
+                            "node": "semantic_cache_hit",
+                            "timestamp": time.time(),
+                            "input": message,
+                            "output": f"语义缓存命中（相似度 ≥ 0.95），跳过 Agent 执行",
+                        }
+                    ]
 
                     # 使用多态接口判断是否支持KG提取
                     kg_data = {"nodes": [], "links": []}
@@ -139,7 +137,7 @@ async def process_chat(message: str, session_id: str, debug: bool = False, agent
                         "answer": cached_response,
                         "execution_log": mock_log,
                         "kg_data": kg_data,
-                        "cache_source": "semantic"
+                        "cache_source": "semantic",
                     }
                 else:
                     return {"answer": cached_response, "cache_source": "semantic"}
@@ -152,19 +150,21 @@ async def process_chat(message: str, session_id: str, debug: bool = False, agent
         try:
             start_fast = time.time()
             fast_result = selected_agent.check_fast_cache(message, session_id)
-            
+
             if fast_result:
                 print(f"API快速路径命中: {time.time() - start_fast:.4f}s")
-                
+
                 # 在调试模式下，需要提供额外信息
                 if debug:
                     # 提供模拟的执行日志
-                    mock_log = [{
-                        "node": "fast_cache_hit",
-                        "timestamp": time.time(),
-                        "input": message,
-                        "output": "高质量缓存命中，跳过完整处理"
-                    }]
+                    mock_log = [
+                        {
+                            "node": "fast_cache_hit",
+                            "timestamp": time.time(),
+                            "input": message,
+                            "output": "高质量缓存命中，跳过完整处理",
+                        }
+                    ]
 
                     # 使用多态接口判断是否支持KG提取
                     kg_data = {"nodes": [], "links": []}
@@ -174,18 +174,14 @@ async def process_chat(message: str, session_id: str, debug: bool = False, agent
                         except:
                             kg_data = {"nodes": [], "links": []}
 
-                    return {
-                        "answer": fast_result,
-                        "execution_log": mock_log,
-                        "kg_data": kg_data
-                    }
+                    return {"answer": fast_result, "execution_log": mock_log, "kg_data": kg_data}
                 else:
                     # 标准模式直接返回答案
                     return {"answer": fast_result}
         except Exception as e:
             # 快速路径失败，继续常规流程
             print(f"快速路径检查失败: {e}")
-        
+
         if debug:
             # 在Debug模式下，所有Agent都使用ask_with_thinking方法（基于多态）
             result = selected_agent.ask_with_thinking(message, thread_id=session_id)
@@ -218,11 +214,15 @@ async def process_chat(message: str, session_id: str, debug: bool = False, agent
 
             # 构建执行日志
             if execution_logs:
-                execution_log = [{
-                    "node": "agent_execution",
-                    "input": message,
-                    "output": "\n".join(execution_logs) if isinstance(execution_logs, list) else str(execution_logs)
-                }]
+                execution_log = [
+                    {
+                        "node": "agent_execution",
+                        "input": message,
+                        "output": (
+                            "\n".join(execution_logs) if isinstance(execution_logs, list) else str(execution_logs)
+                        ),
+                    }
+                ]
                 logs_count = len(execution_logs) if isinstance(execution_logs, list) else 1
                 print(f"执行日志数量: {logs_count}条")
             else:
@@ -250,11 +250,7 @@ async def process_chat(message: str, session_id: str, debug: bool = False, agent
                 semantic_cache.add(
                     query_embedding,
                     answer_content,
-                    metadata={
-                        "session_id": session_id,
-                        "agent_type": agent_type,
-                        "query": message
-                    }
+                    metadata={"session_id": session_id, "agent_type": agent_type, "query": message},
                 )
                 print(f"已将响应写入语义缓存")
             except Exception as e:
@@ -265,9 +261,7 @@ async def process_chat(message: str, session_id: str, debug: bool = False, agent
             # 标准模式 - 所有Agent都使用统一的ask接口
             # show_thinking已通过configure()传递给Agent，由Agent内部处理
             answer = selected_agent.ask(
-                message,
-                thread_id=session_id,
-                show_thinking=show_thinking  # 保持接口兼容，但仅DeepResearchAgent使用
+                message, thread_id=session_id, show_thinking=show_thinking  # 保持接口兼容，但仅DeepResearchAgent使用
             )
 
             # ========== 写入语义缓存 ==========
@@ -275,11 +269,7 @@ async def process_chat(message: str, session_id: str, debug: bool = False, agent
                 semantic_cache.add(
                     query_embedding,
                     answer,
-                    metadata={
-                        "session_id": session_id,
-                        "agent_type": agent_type,
-                        "query": message
-                    }
+                    metadata={"session_id": session_id, "agent_type": agent_type, "query": message},
                 )
                 print(f"已将响应写入语义缓存")
             except Exception as e:
@@ -306,9 +296,10 @@ async def process_chat(message: str, session_id: str, debug: bool = False, agent
     finally:
         # 释放锁
         chat_manager.release_lock(lock_key)
-        
+
         # 清理过期的锁
         chat_manager.cleanup_expired_locks()
+
 
 async def process_chat_stream(
     message: str,
@@ -316,7 +307,7 @@ async def process_chat_stream(
     debug: bool = False,
     agent_type: str = "hybrid_agent",
     use_deeper_tool: bool = True,
-    show_thinking: bool = False
+    show_thinking: bool = False,
 ) -> AsyncGenerator[str, None]:
     """
     处理聊天请求，返回流式输出
@@ -341,23 +332,23 @@ async def process_chat_stream(
         if index_status["status"] == IndexStatus.BUILDING:
             # 构建中：返回构建进度信息
             build_progress = index_status["details"].get("build_progress", {})
-            yield json.dumps({
-                "status": "building",
-                "message": index_status["message"],
-                "progress": build_progress.get("percent", 0),
-                "stage": build_progress.get("stage", "unknown"),
-                "details": build_progress.get("details", "构建中..."),
-                "retry_after": index_status.get("retry_after", 10)
-            })
+            yield json.dumps(
+                {
+                    "status": "building",
+                    "message": index_status["message"],
+                    "progress": build_progress.get("percent", 0),
+                    "stage": build_progress.get("stage", "unknown"),
+                    "details": build_progress.get("details", "构建中..."),
+                    "retry_after": index_status.get("retry_after", 10),
+                }
+            )
             return
 
         elif index_status["status"] == IndexStatus.EMPTY:
             # 索引为空：返回友好提示
-            yield json.dumps({
-                "status": "empty",
-                "message": index_status["message"],
-                "action_required": "请先构建知识图谱"
-            })
+            yield json.dumps(
+                {"status": "empty", "message": index_status["message"], "action_required": "请先构建知识图谱"}
+            )
             return
 
         elif index_status["status"] == IndexStatus.ERROR:
@@ -379,7 +370,7 @@ async def process_chat_stream(
         # 返回错误流
         yield json.dumps({"status": "error", "message": "当前有其他请求正在处理，请稍后再试"})
         return
-    
+
     try:
         # 更新操作时间戳
         chat_manager.update_timestamp(lock_key)
@@ -388,10 +379,7 @@ async def process_chat_stream(
         try:
             selected_agent = agent_manager.get_agent(agent_type, session_id)
             # 使用多态接口配置Agent
-            selected_agent.configure({
-                "use_deeper_tool": use_deeper_tool,
-                "show_thinking": show_thinking
-            })
+            selected_agent.configure({"use_deeper_tool": use_deeper_tool, "show_thinking": show_thinking})
         except ValueError as e:
             yield json.dumps({"status": "error", "message": str(e)})
             return
@@ -416,14 +404,14 @@ async def process_chat_stream(
                         "node": "semantic_cache_hit",
                         "timestamp": time.time(),
                         "input": message,
-                        "output": "语义缓存命中（相似度 ≥ 0.95），跳过 Agent 执行"
+                        "output": "语义缓存命中（相似度 ≥ 0.95），跳过 Agent 执行",
                     }
                     yield {"execution_log": mock_log}
 
                 # 模拟流式输出缓存的响应
                 chunk_size = 10
                 for i in range(0, len(cached_response), chunk_size):
-                    chunk = cached_response[i:i+chunk_size]
+                    chunk = cached_response[i : i + chunk_size]
                     yield json.dumps({"status": "token", "content": chunk})
                     await asyncio.sleep(0.01)  # 小延迟模拟流式输出
 
@@ -438,25 +426,25 @@ async def process_chat_stream(
         try:
             start_fast = time.time()
             fast_result = selected_agent.check_fast_cache(message, session_id)
-            
+
             if fast_result:
                 print(f"API快速路径命中: {time.time() - start_fast:.4f}s")
                 # 如果是调试模式，生成模拟执行日志
                 if debug:
                     mock_log = {
-                        "node": "fast_cache_hit", 
-                        "timestamp": time.time(), 
-                        "input": message, 
-                        "output": "高质量缓存命中，跳过完整处理"
+                        "node": "fast_cache_hit",
+                        "timestamp": time.time(),
+                        "input": message,
+                        "output": "高质量缓存命中，跳过完整处理",
                     }
                     yield {"execution_log": mock_log}
-                
+
                 yield json.dumps({"status": "token", "content": fast_result})
                 yield json.dumps({"status": "done"})
                 return
         except Exception as e:
             print(f"快速路径检查失败: {e}")
-        
+
         # 保存执行轨迹（针对调试模式）
         execution_log = []
 
@@ -467,11 +455,7 @@ async def process_chat_stream(
         # show_thinking已通过configure()传递，由Agent内部处理
         if debug:
             # Debug模式：先获取执行轨迹，再流式输出答案
-            trace_result = await asyncio.to_thread(
-                selected_agent.ask_with_trace,
-                message,
-                thread_id=session_id
-            )
+            trace_result = await asyncio.to_thread(selected_agent.ask_with_trace, message, thread_id=session_id)
 
             # 发送执行轨迹
             if "execution_log" in trace_result:
@@ -483,7 +467,7 @@ async def process_chat_stream(
             answer = trace_result["answer"]
             chunk_size = 10  # 每个块的字符数
             for i in range(0, len(answer), chunk_size):
-                chunk = answer[i:i+chunk_size]
+                chunk = answer[i : i + chunk_size]
                 yield json.dumps({"status": "token", "content": chunk})
                 await asyncio.sleep(0.01)  # 小延迟模拟流式输出
 
@@ -526,19 +510,14 @@ async def process_chat_stream(
                 semantic_cache.add(
                     query_embedding,
                     complete_answer,
-                    metadata={
-                        "session_id": session_id,
-                        "agent_type": agent_type,
-                        "query": message,
-                        "streaming": True
-                    }
+                    metadata={"session_id": session_id, "agent_type": agent_type, "query": message, "streaming": True},
                 )
                 print(f"已将流式响应写入语义缓存（长度: {len(complete_answer)}）")
             except Exception as e:
                 print(f"写入语义缓存失败（不影响返回结果）: {e}")
 
         return
-            
+
     except Exception as e:
         error_msg = str(e)
         print(f"处理聊天请求时出错: {error_msg}")
@@ -559,7 +538,7 @@ async def process_chat_stream(
     finally:
         # 释放锁
         chat_manager.release_lock(lock_key)
-        
+
         # 清理过期的锁
         chat_manager.cleanup_expired_locks()
 
@@ -567,16 +546,16 @@ async def process_chat_stream(
 def extract_iterations(retrieved_info):
     """
     从检索信息中提取迭代轮次
-    
+
     Args:
         retrieved_info: 检索到的信息列表
-        
+
     Returns:
         List: 迭代轮次信息
     """
     if not retrieved_info:
         return []
-    
+
     # 根据DeepResearchTool的输出，retrieved_info可能是一个列表
     if isinstance(retrieved_info, list):
         # 合并所有检索信息为一个字符串
@@ -589,52 +568,52 @@ def extract_iterations(retrieved_info):
                     text_items.append(str(item))
                 except:
                     pass
-        
+
         full_text = "\n".join(text_items)
     else:
         # 如果是字符串或其他类型，转换为字符串
         full_text = str(retrieved_info)
-    
+
     # 将文本按照迭代轮次分割
     iterations = []
     current_iteration = {"round": 1, "content": [], "queries": []}
-    
-    lines = full_text.split('\n')
+
+    lines = full_text.split("\n")
     for line in lines:
         # 检测迭代轮次开始
-        round_match = re.search(r'\[深度研究\]\s*开始第(\d+)轮迭代', line)
+        round_match = re.search(r"\[深度研究\]\s*开始第(\d+)轮迭代", line)
         if round_match:
             # 如果已有内容，保存前一轮
             if current_iteration["content"]:
                 iterations.append(current_iteration)
-            
+
             # 开始新一轮
             round_num = int(round_match.group(1))
             current_iteration = {"round": round_num, "content": [line], "queries": []}
         # 检测查询
-        elif re.search(r'\[深度研究\]\s*执行查询:', line):
-            query = re.sub(r'\[深度研究\]\s*执行查询:\s*', '', line).strip()
+        elif re.search(r"\[深度研究\]\s*执行查询:", line):
+            query = re.sub(r"\[深度研究\]\s*执行查询:\s*", "", line).strip()
             current_iteration["queries"].append(query)
             current_iteration["content"].append(line)
         # 检测是否发现有用信息
-        elif re.search(r'\[深度研究\]\s*发现有用信息:', line):
+        elif re.search(r"\[深度研究\]\s*发现有用信息:", line):
             current_iteration["content"].append(line)
-            info = re.sub(r'\[深度研究\]\s*发现有用信息:\s*', '', line).strip()
+            info = re.sub(r"\[深度研究\]\s*发现有用信息:\s*", "", line).strip()
             current_iteration["useful_info"] = info
         # 其他行
         else:
             current_iteration["content"].append(line)
-    
+
     # 添加最后一轮
     if current_iteration["content"]:
         iterations.append(current_iteration)
-    
+
     # 如果没有生成有效的迭代，创建一个基本迭代
     if not iterations:
         # 从原始文本中提取有用信息
         useful_info = None
         queries = []
-        
+
         # 查找最终信息
         for i, line in enumerate(lines):
             if "Final Information" in line and i + 1 < len(lines):
@@ -645,45 +624,48 @@ def extract_iterations(retrieved_info):
                 query = line.strip("> ").strip()
                 if query and query not in queries:
                     queries.append(query)
-        
-        return [{
-            "round": 1,
-            "content": lines,
-            "queries": queries if queries else ["原始查询"],
-            "useful_info": useful_info or "深度研究已完成，但无法提取详细迭代信息"
-        }]
-    
+
+        return [
+            {
+                "round": 1,
+                "content": lines,
+                "queries": queries if queries else ["原始查询"],
+                "useful_info": useful_info or "深度研究已完成，但无法提取详细迭代信息",
+            }
+        ]
+
     return iterations
+
 
 def extract_iterations_from_thinking(thinking_process: str) -> List[Dict]:
     """
     从思考过程中提取迭代信息
-    
+
     Args:
         thinking_process: 思考过程文本
-        
+
     Returns:
         List[Dict]: 迭代轮次信息
     """
     if not thinking_process or not isinstance(thinking_process, str):
         return []
-    
+
     # 去除<think>和</think>标签
     if thinking_process.startswith("<think>"):
         thinking_process = thinking_process[7:]
     if thinking_process.endswith("</think>"):
         thinking_process = thinking_process[:-8]
-    
+
     # 分析思考过程结构
-    lines = thinking_process.split('\n')
-    
+    lines = thinking_process.split("\n")
+
     # 检查是否有迭代标记
     has_iteration_marker = False
     for line in lines:
-        if re.search(r'开始第\d+轮迭代', line) or re.search(r'> \d+\.', line):
+        if re.search(r"开始第\d+轮迭代", line) or re.search(r"> \d+\.", line):
             has_iteration_marker = True
             break
-    
+
     if not has_iteration_marker:
         # 查找Final Information部分
         final_info_idx = -1
@@ -691,7 +673,7 @@ def extract_iterations_from_thinking(thinking_process: str) -> List[Dict]:
             if "Final Information" in line:
                 final_info_idx = i
                 break
-        
+
         # 提取useful_info
         useful_info = None
         if final_info_idx >= 0 and final_info_idx + 1 < len(lines):
@@ -699,10 +681,10 @@ def extract_iterations_from_thinking(thinking_process: str) -> List[Dict]:
             for i in range(final_info_idx + 1, min(final_info_idx + 5, len(lines))):
                 if lines[i].strip():
                     useful_info_lines.append(lines[i])
-            
+
             if useful_info_lines:
                 useful_info = "\n".join(useful_info_lines)
-        
+
         # 提取查询
         queries = []
         for line in lines:
@@ -710,35 +692,37 @@ def extract_iterations_from_thinking(thinking_process: str) -> List[Dict]:
                 query = line.strip()[1:].strip()
                 if query and query not in queries:
                     queries.append(query)
-        
+
         # 创建一个基本迭代
-        return [{
-            "round": 1,
-            "content": lines,
-            "queries": queries if queries else ["原始查询"],
-            "useful_info": useful_info or "从思考过程中提取的信息"
-        }]
-    
+        return [
+            {
+                "round": 1,
+                "content": lines,
+                "queries": queries if queries else ["原始查询"],
+                "useful_info": useful_info or "从思考过程中提取的信息",
+            }
+        ]
+
     # 尝试识别迭代轮次
     iterations = []
     current_iteration = {"round": 1, "content": [], "queries": []}
     current_query = None
-    
+
     for line in lines:
         # 检测新的迭代轮次
-        round_match = re.search(r'开始第(\d+)轮迭代', line)
+        round_match = re.search(r"开始第(\d+)轮迭代", line)
         if round_match:
             # 保存前一轮
             if current_iteration["content"]:
                 iterations.append(current_iteration)
-            
+
             # 开始新一轮
             round_num = int(round_match.group(1))
             current_iteration = {"round": round_num, "content": [line], "queries": []}
             continue
-        
+
         # 检测查询行（以 "> 1. "等格式开头的行）
-        query_match = re.search(r'> (\d+)\. (.+)', line)
+        query_match = re.search(r"> (\d+)\. (.+)", line)
         if query_match:
             query_text = query_match.group(2).strip()
             if query_text:
@@ -746,58 +730,56 @@ def extract_iterations_from_thinking(thinking_process: str) -> List[Dict]:
                 current_query = query_text
             current_iteration["content"].append(line)
             continue
-        
+
         # 检测发现有用信息的行
         if "发现有用信息" in line:
-            info_match = re.search(r'发现有用信息:\s*(.+)', line)
+            info_match = re.search(r"发现有用信息:\s*(.+)", line)
             if info_match:
                 info = info_match.group(1).strip()
                 current_iteration["useful_info"] = info
             current_iteration["content"].append(line)
             continue
-        
+
         # 检测Final Information部分
         if "Final Information" in line and current_iteration and "useful_info" not in current_iteration:
             info_idx = lines.index(line)
             if info_idx + 1 < len(lines):
                 current_iteration["useful_info"] = lines[info_idx + 1]
-        
+
         # 其他行
         current_iteration["content"].append(line)
-    
+
     # 添加最后一轮
     if current_iteration["content"]:
         iterations.append(current_iteration)
-    
+
     # 如果未能找到有效的迭代，创建一个基本迭代
     if not iterations:
-        return [{
-            "round": 1,
-            "content": lines,
-            "queries": ["原始查询"],
-            "useful_info": "从思考过程中提取的信息"
-        }]
-    
+        return [{"round": 1, "content": lines, "queries": ["原始查询"], "useful_info": "从思考过程中提取的信息"}]
+
     return iterations
 
-async def process_feedback(message_id: str, query: str, is_positive: bool, thread_id: str, agent_type: str = "graph_agent") -> Dict:
+
+async def process_feedback(
+    message_id: str, query: str, is_positive: bool, thread_id: str, agent_type: str = "graph_agent"
+) -> Dict:
     """
     处理用户对回答的反馈
-    
+
     Args:
         message_id: 消息ID
         query: 查询内容
         is_positive: 是否为正面反馈
         thread_id: 线程ID
         agent_type: Agent类型
-        
+
     Returns:
         Dict: 反馈处理结果
     """
     try:
         # 生成锁的键
         lock_key = f"{thread_id}_{query}"
-        
+
         # 获取锁，防止并发处理同一个查询
         with feedback_manager.get_lock(lock_key):
             # 确保agent_type存在
@@ -807,7 +789,7 @@ async def process_feedback(message_id: str, query: str, is_positive: bool, threa
                 agent_type = "graph_agent"  # 回退到默认agent
                 print(f"未知的agent类型，使用默认值: {agent_type}")
                 selected_agent = agent_manager.get_agent(agent_type)
-            
+
             # 根据反馈进行处理
             if is_positive:
                 # 标记为高质量回答
@@ -816,25 +798,22 @@ async def process_feedback(message_id: str, query: str, is_positive: bool, threa
             else:
                 # 负面反馈 - 从缓存中移除该回答
                 selected_agent.clear_cache_for_query(query, thread_id)
-                
+
                 # 同时清除全局缓存
-                if hasattr(selected_agent, 'global_cache_manager'):
+                if hasattr(selected_agent, "global_cache_manager"):
                     # 直接使用原始查询作为键
                     selected_agent.global_cache_manager.delete(query)
                     action = "会话缓存和全局缓存已被清除"
                 else:
                     action = "会话缓存已被清除，但无法访问全局缓存"
-                
+
             # 更新操作时间戳
             feedback_manager.update_timestamp(lock_key)
-            
+
             # 清理过期的锁
             feedback_manager.cleanup_expired_locks()
-            
-            return {
-                "status": "success",
-                "action": action
-            }
+
+            return {"status": "success", "action": action}
     except Exception as e:
         print(f"处理反馈时出错: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

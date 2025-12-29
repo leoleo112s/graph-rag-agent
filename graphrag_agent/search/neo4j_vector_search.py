@@ -4,14 +4,12 @@ Neo4j 原生 Vector Search（工程级实践）
 使用 db.index.vector.queryNodes 进行服务端向量搜索，
 避免客户端排序，提升性能和准确性。
 """
-from typing import List, Dict, Any, Optional
-import time
 
+import time
+from typing import Any, Dict, List, Optional
+
+from graphrag_agent.config.settings import CHUNK_VECTOR_INDEX, ENTITY_VECTOR_INDEX
 from graphrag_agent.graph.core import connection_manager
-from graphrag_agent.config.settings import (
-    CHUNK_VECTOR_INDEX,
-    ENTITY_VECTOR_INDEX
-)
 
 
 class Neo4jVectorSearch:
@@ -27,10 +25,7 @@ class Neo4jVectorSearch:
         self.graph = connection_manager.get_connection()
 
     def search_chunks(
-        self,
-        query_embedding: List[float],
-        top_k: int = 10,
-        return_properties: Optional[List[str]] = None
+        self, query_embedding: List[float], top_k: int = 10, return_properties: Optional[List[str]] = None
     ) -> List[Dict[str, Any]]:
         """
         使用 Neo4j 原生 API 搜索相似的 Chunk 节点
@@ -66,12 +61,7 @@ class Neo4jVectorSearch:
 
         try:
             results = self.graph.query(
-                query,
-                params={
-                    "index_name": CHUNK_VECTOR_INDEX,
-                    "top_k": top_k,
-                    "query_embedding": query_embedding
-                }
+                query, params={"index_name": CHUNK_VECTOR_INDEX, "top_k": top_k, "query_embedding": query_embedding}
             )
 
             return results
@@ -81,10 +71,7 @@ class Neo4jVectorSearch:
             return []
 
     def search_entities(
-        self,
-        query_embedding: List[float],
-        top_k: int = 10,
-        return_properties: Optional[List[str]] = None
+        self, query_embedding: List[float], top_k: int = 10, return_properties: Optional[List[str]] = None
     ) -> List[Dict[str, Any]]:
         """
         使用 Neo4j 原生 API 搜索相似的 Entity 节点
@@ -115,12 +102,7 @@ class Neo4jVectorSearch:
 
         try:
             results = self.graph.query(
-                query,
-                params={
-                    "index_name": ENTITY_VECTOR_INDEX,
-                    "top_k": top_k,
-                    "query_embedding": query_embedding
-                }
+                query, params={"index_name": ENTITY_VECTOR_INDEX, "top_k": top_k, "query_embedding": query_embedding}
             )
 
             return results
@@ -133,7 +115,7 @@ class Neo4jVectorSearch:
         query_embedding: List[float],
         top_k: int = 10,
         file_name: Optional[str] = None,
-        min_score: Optional[float] = None
+        min_score: Optional[float] = None,
     ) -> List[Dict[str, Any]]:
         """
         带过滤条件的 Chunk 搜索
@@ -172,8 +154,8 @@ class Neo4jVectorSearch:
                     "top_k": top_k * 2,  # 预留空间用于过滤
                     "query_embedding": query_embedding,
                     "file_name": file_name,
-                    "min_score": min_score
-                }
+                    "min_score": min_score,
+                },
             )
 
             # 确保返回的结果数不超过 top_k
@@ -200,10 +182,7 @@ class Neo4jVectorSearch:
         """
 
         try:
-            result = self.graph.query(
-                query,
-                params={"index_name": index_name}
-            )
+            result = self.graph.query(query, params={"index_name": index_name})
             return result[0]["exists"] if result else False
         except Exception as e:
             print(f"⚠️ Failed to check index existence: {e}")
@@ -227,10 +206,7 @@ class Neo4jVectorSearch:
         """
 
         try:
-            results = self.graph.query(
-                query,
-                params={"index_name": index_name}
-            )
+            results = self.graph.query(query, params={"index_name": index_name})
             return results[0] if results else None
         except Exception as e:
             print(f"⚠️ Failed to get index stats: {e}")

@@ -4,12 +4,14 @@
 提供构建任务和问答查询的统计与性能监控数据。
 """
 
-from fastapi import APIRouter, HTTPException, Query
-from typing import Optional, Dict, Any, List
+import logging
 from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, HTTPException, Query
+
 from server.models.build_history import get_build_history_db
 from server.models.query_log import get_query_log_db
-import logging
 
 router = APIRouter(prefix="/admin/stats", tags=["statistics"])
 logger = logging.getLogger(__name__)
@@ -17,9 +19,7 @@ logger = logging.getLogger(__name__)
 
 @router.get("/build")
 async def get_build_statistics(
-    start_time: Optional[str] = None,
-    end_time: Optional[str] = None,
-    task_type: Optional[str] = None
+    start_time: Optional[str] = None, end_time: Optional[str] = None, task_type: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     获取构建任务统计信息
@@ -43,12 +43,7 @@ async def get_build_statistics(
             start_time = (datetime.now() - timedelta(days=7)).isoformat()
 
         # 获取所有记录用于额外统计
-        records = db.list_records(
-            limit=1000,
-            offset=0,
-            status=None,  # 所有状态
-            task_type=task_type
-        )
+        records = db.list_records(limit=1000, offset=0, status=None, task_type=task_type)  # 所有状态
 
         # 过滤时间范围
         filtered_records = []
@@ -85,12 +80,7 @@ async def get_build_statistics(
         for record in filtered_records:
             date = record.start_time.split("T")[0]
             if date not in daily_stats:
-                daily_stats[date] = {
-                    "total": 0,
-                    "successful": 0,
-                    "failed": 0,
-                    "avg_duration": []
-                }
+                daily_stats[date] = {"total": 0, "successful": 0, "failed": 0, "avg_duration": []}
 
             daily_stats[date]["total"] += 1
             if record.status == "completed":
@@ -104,7 +94,9 @@ async def get_build_statistics(
         for date, day_stats in daily_stats.items():
             durations = day_stats["avg_duration"]
             day_stats["avg_duration"] = sum(durations) / len(durations) if durations else 0
-            day_stats["success_rate"] = (day_stats["successful"] / day_stats["total"] * 100) if day_stats["total"] > 0 else 0
+            day_stats["success_rate"] = (
+                (day_stats["successful"] / day_stats["total"] * 100) if day_stats["total"] > 0 else 0
+            )
 
         # 按类型统计
         type_stats = {}
@@ -126,10 +118,7 @@ async def get_build_statistics(
             "total_nodes": total_nodes,
             "daily_stats": daily_stats,
             "type_distribution": type_stats,
-            "time_range": {
-                "start": start_time,
-                "end": end_time or datetime.now().isoformat()
-            }
+            "time_range": {"start": start_time, "end": end_time or datetime.now().isoformat()},
         }
 
     except Exception as e:
@@ -139,9 +128,7 @@ async def get_build_statistics(
 
 @router.get("/qa")
 async def get_qa_statistics(
-    start_time: Optional[str] = None,
-    end_time: Optional[str] = None,
-    agent_type: Optional[str] = None
+    start_time: Optional[str] = None, end_time: Optional[str] = None, agent_type: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     获取问答查询统计信息
@@ -162,11 +149,7 @@ async def get_qa_statistics(
             start_time = (datetime.now() - timedelta(days=7)).isoformat()
 
         # 获取统计
-        stats = db.get_statistics(
-            start_time=start_time,
-            end_time=end_time,
-            agent_type=agent_type
-        )
+        stats = db.get_statistics(start_time=start_time, end_time=end_time, agent_type=agent_type)
 
         return stats
 
@@ -181,7 +164,7 @@ async def get_qa_timeseries(
     start_time: Optional[str] = None,
     end_time: Optional[str] = None,
     interval: str = Query("hour", description="Time interval: hour, day, week"),
-    agent_type: Optional[str] = None
+    agent_type: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """
     获取问答指标时间序列数据
@@ -204,11 +187,7 @@ async def get_qa_timeseries(
             start_time = (datetime.now() - timedelta(days=7)).isoformat()
 
         time_series = db.get_time_series(
-            metric=metric,
-            start_time=start_time,
-            end_time=end_time,
-            interval=interval,
-            agent_type=agent_type
+            metric=metric, start_time=start_time, end_time=end_time, interval=interval, agent_type=agent_type
         )
 
         return time_series
@@ -243,18 +222,15 @@ async def get_system_overview() -> Dict[str, Any]:
             "build": {
                 "total_builds": build_stats.get("total_builds", 0),
                 "success_rate": build_stats.get("success_rate", 0),
-                "avg_duration": build_stats.get("avg_duration_minutes", 0)
+                "avg_duration": build_stats.get("avg_duration_minutes", 0),
             },
             "qa": {
                 "total_queries": qa_stats.get("total_queries", 0),
                 "avg_response_time": qa_stats.get("avg_response_time", 0),
                 "cache_hit_rate": qa_stats.get("cache_hit_rate", 0),
-                "positive_feedback_rate": qa_stats.get("positive_feedback_rate", 0)
+                "positive_feedback_rate": qa_stats.get("positive_feedback_rate", 0),
             },
-            "time_range": {
-                "start": start_time,
-                "end": datetime.now().isoformat()
-            }
+            "time_range": {"start": start_time, "end": datetime.now().isoformat()},
         }
 
     except Exception as e:

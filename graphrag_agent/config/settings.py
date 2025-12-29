@@ -45,9 +45,7 @@ def _get_env_choice(key: str, choices: set[str], default: str) -> str:
         return default
     value = raw.strip().lower()
     if value not in choices:
-        raise ValueError(
-            f"环境变量 {key} 必须为 {', '.join(sorted(choices))} 之一，但当前为 {raw}"
-        )
+        raise ValueError(f"环境变量 {key} 必须为 {', '.join(sorted(choices))} 之一，但当前为 {raw}")
     return value
 
 
@@ -173,37 +171,25 @@ DISAMBIG_VECTOR_THRESHOLD = _get_env_float("DISAMBIG_VECTOR_THRESHOLD", 0.85) or
 DISAMBIG_NIL_THRESHOLD = _get_env_float("DISAMBIG_NIL_THRESHOLD", 0.6) or 0.6
 DISAMBIG_TOP_K = _get_env_int("DISAMBIG_TOP_K", 5) or 5
 
-ALIGNMENT_CONFLICT_THRESHOLD = (
-    _get_env_float("ALIGNMENT_CONFLICT_THRESHOLD", 0.5) or 0.5
-)
+ALIGNMENT_CONFLICT_THRESHOLD = _get_env_float("ALIGNMENT_CONFLICT_THRESHOLD", 0.5) or 0.5
 ALIGNMENT_MIN_GROUP_SIZE = _get_env_int("ALIGNMENT_MIN_GROUP_SIZE", 2) or 2
 
 # ===== 路径与缓存配置 =====
 
-DEFAULT_CACHE_ROOT = Path(
-    os.getenv("CACHE_ROOT", PROJECT_ROOT / "cache")
-).expanduser()
-MODEL_CACHE_ROOT = Path(
-    os.getenv("MODEL_CACHE_ROOT", DEFAULT_CACHE_ROOT)
-).expanduser()
+DEFAULT_CACHE_ROOT = Path(os.getenv("CACHE_ROOT", PROJECT_ROOT / "cache")).expanduser()
+MODEL_CACHE_ROOT = Path(os.getenv("MODEL_CACHE_ROOT", DEFAULT_CACHE_ROOT)).expanduser()
 MODEL_CACHE_DIR = MODEL_CACHE_ROOT / "model"
 CACHE_DIR = Path(os.getenv("CACHE_DIR", DEFAULT_CACHE_ROOT)).expanduser()
-TIKTOKEN_CACHE_DIR = Path(
-    os.getenv("TIKTOKEN_CACHE_DIR", DEFAULT_CACHE_ROOT / "tiktoken")
-).expanduser()
+TIKTOKEN_CACHE_DIR = Path(os.getenv("TIKTOKEN_CACHE_DIR", DEFAULT_CACHE_ROOT / "tiktoken")).expanduser()
 os.environ.setdefault("TIKTOKEN_CACHE_DIR", str(TIKTOKEN_CACHE_DIR))
 
 SENTENCE_TRANSFORMER_MODELS = [
-    item.strip()
-    for item in os.getenv("SENTENCE_TRANSFORMER_MODELS", "").split(",")
-    if item.strip()
+    item.strip() for item in os.getenv("SENTENCE_TRANSFORMER_MODELS", "").split(",") if item.strip()
 ]  # 预加载的本地模型列表
 CACHE_EMBEDDING_PROVIDER = os.getenv("CACHE_EMBEDDING_PROVIDER", "openai")
 
 # sentence-transformer 只作为可选项保留，不做默认
-CACHE_SENTENCE_TRANSFORMER_MODEL = os.getenv(
-    "CACHE_SENTENCE_TRANSFORMER_MODEL", "all-MiniLM-L6-v2"
-)
+CACHE_SENTENCE_TRANSFORMER_MODEL = os.getenv("CACHE_SENTENCE_TRANSFORMER_MODEL", "all-MiniLM-L6-v2")
 
 
 CACHE_SETTINGS = {
@@ -212,13 +198,8 @@ CACHE_SETTINGS = {
     "max_memory_size": _get_env_int("CACHE_MAX_MEMORY_SIZE", 100) or 100,
     "max_disk_size": _get_env_int("CACHE_MAX_DISK_SIZE", 1000) or 1000,
     "thread_safe": _get_env_bool("CACHE_THREAD_SAFE", True),
-    "enable_vector_similarity": _get_env_bool(
-        "CACHE_ENABLE_VECTOR_SIMILARITY", True
-    ),
-    "similarity_threshold": _get_env_float(
-        "CACHE_SIMILARITY_THRESHOLD", similarity_threshold
-    )
-    or similarity_threshold,
+    "enable_vector_similarity": _get_env_bool("CACHE_ENABLE_VECTOR_SIMILARITY", True),
+    "similarity_threshold": _get_env_float("CACHE_SIMILARITY_THRESHOLD", similarity_threshold) or similarity_threshold,
     "max_vectors": _get_env_int("CACHE_MAX_VECTORS", 10000) or 10000,
 }
 
@@ -246,7 +227,7 @@ NEO4J_DATABASE = os.getenv("NEO4J_DATABASE") or os.getenv("NEO4J_DB") or None
 
 NEO4J_CONFIG = {
     "uri": NEO4J_URI,
-    "username": NEO4J_USER,      # ✅ 统一使用 NEO4J_USER
+    "username": NEO4J_USER,  # ✅ 统一使用 NEO4J_USER
     "password": NEO4J_PASSWORD,
     "max_connection_pool_size": NEO4J_MAX_CONNECTION_POOL_SIZE,
     "connection_timeout": NEO4J_CONNECTION_TIMEOUT,
@@ -296,10 +277,7 @@ OPENAI_LLM_CONFIG = {
 SIMILAR_ENTITY_SETTINGS = {
     "word_edit_distance": _get_env_int("SIMILAR_ENTITY_WORD_EDIT_DISTANCE", 3) or 3,
     "batch_size": _get_env_int("SIMILAR_ENTITY_BATCH_SIZE", 500) or 500,
-    "memory_limit": _get_env_int(
-        "SIMILAR_ENTITY_MEMORY_LIMIT", GDS_MEMORY_LIMIT
-    )
-    or GDS_MEMORY_LIMIT,
+    "memory_limit": _get_env_int("SIMILAR_ENTITY_MEMORY_LIMIT", GDS_MEMORY_LIMIT) or GDS_MEMORY_LIMIT,
     "top_k": _get_env_int("SIMILAR_ENTITY_TOP_K", 10) or 10,
 }
 
@@ -316,14 +294,8 @@ BASE_SEARCH_CONFIG = {
 LOCAL_SEARCH_SETTINGS = {
     "top_chunks": _get_env_int("LOCAL_SEARCH_TOP_CHUNKS", 3) or 3,
     "top_communities": _get_env_int("LOCAL_SEARCH_TOP_COMMUNITIES", 3) or 3,
-    "top_outside_relationships": _get_env_int(
-        "LOCAL_SEARCH_TOP_OUTSIDE_RELS", 10
-    )
-    or 10,
-    "top_inside_relationships": _get_env_int(
-        "LOCAL_SEARCH_TOP_INSIDE_RELS", 10
-    )
-    or 10,
+    "top_outside_relationships": _get_env_int("LOCAL_SEARCH_TOP_OUTSIDE_RELS", 10) or 10,
+    "top_inside_relationships": _get_env_int("LOCAL_SEARCH_TOP_INSIDE_RELS", 10) or 10,
     "top_entities": _get_env_int("LOCAL_SEARCH_TOP_ENTITIES", 10) or 10,
     "index_name": os.getenv("LOCAL_SEARCH_INDEX_NAME") or CHUNK_VECTOR_INDEX,
 }
@@ -348,16 +320,9 @@ HYBRID_SEARCH_SETTINGS = {
 AGENT_SETTINGS = {
     "default_recursion_limit": _get_env_int("AGENT_RECURSION_LIMIT", 5) or 5,
     "chunk_size": _get_env_int("AGENT_CHUNK_SIZE", 4) or 4,
-    "stream_flush_threshold": _get_env_int("AGENT_STREAM_FLUSH_THRESHOLD", 40)
-    or 40,
-    "deep_stream_flush_threshold": _get_env_int(
-        "DEEP_AGENT_STREAM_FLUSH_THRESHOLD", 80
-    )
-    or 80,
-    "fusion_stream_flush_threshold": _get_env_int(
-        "FUSION_AGENT_STREAM_FLUSH_THRESHOLD", 60
-    )
-    or 60,
+    "stream_flush_threshold": _get_env_int("AGENT_STREAM_FLUSH_THRESHOLD", 40) or 40,
+    "deep_stream_flush_threshold": _get_env_int("DEEP_AGENT_STREAM_FLUSH_THRESHOLD", 80) or 80,
+    "fusion_stream_flush_threshold": _get_env_int("FUSION_AGENT_STREAM_FLUSH_THRESHOLD", 60) or 60,
 }
 
 # ===== 多智能体（Plan-Execute-Report）配置 =====
@@ -371,35 +336,21 @@ MULTI_AGENT_STOP_ON_CLARIFICATION = _get_env_bool("MA_STOP_ON_CLARIFICATION", Tr
 MULTI_AGENT_STRICT_PLAN_SIGNAL = _get_env_bool("MA_STRICT_PLAN_SIGNAL", True)
 
 MULTI_AGENT_DEFAULT_REPORT_TYPE = os.getenv("MA_DEFAULT_REPORT_TYPE", "long_document")
-MULTI_AGENT_ENABLE_CONSISTENCY_CHECK = _get_env_bool(
-    "MA_ENABLE_CONSISTENCY_CHECK", True
-)
+MULTI_AGENT_ENABLE_CONSISTENCY_CHECK = _get_env_bool("MA_ENABLE_CONSISTENCY_CHECK", True)
 MULTI_AGENT_ENABLE_MAPREDUCE = _get_env_bool("MA_ENABLE_MAPREDUCE", True)
 MULTI_AGENT_MAPREDUCE_THRESHOLD = _get_env_int("MA_MAPREDUCE_THRESHOLD", 20) or 20
-MULTI_AGENT_MAX_TOKENS_PER_REDUCE = (
-    _get_env_int("MA_MAX_TOKENS_PER_REDUCE", 4000) or 4000
-)
+MULTI_AGENT_MAX_TOKENS_PER_REDUCE = _get_env_int("MA_MAX_TOKENS_PER_REDUCE", 4000) or 4000
 MULTI_AGENT_ENABLE_PARALLEL_MAP = _get_env_bool("MA_ENABLE_PARALLEL_MAP", True)
 
-MULTI_AGENT_SECTION_MAX_EVIDENCE = (
-    _get_env_int("MA_SECTION_MAX_EVIDENCE", 8) or 8
-)
-MULTI_AGENT_SECTION_MAX_CONTEXT_CHARS = (
-    _get_env_int("MA_SECTION_MAX_CONTEXT_CHARS", 800) or 800
-)
-MULTI_AGENT_REFLECTION_ALLOW_RETRY = _get_env_bool(
-    "MA_REFLECTION_ALLOW_RETRY", False
-)
-MULTI_AGENT_REFLECTION_MAX_RETRIES = (
-    _get_env_int("MA_REFLECTION_MAX_RETRIES", 1) or 1
-)
+MULTI_AGENT_SECTION_MAX_EVIDENCE = _get_env_int("MA_SECTION_MAX_EVIDENCE", 8) or 8
+MULTI_AGENT_SECTION_MAX_CONTEXT_CHARS = _get_env_int("MA_SECTION_MAX_CONTEXT_CHARS", 800) or 800
+MULTI_AGENT_REFLECTION_ALLOW_RETRY = _get_env_bool("MA_REFLECTION_ALLOW_RETRY", False)
+MULTI_AGENT_REFLECTION_MAX_RETRIES = _get_env_int("MA_REFLECTION_MAX_RETRIES", 1) or 1
 MULTI_AGENT_WORKER_EXECUTION_MODE = _get_env_choice(
     "MA_WORKER_EXECUTION_MODE",
     {"sequential", "parallel"},
     "sequential",
 )
-MULTI_AGENT_WORKER_MAX_CONCURRENCY = (
-    _get_env_int("MA_WORKER_MAX_CONCURRENCY", MAX_WORKERS) or MAX_WORKERS
-)
+MULTI_AGENT_WORKER_MAX_CONCURRENCY = _get_env_int("MA_WORKER_MAX_CONCURRENCY", MAX_WORKERS) or MAX_WORKERS
 if MULTI_AGENT_WORKER_MAX_CONCURRENCY < 1:
     raise ValueError("MA_WORKER_MAX_CONCURRENCY 必须大于等于 1")

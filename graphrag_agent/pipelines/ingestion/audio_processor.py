@@ -4,9 +4,9 @@
 使用 OpenAI Whisper 将音频转换为文字。
 """
 
+import logging
 import os
 from typing import Optional, Tuple
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -42,28 +42,20 @@ class AudioProcessor:
 
             logger.info(f"Loading Whisper model: {self.model_size} on {self.device}")
 
-            self._model = whisper.load_model(
-                self.model_size,
-                device=self.device
-            )
+            self._model = whisper.load_model(self.model_size, device=self.device)
 
             self._initialized = True
             logger.info("Whisper model loaded successfully")
 
         except ImportError:
-            logger.error(
-                "Whisper not installed. Please install with: pip install openai-whisper"
-            )
+            logger.error("Whisper not installed. Please install with: pip install openai-whisper")
             raise
         except Exception as e:
             logger.error(f"Failed to load Whisper model: {e}")
             raise
 
     def process_audio(
-        self,
-        audio_path: str,
-        language: Optional[str] = None,
-        task: str = "transcribe"
+        self, audio_path: str, language: Optional[str] = None, task: str = "transcribe"
     ) -> Tuple[str, Optional[dict]]:
         """
         处理音频文件，转录为文字
@@ -86,12 +78,7 @@ class AudioProcessor:
             # 执行转录
             logger.info(f"Transcribing {audio_path}...")
 
-            result = self._model.transcribe(
-                audio_path,
-                language=language,
-                task=task,
-                verbose=False
-            )
+            result = self._model.transcribe(audio_path, language=language, task=task, verbose=False)
 
             text = result.get("text", "").strip()
             detected_language = result.get("language", "unknown")
@@ -105,13 +92,10 @@ class AudioProcessor:
                 "segment_count": segment_count,
                 "duration_seconds": segments[-1]["end"] if segments else 0,
                 "source_audio": os.path.basename(audio_path),
-                "model_size": self.model_size
+                "model_size": self.model_size,
             }
 
-            logger.info(
-                f"ASR completed for {audio_path}: "
-                f"{len(text)} characters, language: {detected_language}"
-            )
+            logger.info(f"ASR completed for {audio_path}: " f"{len(text)} characters, language: {detected_language}")
 
             return text, metadata
 
@@ -156,9 +140,6 @@ class AudioProcessor:
         Returns:
             bool: 是否支持
         """
-        supported_extensions = {
-            '.mp3', '.mp4', '.mpeg', '.mpga', '.m4a',
-            '.wav', '.webm', '.ogg', '.flac'
-        }
+        supported_extensions = {".mp3", ".mp4", ".mpeg", ".mpga", ".m4a", ".wav", ".webm", ".ogg", ".flac"}
         _, ext = os.path.splitext(file_path.lower())
         return ext in supported_extensions

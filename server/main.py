@@ -6,25 +6,26 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-import uvicorn
 import os
-from fastapi import FastAPI, Request, HTTPException
+import traceback
+
+import uvicorn
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
+from models.schemas import BaseResponse, ErrorCode
 from routers import api_router
 from server_config.database import get_db_manager
 from server_config.settings import UVICORN_CONFIG
 from services.agent_service import agent_manager
-from models.schemas import BaseResponse, ErrorCode
 from utils.exceptions import BusinessException
-from utils.logger import setup_logging, get_logger
-import traceback
+from utils.logger import get_logger, setup_logging
 
 # 配置结构化日志系统
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 setup_logging(
     log_level="DEBUG" if DEBUG else "INFO",
     log_dir=Path("logs") if not DEBUG else None,  # 开发环境不写文件
-    use_json=not DEBUG  # 生产环境使用 JSON 格式
+    use_json=not DEBUG,  # 生产环境使用 JSON 格式
 )
 
 # 获取日志器
@@ -32,18 +33,16 @@ logger = get_logger(__name__)
 
 # 初始化日志系统
 from graphrag_agent.utils.logging_config import init_logging
+
 init_logging(app_name="graphrag-server")
 
 # 初始化 FastAPI 应用
-app = FastAPI(
-    title="知识图谱问答系统",
-    description="基于知识图谱的智能问答系统后端API",
-    version="1.0.0"
-)
+app = FastAPI(title="知识图谱问答系统", description="基于知识图谱的智能问答系统后端API", version="1.0.0")
 
 # ============================================================================
 # 全局异常处理 (Global Exception Handler)
 # ============================================================================
+
 
 @app.exception_handler(BusinessException)
 async def business_exception_handler(request: Request, exc: BusinessException):
@@ -52,39 +51,21 @@ async def business_exception_handler(request: Request, exc: BusinessException):
 
     业务异常通常返回 200 状态码，通过 code 字段区分错误类型
     """
-    logger.warning(
-        f"业务异常: {exc.message}",
-        code=exc.code,
-        details=exc.details,
-        path=request.url.path
-    )
+    logger.warning(f"业务异常: {exc.message}", code=exc.code, details=exc.details, path=request.url.path)
 
     return JSONResponse(
         status_code=200,  # 业务异常返回 200
-        content=BaseResponse(
-            code=exc.code,
-            msg=exc.message,
-            data=exc.details if exc.details else None
-        ).dict()
+        content=BaseResponse(code=exc.code, msg=exc.message, data=exc.details if exc.details else None).dict(),
     )
 
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     """处理 FastAPI HTTPException，返回统一的错误响应"""
-    logger.warning(
-        f"HTTP异常: {exc.detail}",
-        status_code=exc.status_code,
-        path=request.url.path
-    )
+    logger.warning(f"HTTP异常: {exc.detail}", status_code=exc.status_code, path=request.url.path)
 
     return JSONResponse(
-        status_code=exc.status_code,
-        content=BaseResponse(
-            code=exc.status_code,
-            msg=exc.detail,
-            data=None
-        ).dict()
+        status_code=exc.status_code, content=BaseResponse(code=exc.status_code, msg=exc.detail, data=None).dict()
     )
 
 
@@ -114,12 +95,7 @@ async def global_exception_handler(request: Request, exc: Exception):
         error_code = ErrorCode.DB_ERROR
 
     # 记录详细的异常堆栈到日志
-    logger.error(
-        f"系统异常捕获: {error_msg}",
-        exc_info=True,
-        path=request.url.path,
-        method=request.method
-    )
+    logger.error(f"系统异常捕获: {error_msg}", exc_info=True, path=request.url.path, method=request.method)
 
     # DEBUG 模式显示详细错误，生产环境隐藏
     if DEBUG:
@@ -130,12 +106,7 @@ async def global_exception_handler(request: Request, exc: Exception):
         response_data = None
 
     return JSONResponse(
-        status_code=500,
-        content=BaseResponse(
-            code=error_code,
-            msg=response_msg,
-            data=response_data
-        ).dict()
+        status_code=500, content=BaseResponse(code=error_code, msg=response_msg, data=response_data).dict()
     )
 
 

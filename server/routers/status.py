@@ -1,10 +1,10 @@
 from fastapi import APIRouter, HTTPException
+from server_config.database import get_db_manager
+
 from graphrag_agent.config.settings import (
     CHUNK_VECTOR_INDEX,
     ENTITY_VECTOR_INDEX,
 )
-from server_config.database import get_db_manager
-
 
 router = APIRouter()
 

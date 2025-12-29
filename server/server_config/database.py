@@ -1,7 +1,9 @@
 from graphrag_agent.config.neo4jdb import get_db_manager as original_get_db_manager
 
+
 class DatabaseManager:
     """Neo4j 数据库管理类"""
+
     def __init__(self):
         self.driver = None
 

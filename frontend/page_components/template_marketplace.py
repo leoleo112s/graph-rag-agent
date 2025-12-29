@@ -4,11 +4,12 @@
 提供图谱配置模板的浏览、下载、评分、一键应用功能。
 """
 
-import streamlit as st
-import requests
-from typing import Dict, Any, List, Optional
 import json
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+import requests
+import streamlit as st
 
 # API 基础 URL
 API_URL = "http://localhost:8000"
@@ -34,23 +35,16 @@ def render_template_marketplace():
                 "领域筛选",
                 options=[d["value"] for d in domain_options],
                 format_func=lambda x: next(d["label_zh"] for d in domain_options if d["value"] == x),
-                index=0
+                index=0,
             )
         else:
             selected_domain = None
 
     with col2:
         # 排序方式
-        sort_options = {
-            "rating": "⭐ 按评分",
-            "downloads": "📥 按下载量",
-            "created_at": "🕐 按创建时间"
-        }
+        sort_options = {"rating": "⭐ 按评分", "downloads": "📥 按下载量", "created_at": "🕐 按创建时间"}
         sort_by = st.selectbox(
-            "排序方式",
-            options=list(sort_options.keys()),
-            format_func=lambda x: sort_options[x],
-            index=0
+            "排序方式", options=list(sort_options.keys()), format_func=lambda x: sort_options[x], index=0
         )
 
     with col3:
@@ -66,11 +60,7 @@ def render_template_marketplace():
 
     # 获取模板列表
     try:
-        params = {
-            "sort_by": sort_by,
-            "limit": 50,
-            "offset": 0
-        }
+        params = {"sort_by": sort_by, "limit": 50, "offset": 0}
         if selected_domain:
             params["domain"] = selected_domain
 
@@ -100,7 +90,7 @@ def render_template_grid(templates: List[Dict[str, Any]]):
     """渲染模板卡片网格"""
     # 每行3个模板卡片
     num_cols = 3
-    rows = [templates[i:i + num_cols] for i in range(0, len(templates), num_cols)]
+    rows = [templates[i : i + num_cols] for i in range(0, len(templates), num_cols)]
 
     for row in rows:
         cols = st.columns(num_cols)
@@ -139,7 +129,12 @@ def render_template_card(template: Dict[str, Any]):
 
         # 标签
         if template.get("tags"):
-            tags_html = " ".join([f'<span style="background-color: #e1e4e8; padding: 2px 6px; border-radius: 3px; font-size: 12px; margin-right: 4px;">{tag}</span>' for tag in template["tags"][:3]])
+            tags_html = " ".join(
+                [
+                    f'<span style="background-color: #e1e4e8; padding: 2px 6px; border-radius: 3px; font-size: 12px; margin-right: 4px;">{tag}</span>'
+                    for tag in template["tags"][:3]
+                ]
+            )
             st.markdown(tags_html, unsafe_allow_html=True)
 
         # 作者和时间
@@ -174,7 +169,7 @@ def render_publish_dialog():
             domain = st.selectbox(
                 "领域*",
                 options=[d["value"] for d in domain_options],
-                format_func=lambda x: next(d["label_zh"] for d in domain_options if d["value"] == x)
+                format_func=lambda x: next(d["label_zh"] for d in domain_options if d["value"] == x),
             )
         else:
             domain = "custom"
@@ -210,7 +205,7 @@ def render_publish_dialog():
                     "description": description,
                     "tags": tags,
                     "author_name": author_name,
-                    "is_public": is_public
+                    "is_public": is_public,
                 }
 
                 try:
@@ -228,10 +223,7 @@ def render_publish_dialog():
 def apply_template(template_id: str, template_name: str):
     """一键应用模板"""
     try:
-        response = requests.post(
-            f"{API_URL}/admin/templates/apply",
-            json={"template_id": template_id}
-        )
+        response = requests.post(f"{API_URL}/admin/templates/apply", json={"template_id": template_id})
 
         if response.status_code == 200:
             st.success(f"✅ 模板 '{template_name}' 已成功应用到当前配置！")
@@ -253,7 +245,7 @@ def get_domain_label(domain_value: str) -> str:
         "finance": "金融",
         "government": "政府",
         "manufacturing": "制造业",
-        "custom": "自定义"
+        "custom": "自定义",
     }
     return domain_labels.get(domain_value, domain_value)
 
@@ -312,7 +304,12 @@ def render_template_detail_sidebar(template_id: str):
                 # 标签
                 if template.get("tags"):
                     st.markdown("**标签:**")
-                    tags_html = " ".join([f'<span style="background-color: #e1e4e8; padding: 4px 8px; border-radius: 3px; margin-right: 4px;">{tag}</span>' for tag in template["tags"]])
+                    tags_html = " ".join(
+                        [
+                            f'<span style="background-color: #e1e4e8; padding: 4px 8px; border-radius: 3px; margin-right: 4px;">{tag}</span>'
+                            for tag in template["tags"]
+                        ]
+                    )
                     st.markdown(tags_html, unsafe_allow_html=True)
 
                 st.divider()
@@ -396,7 +393,7 @@ def download_template(template_id: str, template_name: str):
                 data=json.dumps(config, ensure_ascii=False, indent=2),
                 file_name=f"{template_name}_config.json",
                 mime="application/json",
-                use_container_width=True
+                use_container_width=True,
             )
             st.success("✅ 配置已准备就绪，点击上方按钮下载")
         else:
@@ -412,13 +409,10 @@ def submit_rating(template_id: str, rating: int, comment: Optional[str]):
         payload = {
             "rating": rating,
             "comment": comment if comment else None,
-            "user_id": "anonymous"  # TODO: 替换为实际用户ID
+            "user_id": "anonymous",  # TODO: 替换为实际用户ID
         }
 
-        response = requests.post(
-            f"{API_URL}/admin/templates/{template_id}/rate",
-            json=payload
-        )
+        response = requests.post(f"{API_URL}/admin/templates/{template_id}/rate", json=payload)
 
         if response.status_code == 200:
             st.success("✅ 评分提交成功！")

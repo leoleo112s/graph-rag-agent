@@ -3,11 +3,12 @@
 
 负责将证据摘要归约为章节内容，支持多种Reduce策略。
 """
-from enum import Enum
-from typing import Iterable, List, Optional
+
 import json
 import logging
 import uuid
+from enum import Enum
+from typing import Iterable, List, Optional
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage
@@ -17,10 +18,10 @@ from graphrag_agent.agents.multi_agent.reporter.mapreduce.evidence_mapper import
 )
 from graphrag_agent.agents.multi_agent.reporter.outline_builder import SectionOutline
 from graphrag_agent.config.prompts import (
-    SECTION_REDUCE_PROMPT,
     INTERMEDIATE_SUMMARY_PROMPT,
     MERGE_PROMPT,
     REFINE_PROMPT,
+    SECTION_REDUCE_PROMPT,
 )
 from graphrag_agent.models.get_models import get_llm_model
 
@@ -142,9 +143,7 @@ class SectionReducer:
             if right is None:
                 next_level.append(left)
                 continue
-            next_level.append(
-                self._merge_two_summaries(left, right, section_context)
-            )
+            next_level.append(self._merge_two_summaries(left, right, section_context))
 
         if len(next_level) == 1 and next_level[0].token_count <= max_tokens:
             return self._generate_section_text(next_level, section_context)
@@ -179,10 +178,7 @@ class SectionReducer:
         summaries: Iterable[EvidenceSummary],
         section_context: SectionOutline,
     ) -> str:
-        text = "\n".join(
-            _format_summary_for_prompt(item)
-            for item in summaries
-        )
+        text = "\n".join(_format_summary_for_prompt(item) for item in summaries)
         prompt = SECTION_REDUCE_PROMPT.format(
             section_title=section_context.title,
             section_goal=section_context.summary,
@@ -196,10 +192,7 @@ class SectionReducer:
         summaries: List[EvidenceSummary],
         section_context: SectionOutline,
     ) -> EvidenceSummary:
-        text = "\n".join(
-            _format_summary_for_prompt(item)
-            for item in summaries
-        )
+        text = "\n".join(_format_summary_for_prompt(item) for item in summaries)
         prompt = INTERMEDIATE_SUMMARY_PROMPT.format(
             section_title=section_context.title,
             section_goal=section_context.summary,
@@ -222,11 +215,7 @@ class SectionReducer:
 
         summary = EvidenceSummary(
             batch_id=f"reduce-{uuid.uuid4().hex[:8]}",
-            evidence_ids=[
-                eid
-                for item in summaries
-                for eid in item.evidence_ids
-            ],
+            evidence_ids=[eid for item in summaries for eid in item.evidence_ids],
             key_points=payload.get("key_points") or [],
             entities=payload.get("entities") or [],
             summary_text=payload.get("summary_text", "").strip(),
@@ -268,10 +257,15 @@ class SectionReducer:
             summary_text=payload.get("summary_text", "").strip(),
         )
         if not summary.summary_text:
-            summary.summary_text = "\n".join(filter(None, [
-                left.summary_text,
-                right.summary_text,
-            ]))
+            summary.summary_text = "\n".join(
+                filter(
+                    None,
+                    [
+                        left.summary_text,
+                        right.summary_text,
+                    ],
+                )
+            )
         summary.token_count = _estimate_token_count(summary.summary_text)
         return summary
 

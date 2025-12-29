@@ -3,10 +3,11 @@
 
 基于 AnswerValidationTool 对既有任务输出进行质量校验，并产出反思结果。
 """
-from typing import Any, Dict, Optional, Tuple, List
-import time
+
 import re
+import time
 from collections import Counter
+from typing import Any, Dict, List, Optional, Tuple
 
 from graphrag_agent.agents.multi_agent.core.execution_record import (
     ExecutionMetadata,
@@ -56,9 +57,7 @@ class ReflectionExecutor(BaseExecutor):
         对指定任务结果进行反思与验证。
         """
         payload = self.build_default_inputs(task)
-        query, answer, target_task_id = self._resolve_query_answer(
-            state, payload, current_task_id=task.task_id
-        )
+        query, answer, target_task_id = self._resolve_query_answer(state, payload, current_task_id=task.task_id)
         reference_keywords = self._build_reference_keywords(
             state,
             target_task_id,
@@ -101,12 +100,7 @@ class ReflectionExecutor(BaseExecutor):
             except Exception as exc:  # noqa: BLE001
                 error = f"答案验证失败: {exc}"
 
-        if (
-            not validation_passed
-            and error is None
-            and isinstance(evaluation_text, str)
-            and evaluation_text.strip()
-        ):
+        if not validation_passed and error is None and isinstance(evaluation_text, str) and evaluation_text.strip():
             suggestions.extend(
                 self._derive_keyword_suggestions(
                     query,
@@ -135,11 +129,7 @@ class ReflectionExecutor(BaseExecutor):
                     result=validation_payload,
                     status=tool_status,
                     latency_ms=round(latency * 1000, 3),
-                    error=(
-                        error
-                        if error
-                        else (None if validation_passed else "验证未通过")
-                    ),
+                    error=(error if error else (None if validation_passed else "验证未通过")),
                 )
             )
 
@@ -217,7 +207,13 @@ class ReflectionExecutor(BaseExecutor):
         """
         确定用于校验的 query 与 answer。
         """
-        query = str(payload.get("query") or state.plan_context.refined_query or state.plan_context.original_query or state.input or "")
+        query = str(
+            payload.get("query")
+            or state.plan_context.refined_query
+            or state.plan_context.original_query
+            or state.input
+            or ""
+        )
         answer: Optional[str] = payload.get("answer")
 
         target_task_id = payload.get("target_task_id")
@@ -225,9 +221,7 @@ class ReflectionExecutor(BaseExecutor):
             answer = self._lookup_answer_from_state(state, target_task_id)
 
         if answer is None:
-            answer, target_task_id = self._fallback_from_intermediate(
-                state, target_task_id, current_task_id
-            )
+            answer, target_task_id = self._fallback_from_intermediate(state, target_task_id, current_task_id)
 
         if answer is None and state.execution_records:
             for record in reversed(state.execution_records):
@@ -684,9 +678,7 @@ class ReflectionExecutor(BaseExecutor):
                 reason = error or "validation_failed"
                 if target_task_id and target_task_id in exec_context.completed_task_ids:
                     exec_context.completed_task_ids.remove(target_task_id)
-                retry_bucket = exec_context.intermediate_results.setdefault(
-                    "__reflection_retry__", []
-                )
+                retry_bucket = exec_context.intermediate_results.setdefault("__reflection_retry__", [])
                 if isinstance(retry_bucket, list):
                     retry_bucket.append(
                         {

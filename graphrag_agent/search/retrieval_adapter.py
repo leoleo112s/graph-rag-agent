@@ -3,9 +3,10 @@
 
 将不同搜索工具的原始输出统一转换为RetrievalResult数据模型，便于多Agent管线消费。
 """
+
+import uuid
 from datetime import datetime
 from typing import Any, Dict, Iterable, List, Optional, Sequence
-import uuid
 
 from graphrag_agent.agents.multi_agent.core.retrieval_result import (
     RetrievalMetadata,
@@ -90,10 +91,7 @@ def results_from_documents(
             page_content = getattr(doc, "page_content", None) or metadata_dict.get("text") or ""
 
         source_id = str(
-            metadata_dict.get("id")
-            or metadata_dict.get("source_id")
-            or metadata_dict.get("chunk_id")
-            or uuid.uuid4()
+            metadata_dict.get("id") or metadata_dict.get("source_id") or metadata_dict.get("chunk_id") or uuid.uuid4()
         )
         community_id = metadata_dict.get("community_id") or metadata_dict.get("community")
         score = float(score_value or default_confidence)

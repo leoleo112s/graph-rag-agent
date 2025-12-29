@@ -28,13 +28,14 @@ Redis 状态存储工具
         await websocket.send_json(message)
 """
 
-import os
-import json
-import redis
 import asyncio
-from typing import Dict, Any, Optional, AsyncIterator
-from datetime import timedelta
+import json
 import logging
+import os
+from datetime import timedelta
+from typing import Any, AsyncIterator, Dict, Optional
+
+import redis
 
 logger = logging.getLogger(__name__)
 
@@ -114,17 +115,10 @@ class RedisStateManager:
         key = f"build:progress:{task_id}"
         try:
             # 存储 JSON 数据
-            self.redis_client.setex(
-                key,
-                ttl,
-                json.dumps(progress, ensure_ascii=False)
-            )
+            self.redis_client.setex(key, ttl, json.dumps(progress, ensure_ascii=False))
 
             # 发布通知（用于 Pub/Sub）
-            self.redis_client.publish(
-                f"build:progress:channel:{task_id}",
-                json.dumps(progress, ensure_ascii=False)
-            )
+            self.redis_client.publish(f"build:progress:channel:{task_id}", json.dumps(progress, ensure_ascii=False))
 
             logger.debug(f"进度更新: {task_id} -> {progress.get('percent', 0)}%")
             return True
@@ -272,11 +266,7 @@ class RedisStateManager:
         }
 
         try:
-            self.redis_client.setex(
-                key,
-                ttl,
-                json.dumps(data, ensure_ascii=False, default=str)
-            )
+            self.redis_client.setex(key, ttl, json.dumps(data, ensure_ascii=False, default=str))
             return True
         except Exception as e:
             logger.error(f"设置任务状态失败: {e}")

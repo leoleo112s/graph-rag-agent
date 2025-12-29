@@ -2,9 +2,8 @@ import asyncio
 import re
 from typing import Any, AsyncGenerator, Dict, Optional, Tuple
 
-from graphrag_agent.config.settings import AGENT_SETTINGS
-
 from graphrag_agent.agents.multi_agent.integration.legacy_facade import MultiAgentFacade
+from graphrag_agent.config.settings import AGENT_SETTINGS
 
 
 class _MemoryShim:
@@ -39,11 +38,15 @@ class FusionGraphRAGAgent:
     def ask(self, query: str, thread_id: str = "default", recursion_limit: Optional[int] = None, **kwargs) -> str:
         return self._execute(query, thread_id)[0]
 
-    def ask_with_trace(self, query: str, thread_id: str = "default", recursion_limit: Optional[int] = None, **kwargs) -> Dict[str, Any]:
+    def ask_with_trace(
+        self, query: str, thread_id: str = "default", recursion_limit: Optional[int] = None, **kwargs
+    ) -> Dict[str, Any]:
         answer, payload = self._execute(query, thread_id)
         return {"answer": answer, "payload": payload}
 
-    async def ask_stream(self, query: str, thread_id: str = "default", recursion_limit: Optional[int] = None, **kwargs) -> AsyncGenerator[str, None]:
+    async def ask_stream(
+        self, query: str, thread_id: str = "default", recursion_limit: Optional[int] = None, **kwargs
+    ) -> AsyncGenerator[str, None]:
         cached = self._read_cache(query, thread_id)
         if cached is None:
             cached, _ = await asyncio.to_thread(self._execute, query, thread_id)
@@ -54,7 +57,9 @@ class FusionGraphRAGAgent:
         self._global_cache.clear()
         self._session_cache.clear()
 
-    def _execute(self, query: str, thread_id: str, *, assumptions: Optional[list[str]] = None, report_type: Optional[str] = None) -> Tuple[str, Dict[str, Any]]:
+    def _execute(
+        self, query: str, thread_id: str, *, assumptions: Optional[list[str]] = None, report_type: Optional[str] = None
+    ) -> Tuple[str, Dict[str, Any]]:
         cached = self._read_cache(query, thread_id)
         if cached is not None:
             return cached, {"status": "cached"}

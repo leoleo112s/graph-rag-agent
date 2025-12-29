@@ -1,13 +1,10 @@
 from .base import CacheKeyStrategy
+from .context_aware import ContextAndKeywordAwareCacheKeyStrategy, ContextAwareCacheKeyStrategy
 from .simple import SimpleCacheKeyStrategy
-from .context_aware import (
-    ContextAwareCacheKeyStrategy,
-    ContextAndKeywordAwareCacheKeyStrategy
-)
 
 __all__ = [
-    'CacheKeyStrategy',
-    'SimpleCacheKeyStrategy',
-    'ContextAwareCacheKeyStrategy',
-    'ContextAndKeywordAwareCacheKeyStrategy'
+    "CacheKeyStrategy",
+    "SimpleCacheKeyStrategy",
+    "ContextAwareCacheKeyStrategy",
+    "ContextAndKeywordAwareCacheKeyStrategy",
 ]

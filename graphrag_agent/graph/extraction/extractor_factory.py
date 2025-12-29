@@ -4,9 +4,10 @@
 """
 
 from typing import Optional
+
+from graphrag_agent.config.graph_config_storage import get_storage
 from graphrag_agent.graph.extraction.entity_extractor import EntityRelationExtractor
 from graphrag_agent.prompts.dynamic_prompt_builder import create_prompt_builder_from_storage
-from graphrag_agent.config.graph_config_storage import get_storage
 
 
 def create_entity_extractor(
@@ -17,7 +18,7 @@ def create_entity_extractor(
     relationship_types: Optional[list] = None,
     max_workers: int = 4,
     batch_size: int = 5,
-    cache_dir: str = "./cache/graph"
+    cache_dir: str = "./cache/graph",
 ) -> EntityRelationExtractor:
     """
     创建实体关系提取器
@@ -51,6 +52,7 @@ def create_entity_extractor(
 
         # 创建动态提示词构建器
         from graphrag_agent.prompts.dynamic_prompt_builder import DynamicPromptBuilder
+
         prompt_builder = DynamicPromptBuilder(config)
 
         # 生成系统提示词
@@ -77,7 +79,7 @@ def create_entity_extractor(
             relationship_types=all_relationship_types,
             cache_dir=cache_dir,
             max_workers=max_workers,
-            batch_size=batch_size
+            batch_size=batch_size,
         )
 
         # 在提取器上附加prompt_builder，以便后续使用
@@ -104,7 +106,7 @@ def create_entity_extractor(
             relationship_types=relationship_types,
             cache_dir=cache_dir,
             max_workers=max_workers,
-            batch_size=batch_size
+            batch_size=batch_size,
         )
 
         extractor.is_dynamic = False
@@ -124,11 +126,13 @@ def get_entity_types_from_config() -> list:
 
     if config is not None:
         from graphrag_agent.prompts.dynamic_prompt_builder import DynamicPromptBuilder
+
         prompt_builder = DynamicPromptBuilder(config)
         return prompt_builder.get_all_entity_types()
     else:
         # 回退到传统配置
         from graphrag_agent.config.settings import entity_types
+
         return entity_types
 
 
@@ -144,9 +148,11 @@ def get_relationship_types_from_config() -> list:
 
     if config is not None:
         from graphrag_agent.prompts.dynamic_prompt_builder import DynamicPromptBuilder
+
         prompt_builder = DynamicPromptBuilder(config)
         return prompt_builder.get_all_relationship_types()
     else:
         # 回退到传统配置
         from graphrag_agent.config.settings import relationship_types
+
         return relationship_types

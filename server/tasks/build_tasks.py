@@ -29,13 +29,14 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from server.celery_app import app
-from server.utils.redis_state import get_state_manager
-from server.utils.logger import get_logger
+import time
+from typing import Any, Dict, List, Optional
+
 from graphrag_agent.integrations.build.incremental_graph_builder import IncrementalGraphBuilder
 from graphrag_agent.pipelines.ingestion.document_processor import DocumentProcessor
-from typing import Optional, List, Dict, Any
-import time
+from server.celery_app import app
+from server.utils.logger import get_logger
+from server.utils.redis_state import get_state_manager
 
 logger = get_logger(__name__)
 state_mgr = get_state_manager()
@@ -64,7 +65,7 @@ def progress_callback(percent: float, stage: str, details: str):
                 "stage": stage,
                 "details": details,
                 "timestamp": time.time(),
-            }
+            },
         )
 
         # 更新 Celery 任务状态（用于 Flower 监控）
@@ -74,7 +75,7 @@ def progress_callback(percent: float, stage: str, details: str):
                 "percent": percent,
                 "stage": stage,
                 "details": details,
-            }
+            },
         )
 
         logger.info(f"构建进度: {percent:.1f}% - {stage} - {details}", task_id=task_id)
@@ -112,10 +113,7 @@ def build_graph_task(
     lock_key = f"build_{mode}"
     if not state_mgr.acquire_build_lock(lock_key, ttl=3600):
         logger.warning(f"构建任务已在运行中", task_id=task_id, lock_key=lock_key)
-        return {
-            "status": "error",
-            "message": "已有构建任务正在运行，请稍后再试"
-        }
+        return {"status": "error", "message": "已有构建任务正在运行，请稍后再试"}
 
     try:
         # 更新任务状态
@@ -154,10 +152,7 @@ def build_graph_task(
             logger.info(f"准备重试 ({self.request.retries + 1}/{self.max_retries})", task_id=task_id)
             raise self.retry(exc=e, countdown=60)  # 60秒后重试
 
-        return {
-            "status": "error",
-            "message": error_msg
-        }
+        return {"status": "error", "message": error_msg}
 
     finally:
         # 释放锁
@@ -192,10 +187,7 @@ def incremental_build_task(
 
     # 获取分布式锁
     if not state_mgr.acquire_build_lock("incremental_build", ttl=1800):
-        return {
-            "status": "error",
-            "message": "已有增量构建任务正在运行"
-        }
+        return {"status": "error", "message": "已有增量构建任务正在运行"}
 
     try:
         state_mgr.set_task_status(task_id, "running")
@@ -203,10 +195,7 @@ def incremental_build_task(
 
         # 执行增量构建
         builder = IncrementalGraphBuilder()
-        result = builder.build(
-            files=files,
-            progress_callback=progress_callback
-        )
+        result = builder.build(files=files, progress_callback=progress_callback)
 
         progress_callback(100, "completed", "增量构建完成")
         state_mgr.set_task_status(task_id, "success", result=result)
@@ -223,10 +212,7 @@ def incremental_build_task(
         if self.request.retries < self.max_retries:
             raise self.retry(exc=e, countdown=60)
 
-        return {
-            "status": "error",
-            "message": error_msg
-        }
+        return {"status": "error", "message": error_msg}
 
     finally:
         state_mgr.release_build_lock("incremental_build")
@@ -236,11 +222,8 @@ def incremental_build_task(
 # 辅助函数
 # ============================================================================
 
-def _run_full_build(
-    files: Optional[List[str]],
-    config: Optional[Dict[str, Any]],
-    callback
-) -> Dict[str, Any]:
+
+def _run_full_build(files: Optional[List[str]], config: Optional[Dict[str, Any]], callback) -> Dict[str, Any]:
     """执行完整构建"""
     callback(10, "processing_documents", "正在处理文档...")
 
@@ -266,15 +249,11 @@ def _run_full_build(
     return {
         "status": "success",
         "documents_processed": len(documents),
-        "entities_extracted": summary.total_entities if hasattr(summary, 'total_entities') else 0,
+        "entities_extracted": summary.total_entities if hasattr(summary, "total_entities") else 0,
     }
 
 
-def _run_l0_build(
-    files: Optional[List[str]],
-    config: Optional[Dict[str, Any]],
-    callback
-) -> Dict[str, Any]:
+def _run_l0_build(files: Optional[List[str]], config: Optional[Dict[str, Any]], callback) -> Dict[str, Any]:
     """执行 L0 快速构建（仅文档处理和向量化）"""
     callback(10, "l0_processing", "L0 快速处理...")
 
@@ -283,17 +262,10 @@ def _run_l0_build(
 
     callback(90, "l0_indexing", "L0 向量化...")
 
-    return {
-        "status": "success",
-        "mode": "l0"
-    }
+    return {"status": "success", "mode": "l0"}
 
 
-def _run_l1_build(
-    files: Optional[List[str]],
-    config: Optional[Dict[str, Any]],
-    callback
-) -> Dict[str, Any]:
+def _run_l1_build(files: Optional[List[str]], config: Optional[Dict[str, Any]], callback) -> Dict[str, Any]:
     """执行 L1 图谱构建（实体抽取和图谱构建）"""
     callback(10, "l1_extraction", "L1 实体抽取...")
 
@@ -302,7 +274,4 @@ def _run_l1_build(
 
     callback(90, "l1_graph_building", "L1 图谱构建...")
 
-    return {
-        "status": "success",
-        "mode": "l1"
-    }
+    return {"status": "success", "mode": "l1"}

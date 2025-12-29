@@ -1,61 +1,63 @@
-import time
-import logging
 import concurrent.futures
-from typing import List, Dict, Any, Optional
+import logging
+import time
+from typing import Any, Dict, List, Optional
+
 from langchain_community.vectorstores import Neo4jVector
 
-from graphrag_agent.models.get_models import get_embeddings_model, get_llm_model
-from graphrag_agent.graph.core import BaseIndexer, connection_manager, retry
 from graphrag_agent.config.settings import (
-    ENTITY_BATCH_SIZE,
-    MAX_WORKERS as DEFAULT_MAX_WORKERS,
-    ENTITY_VECTOR_INDEX,
-    EMBEDDING_DIM,
-    VECTOR_SIMILARITY_FUNCTION,
     CLEAN_LEGACY_INDEXES,
+    EMBEDDING_DIM,
+    ENTITY_BATCH_SIZE,
+    ENTITY_VECTOR_INDEX,
 )
+from graphrag_agent.config.settings import MAX_WORKERS as DEFAULT_MAX_WORKERS
+from graphrag_agent.config.settings import (
+    VECTOR_SIMILARITY_FUNCTION,
+)
+from graphrag_agent.graph.core import BaseIndexer, connection_manager, retry
+from graphrag_agent.models.get_models import get_embeddings_model, get_llm_model
 
 # 配置日志
 logger = logging.getLogger(__name__)
+
 
 class EntityIndexManager(BaseIndexer):
     """
     实体索引管理器，负责在Neo4j数据库中创建和管理实体的向量索引。
     处理实体节点的embedding向量计算和索引创建，支持后续基于向量相似度的实体查询。
     """
-    
+
     def __init__(self, refresh_schema: bool = True, batch_size: int = 100, max_workers: int = 4):
         """
         初始化实体索引管理器
-        
+
         Args:
             refresh_schema: 是否刷新Neo4j图数据库的schema
             batch_size: 批处理大小
             max_workers: 并行工作线程数
-        """        
+        """
         batch_size = batch_size or ENTITY_BATCH_SIZE
         max_workers = max_workers or DEFAULT_MAX_WORKERS
-        
+
         super().__init__(batch_size, max_workers)
-        
+
         # 初始化图数据库连接
         self.graph = connection_manager.get_connection()
-        
+
         # 初始化模型
         self.embeddings = get_embeddings_model()
         self.llm = get_llm_model()
-        
+
         # 创建必要的索引
         self._create_indexes()
-    
+
     def _create_indexes(self) -> None:
         """创建必要的索引以优化查询性能"""
-        index_queries = [
-            "CREATE INDEX IF NOT EXISTS FOR (e:`__Entity__`) ON (e.id)"
-        ]
-        
+        index_queries = ["CREATE INDEX IF NOT EXISTS FOR (e:`__Entity__`) ON (e.id)"]
+
         connection_manager.create_multiple_indexes(index_queries)
-        
+
     def clear_existing_index(self) -> None:
         """清除已存在的实体embedding索引，为了防止有的时候embedding模型的切换问题，这里顺便清下vector索引"""
         connection_manager.drop_index(ENTITY_VECTOR_INDEX)
@@ -64,7 +66,7 @@ class EntityIndexManager(BaseIndexer):
             connection_manager.drop_index("entity_embedding")
             connection_manager.drop_index("vector")
 
-    def create_vector_index(self, node_label: str = '__Entity__', embedding_property: str = 'embedding') -> None:
+    def create_vector_index(self, node_label: str = "__Entity__", embedding_property: str = "embedding") -> None:
         """
         显式创建 Neo4j Vector Index（工程级实践）
 
@@ -94,10 +96,12 @@ class EntityIndexManager(BaseIndexer):
                 logger.warning(f"⚠️ Vector index creation warning: {e}")
                 raise
 
-    def create_entity_index(self,
-                          node_label: str = '__Entity__',
-                          text_properties: List[str] = ['id', 'description'],
-                          embedding_property: str = 'embedding') -> bool:
+    def create_entity_index(
+        self,
+        node_label: str = "__Entity__",
+        text_properties: List[str] = ["id", "description"],
+        embedding_property: str = "embedding",
+    ) -> bool:
         """
         为实体节点生成embeddings并创建 Neo4j Vector Index（工程级实践）
 
@@ -155,13 +159,13 @@ class EntityIndexManager(BaseIndexer):
         except Exception as e:
             logger.error(f"❌ Vector index 创建失败: {e}", exc_info=True)
             return False
-    
-    def _process_embeddings_in_batches(self, entities: List[Dict[str, Any]], 
-                                      node_label: str, text_properties: List[str], 
-                                      embedding_property: str) -> None:
+
+    def _process_embeddings_in_batches(
+        self, entities: List[Dict[str, Any]], node_label: str, text_properties: List[str], embedding_property: str
+    ) -> None:
         """
         批量处理实体embedding的生成
-        
+
         Args:
             entities: 实体列表
             node_label: 实体标签
@@ -171,31 +175,26 @@ class EntityIndexManager(BaseIndexer):
         # 获取最优批处理大小
         entity_count = len(entities)
         optimal_batch_size = self.get_optimal_batch_size(entity_count)
-        
+
         def process_batch(batch, batch_index):
             # 获取批次内所有实体的文本
             entity_texts = self._get_entity_texts_batch(batch, text_properties)
-            
+
             # 计算embeddings
             embedding_start = time.time()
             embeddings = self._compute_embeddings_batch(entity_texts)
             embedding_end = time.time()
-            self.embedding_time += (embedding_end - embedding_start)
-            
+            self.embedding_time += embedding_end - embedding_start
+
             # 更新数据库
             db_start = time.time()
             self._update_embeddings_batch(batch, embeddings, embedding_property)
             db_end = time.time()
-            self.db_time += (db_end - db_start)
-        
+            self.db_time += db_end - db_start
+
         # 使用通用批处理方法
-        self.batch_process_with_progress(
-            entities, 
-            process_batch, 
-            optimal_batch_size, 
-            "处理实体embedding"
-        )
-    
+        self.batch_process_with_progress(entities, process_batch, optimal_batch_size, "处理实体embedding")
+
     @retry(times=3, delay=1.0)
     def _safe_embed_query(self, text: str) -> List[float]:
         """
@@ -221,7 +220,7 @@ class EntityIndexManager(BaseIndexer):
             return EMBEDDING_DIM
 
         # Fallback: 从 embeddings 对象获取
-        if hasattr(self.embeddings, 'embedding_size'):
+        if hasattr(self.embeddings, "embedding_size"):
             return self.embeddings.embedding_size
 
         # 最后 fallback: 通用默认值（仅警告）
@@ -261,7 +260,7 @@ class EntityIndexManager(BaseIndexer):
 
                 try:
                     # 策略 1: 尝试使用批量嵌入方法（最快）
-                    if hasattr(self.embeddings, 'embed_documents'):
+                    if hasattr(self.embeddings, "embed_documents"):
                         sub_batch_embeddings = self.embeddings.embed_documents(sub_batch)
                         # 填充到正确位置
                         for offset, emb in enumerate(sub_batch_embeddings):
@@ -282,7 +281,7 @@ class EntityIndexManager(BaseIndexer):
                             except Exception as e:
                                 logger.error(
                                     f"嵌入计算最终失败 (索引: {global_idx}, 文本: {embedding_tasks[global_idx][:30]}...): {e}",
-                                    exc_info=True
+                                    exc_info=True,
                                 )
                                 # 降级处理：填充零向量
                                 embeddings[global_idx] = [0.0] * target_dim
@@ -296,8 +295,7 @@ class EntityIndexManager(BaseIndexer):
                             embeddings[global_idx] = self._safe_embed_query(text)
                         except Exception as e2:
                             logger.error(
-                                f"单个嵌入计算失败 (索引: {global_idx}, 文本: {text[:30]}...): {e2}",
-                                exc_info=True
+                                f"单个嵌入计算失败 (索引: {global_idx}, 文本: {text[:30]}...): {e2}", exc_info=True
                             )
                             # 降级处理：填充零向量
                             embeddings[global_idx] = [0.0] * target_dim
@@ -311,35 +309,34 @@ class EntityIndexManager(BaseIndexer):
                 embeddings[idx] = [0.0] * target_dim
 
         return embeddings
-    
+
     def _get_entity_texts_batch(self, entities: List[Dict[str, Any]], text_properties: List[str]) -> List[str]:
         """
         获取批量实体的文本内容
-        
+
         Args:
             entities: 实体列表
             text_properties: 文本属性列表
-            
+
         Returns:
             List[str]: 实体文本列表
         """
         # 构建查询参数
-        entity_ids = [entity['neo4j_id'] for entity in entities]
-        
+        entity_ids = [entity["neo4j_id"] for entity in entities]
+
         # 使用高效的文本提取查询
-        property_selections = ", ".join([
-            f"CASE WHEN e.{prop} IS NOT NULL THEN e.{prop} ELSE '' END AS {prop}_text"
-            for prop in text_properties
-        ])
-        
+        property_selections = ", ".join(
+            [f"CASE WHEN e.{prop} IS NOT NULL THEN e.{prop} ELSE '' END AS {prop}_text" for prop in text_properties]
+        )
+
         query = f"""
         UNWIND $entity_ids AS id
         MATCH (e) WHERE id(e) = id
         RETURN id, {property_selections}
         """
-        
+
         results = self.graph.query(query, params={"entity_ids": entity_ids})
-        
+
         # 组合文本属性
         entity_texts = []
         for row in results:
@@ -348,22 +345,22 @@ class EntityIndexManager(BaseIndexer):
                 prop_text = row.get(f"{prop}_text", "")
                 if prop_text:
                     text_parts.append(prop_text)
-            
+
             # 组合所有文本属性，确保至少有一些内容
             combined_text = " ".join(text_parts).strip()
             if not combined_text:
                 combined_text = f"entity_{row['id']}"
-                
+
             entity_texts.append(combined_text)
-        
+
         return entity_texts
-    
-    def _update_embeddings_batch(self, entities: List[Dict[str, Any]], 
-                                embeddings: List[List[float]], 
-                                embedding_property: str) -> None:
+
+    def _update_embeddings_batch(
+        self, entities: List[Dict[str, Any]], embeddings: List[List[float]], embedding_property: str
+    ) -> None:
         """
         批量更新实体embeddings
-        
+
         Args:
             entities: 实体列表
             embeddings: 对应的embedding列表
@@ -373,11 +370,8 @@ class EntityIndexManager(BaseIndexer):
         update_data = []
         for i, entity in enumerate(entities):
             if i < len(embeddings) and embeddings[i] is not None:
-                update_data.append({
-                    "id": entity['neo4j_id'],
-                    "embedding": embeddings[i]
-                })
-        
+                update_data.append({"id": entity["neo4j_id"], "embedding": embeddings[i]})
+
         # 批量更新
         if update_data:
             try:
@@ -396,9 +390,6 @@ class EntityIndexManager(BaseIndexer):
                         MATCH (e) WHERE id(e) = $id
                         SET e.{embedding_property} = $embedding
                         """
-                        self.graph.query(single_query, params={
-                            "id": update["id"],
-                            "embedding": update["embedding"]
-                        })
+                        self.graph.query(single_query, params={"id": update["id"], "embedding": update["embedding"]})
                     except Exception as e2:
                         logger.error(f"单个embedding更新失败 (ID: {update['id']}): {e2}", exc_info=True)

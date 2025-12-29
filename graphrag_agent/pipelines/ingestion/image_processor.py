@@ -4,9 +4,9 @@
 使用 PaddleOCR 提取图像中的文字内容。
 """
 
+import logging
 import os
 from typing import Optional, Tuple
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -38,19 +38,14 @@ class ImageProcessor:
             logger.info(f"Initializing PaddleOCR with language: {self.lang}, GPU: {self.use_gpu}")
 
             self._ocr = PaddleOCR(
-                use_angle_cls=True,
-                lang=self.lang,
-                use_gpu=self.use_gpu,
-                show_log=False  # 禁用详细日志
+                use_angle_cls=True, lang=self.lang, use_gpu=self.use_gpu, show_log=False  # 禁用详细日志
             )
 
             self._initialized = True
             logger.info("PaddleOCR initialized successfully")
 
         except ImportError:
-            logger.error(
-                "PaddleOCR not installed. Please install with: pip install paddleocr paddlepaddle"
-            )
+            logger.error("PaddleOCR not installed. Please install with: pip install paddleocr paddlepaddle")
             raise
         except Exception as e:
             logger.error(f"Failed to initialize PaddleOCR: {e}")
@@ -100,12 +95,11 @@ class ImageProcessor:
             metadata = {
                 "text_count": len(text_blocks),
                 "avg_confidence": round(avg_confidence, 3),
-                "source_image": os.path.basename(image_path)
+                "source_image": os.path.basename(image_path),
             }
 
             logger.info(
-                f"OCR completed for {image_path}: {len(text_blocks)} lines, "
-                f"confidence: {avg_confidence:.2f}"
+                f"OCR completed for {image_path}: {len(text_blocks)} lines, " f"confidence: {avg_confidence:.2f}"
             )
 
             return extracted_text, metadata
@@ -148,6 +142,6 @@ class ImageProcessor:
         Returns:
             bool: 是否支持
         """
-        supported_extensions = {'.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif', '.webp'}
+        supported_extensions = {".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif", ".webp"}
         _, ext = os.path.splitext(file_path.lower())
         return ext in supported_extensions

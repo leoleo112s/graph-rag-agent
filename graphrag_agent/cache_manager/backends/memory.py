@@ -1,5 +1,6 @@
 import time
 from typing import Any, Optional, Tuple
+
 from .base import CacheStorageBackend
 
 
@@ -81,14 +82,14 @@ class MemoryCacheBackend(CacheStorageBackend):
         # 存储 (value, expiration_time) 元组
         self.cache[key] = (value, expiration_time)
         self.access_times[key] = time.time()
-    
+
     def delete(self, key: str) -> bool:
         """
         删除缓存项
-        
+
         参数:
             key: 缓存键
-            
+
         返回:
             bool: 是否成功删除
         """
@@ -98,12 +99,12 @@ class MemoryCacheBackend(CacheStorageBackend):
                 del self.access_times[key]
             return True
         return False
-    
+
     def clear(self) -> None:
         """清空缓存"""
         self.cache.clear()
         self.access_times.clear()  # 确保同时清空访问时间字典
-    
+
     def _evict_lru(self) -> None:
         """
         淘汰最久未使用的缓存项（LRU 策略）
@@ -157,15 +158,12 @@ class MemoryCacheBackend(CacheStorageBackend):
             dict: 统计信息
         """
         current_time = time.time()
-        expired_count = sum(
-            1 for (value, exp_time) in self.cache.values()
-            if current_time > exp_time
-        )
+        expired_count = sum(1 for (value, exp_time) in self.cache.values() if current_time > exp_time)
 
         return {
             "total_items": len(self.cache),
             "max_size": self.max_size,
             "expired_items": expired_count,
             "active_items": len(self.cache) - expired_count,
-            "utilization": len(self.cache) / self.max_size if self.max_size > 0 else 0
+            "utilization": len(self.cache) / self.max_size if self.max_size > 0 else 0,
         }

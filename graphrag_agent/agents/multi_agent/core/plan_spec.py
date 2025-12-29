@@ -4,12 +4,12 @@
 定义PlanSpec及相关数据模型，规范化任务计划
 """
 
-from typing import List, Dict, Any, Optional, Literal, Tuple
-from datetime import datetime
 import uuid
+from collections import defaultdict, deque
+from datetime import datetime
+from typing import Any, Dict, List, Literal, Optional, Tuple
 
 from pydantic import BaseModel, Field, field_validator
-from collections import deque, defaultdict
 
 TASK_TYPE_CHOICES: Tuple[str, ...] = (
     "local_search",
@@ -42,26 +42,18 @@ class ProblemStatement(BaseModel):
 
     描述用户要解决的问题和背景信息
     """
+
     # 原始查询
     original_query: str = Field(description="用户的原始查询")
 
     # 重写后的查询（更明确）
-    refined_query: Optional[str] = Field(
-        default=None,
-        description="经过澄清和重写后的查询"
-    )
+    refined_query: Optional[str] = Field(default=None, description="经过澄清和重写后的查询")
 
     # 背景信息
-    background_info: Optional[str] = Field(
-        default=None,
-        description="相关的背景信息和上下文"
-    )
+    background_info: Optional[str] = Field(default=None, description="相关的背景信息和上下文")
 
     # 用户意图
-    user_intent: Optional[str] = Field(
-        default=None,
-        description="分析出的用户意图"
-    )
+    user_intent: Optional[str] = Field(default=None, description="分析出的用户意图")
 
 
 class TaskNode(BaseModel):
@@ -70,11 +62,9 @@ class TaskNode(BaseModel):
 
     TaskGraph中的单个任务定义
     """
+
     # 任务唯一标识
-    task_id: str = Field(
-        default_factory=lambda: f"task_{uuid.uuid4().hex[:8]}",
-        description="任务唯一标识符"
-    )
+    task_id: str = Field(default_factory=lambda: f"task_{uuid.uuid4().hex[:8]}", description="任务唯一标识符")
 
     # 任务类型
     task_type: TaskTypeLiteral = Field(description="任务类型")
@@ -89,28 +79,16 @@ class TaskNode(BaseModel):
     estimated_tokens: int = Field(default=500, description="预估的token消耗")
 
     # 依赖的任务ID列表
-    depends_on: List[str] = Field(
-        default_factory=list,
-        description="依赖的任务ID列表，空列表表示可以立即执行"
-    )
+    depends_on: List[str] = Field(default_factory=list, description="依赖的任务ID列表，空列表表示可以立即执行")
 
     # 任务参数（具体执行时使用）
-    parameters: Dict[str, Any] = Field(
-        default_factory=dict,
-        description="任务执行所需的参数"
-    )
+    parameters: Dict[str, Any] = Field(default_factory=dict, description="任务执行所需的参数")
 
     # 相关实体（用于chain_exploration等类型）
-    entities: List[str] = Field(
-        default_factory=list,
-        description="任务相关的实体列表"
-    )
+    entities: List[str] = Field(default_factory=list, description="任务相关的实体列表")
 
     # 状态
-    status: Literal["pending", "running", "completed", "failed"] = Field(
-        default="pending",
-        description="任务执行状态"
-    )
+    status: Literal["pending", "running", "completed", "failed"] = Field(default="pending", description="任务执行状态")
 
 
 class TaskGraph(BaseModel):
@@ -119,13 +97,13 @@ class TaskGraph(BaseModel):
 
     使用轻量级dict结构存储任务DAG，避免引入networkx依赖
     """
+
     # 任务节点列表
     nodes: List[TaskNode] = Field(description="任务节点列表")
 
     # 执行模式
     execution_mode: Literal["sequential", "parallel", "adaptive"] = Field(
-        default="sequential",
-        description="任务执行模式：sequential(串行), parallel(并行), adaptive(自适应)"
+        default="sequential", description="任务执行模式：sequential(串行), parallel(并行), adaptive(自适应)"
     )
 
     @field_validator("nodes")
@@ -210,19 +188,13 @@ class TaskGraph(BaseModel):
 
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典格式，便于序列化"""
-        return {
-            "nodes": [node.model_dump() for node in self.nodes],
-            "execution_mode": self.execution_mode
-        }
+        return {"nodes": [node.model_dump() for node in self.nodes], "execution_mode": self.execution_mode}
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "TaskGraph":
         """从字典格式创建"""
         nodes = [TaskNode(**node_data) for node_data in data.get("nodes", [])]
-        return cls(
-            nodes=nodes,
-            execution_mode=data.get("execution_mode", "sequential")
-        )
+        return cls(nodes=nodes, execution_mode=data.get("execution_mode", "sequential"))
 
     def topological_sort(self) -> List[TaskNode]:
         """
@@ -240,10 +212,12 @@ class TaskGraph(BaseModel):
                 adjacency[dep_id].append(node.task_id)
                 in_degree[node.task_id] += 1
 
-        queue = deque(sorted(
-            (task_map[task_id] for task_id, degree in in_degree.items() if degree == 0),
-            key=lambda x: (x.priority, x.task_id),
-        ))
+        queue = deque(
+            sorted(
+                (task_map[task_id] for task_id, degree in in_degree.items() if degree == 0),
+                key=lambda x: (x.priority, x.task_id),
+            )
+        )
 
         ordered_nodes: List[TaskNode] = []
         while queue:
@@ -268,29 +242,18 @@ class AcceptanceCriteria(BaseModel):
 
     定义任务完成的标准和质量要求
     """
+
     # 完成条件列表
-    completion_conditions: List[str] = Field(
-        default_factory=list,
-        description="任务完成必须满足的条件"
-    )
+    completion_conditions: List[str] = Field(default_factory=list, description="任务完成必须满足的条件")
 
     # 质量要求
-    quality_requirements: List[str] = Field(
-        default_factory=list,
-        description="输出质量要求"
-    )
+    quality_requirements: List[str] = Field(default_factory=list, description="输出质量要求")
 
     # 最小证据数量
-    min_evidence_count: int = Field(
-        default=1,
-        description="至少需要的证据数量"
-    )
+    min_evidence_count: int = Field(default=1, description="至少需要的证据数量")
 
     # 最小置信度
-    min_confidence: float = Field(
-        default=0.7,
-        description="最低置信度阈值 (0.0-1.0)"
-    )
+    min_confidence: float = Field(default=0.7, description="最低置信度阈值 (0.0-1.0)")
 
 
 class PlanSpec(BaseModel):
@@ -299,11 +262,9 @@ class PlanSpec(BaseModel):
 
     完整的任务执行计划，包含问题陈述、任务图和验收标准
     """
+
     # 计划ID
-    plan_id: str = Field(
-        default_factory=lambda: str(uuid.uuid4()),
-        description="计划唯一标识符"
-    )
+    plan_id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="计划唯一标识符")
 
     # 版本号
     version: int = Field(default=1, description="计划版本号")
@@ -312,24 +273,17 @@ class PlanSpec(BaseModel):
     problem_statement: ProblemStatement = Field(description="问题陈述和背景")
 
     # 假设列表（用户确认的前提条件）
-    assumptions: List[str] = Field(
-        default_factory=list,
-        description="计划基于的假设和前提条件"
-    )
+    assumptions: List[str] = Field(default_factory=list, description="计划基于的假设和前提条件")
 
     # 任务依赖图
     task_graph: TaskGraph = Field(description="任务依赖图")
 
     # 验收标准
-    acceptance_criteria: AcceptanceCriteria = Field(
-        default_factory=AcceptanceCriteria,
-        description="任务验收标准"
-    )
+    acceptance_criteria: AcceptanceCriteria = Field(default_factory=AcceptanceCriteria, description="任务验收标准")
 
     # 计划状态
     status: Literal["draft", "approved", "executing", "completed", "failed"] = Field(
-        default="draft",
-        description="计划执行状态"
+        default="draft", description="计划执行状态"
     )
 
     # 创建时间
@@ -387,7 +341,7 @@ class PlanSpec(BaseModel):
             "acceptance_criteria": self.acceptance_criteria.model_dump(),
             "status": self.status,
             "created_at": self.created_at.isoformat(),
-            "updated_at": self.updated_at.isoformat()
+            "updated_at": self.updated_at.isoformat(),
         }
 
     def to_execution_signal(self) -> "PlanExecutionSignal":
@@ -410,6 +364,7 @@ class PlanExecutionSignal(BaseModel):
     """
     Planner输出给Executor的标准信号
     """
+
     plan_id: str = Field(description="计划唯一标识")
     version: int = Field(description="计划版本号")
     execution_mode: Literal["sequential", "parallel", "adaptive"] = Field(description="建议执行模式")

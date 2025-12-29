@@ -3,14 +3,14 @@
 提供知识图谱构建、增量更新等功能
 """
 
-import streamlit as st
-import requests
-import time
 import json
-from pathlib import Path
+import time
 from datetime import datetime
-from typing import Optional, Dict
+from pathlib import Path
+from typing import Dict, Optional
 
+import requests
+import streamlit as st
 from frontend_config.settings import API_URL
 
 
@@ -32,11 +32,7 @@ def get_build_status() -> Optional[Dict]:
 def trigger_full_build(config: Optional[Dict] = None) -> tuple[bool, str]:
     """触发完整构建"""
     try:
-        response = requests.post(
-            f"{API_URL}/admin/build/full",
-            json=config,
-            timeout=10
-        )
+        response = requests.post(f"{API_URL}/admin/build/full", json=config, timeout=10)
         if response.status_code == 200:
             return True, "完整构建已启动"
         else:
@@ -50,11 +46,7 @@ def trigger_full_build(config: Optional[Dict] = None) -> tuple[bool, str]:
 def trigger_incremental_build(config: Optional[Dict] = None) -> tuple[bool, str]:
     """触发增量构建"""
     try:
-        response = requests.post(
-            f"{API_URL}/admin/build/incremental",
-            json=config,
-            timeout=10
-        )
+        response = requests.post(f"{API_URL}/admin/build/incremental", json=config, timeout=10)
         if response.status_code == 200:
             return True, "增量构建已启动"
         else:
@@ -91,11 +83,7 @@ def get_graph_stats() -> Optional[Dict]:
 def get_build_history(limit: int = 50, offset: int = 0) -> Optional[Dict]:
     """获取构建历史记录"""
     try:
-        response = requests.get(
-            f"{API_URL}/admin/build/history",
-            params={"limit": limit, "offset": offset},
-            timeout=5
-        )
+        response = requests.get(f"{API_URL}/admin/build/history", params={"limit": limit, "offset": offset}, timeout=5)
         if response.status_code == 200:
             return response.json()
         return None
@@ -125,22 +113,14 @@ def get_available_configs() -> List[Dict]:
             data = response.json()
             if data.get("exists"):
                 config = data.get("config")
-                configs.append({
-                    "name": config.get("project_name", "当前配置"),
-                    "type": "current",
-                    "config": config
-                })
+                configs.append({"name": config.get("project_name", "当前配置"), "type": "current", "config": config})
 
         # 获取模板列表
         response = requests.get(f"{API_URL}/admin/graph/templates", timeout=5)
         if response.status_code == 200:
             templates = response.json().get("templates", [])
             for template in templates:
-                configs.append({
-                    "name": template.get("name", "未命名模板"),
-                    "type": "template",
-                    "config": template
-                })
+                configs.append({"name": template.get("name", "未命名模板"), "type": "template", "config": template})
 
         return configs
     except Exception as e:
@@ -170,7 +150,7 @@ def build_manager_page():
                 "选择构建配置",
                 range(len(config_names)),
                 format_func=lambda i: config_names[i],
-                help="选择要使用的知识图谱配置。选择「不使用配置」将使用系统默认配置。"
+                help="选择要使用的知识图谱配置。选择「不使用配置」将使用系统默认配置。",
             )
 
             if selected_config_index == 0:
@@ -193,9 +173,11 @@ def build_manager_page():
 
         # 显示当前构建状态概览
         current_status = get_build_status()
-        if current_status and current_status.get('status') == 'running':
-            st.info(f"🔄 构建进行中：{current_status.get('current_stage', '...')} - "
-                   f"进度 {current_status.get('progress', 0)}%")
+        if current_status and current_status.get("status") == "running":
+            st.info(
+                f"🔄 构建进行中：{current_status.get('current_stage', '...')} - "
+                f"进度 {current_status.get('progress', 0)}%"
+            )
             st.caption("💡 切换到「📊 构建状态」标签查看详细进度")
             st.markdown("---")
 
@@ -203,7 +185,8 @@ def build_manager_page():
 
         with col1:
             st.markdown("### 🔄 增量构建")
-            st.markdown("""
+            st.markdown(
+                """
             **适用场景:**
             - 添加了新文档
             - 修改了现有文档
@@ -215,11 +198,12 @@ def build_manager_page():
             - ✅ 保留现有数据
 
             **耗时:** 几分钟到十几分钟
-            """)
+            """
+            )
 
             if st.button("🔄 开始增量构建", type="primary", use_container_width=True):
                 with st.spinner("正在启动增量构建..."):
-                    selected_config = st.session_state.get('selected_build_config')
+                    selected_config = st.session_state.get("selected_build_config")
                     success, message = trigger_incremental_build(selected_config)
                     if success:
                         st.success(f"✅ {message}")
@@ -232,7 +216,8 @@ def build_manager_page():
 
         with col2:
             st.markdown("### 🔃 完整构建")
-            st.markdown("""
+            st.markdown(
+                """
             **适用场景:**
             - 首次使用系统
             - 更改了实体/关系配置
@@ -244,19 +229,20 @@ def build_manager_page():
             - ✅ 完全重建
 
             **耗时:** 几十分钟到几小时
-            """)
+            """
+            )
 
             if st.button("🔃 开始完整构建", use_container_width=True):
                 st.session_state.confirm_full_build = True
 
         # 完整构建确认对话框
-        if st.session_state.get('confirm_full_build', False):
+        if st.session_state.get("confirm_full_build", False):
             st.warning("⚠️ 完整构建将清空现有知识图谱！确定要继续吗？")
             col1, col2, col3 = st.columns([1, 1, 3])
             with col1:
                 if st.button("✅ 确认构建", type="primary"):
                     with st.spinner("正在启动完整构建..."):
-                        selected_config = st.session_state.get('selected_build_config')
+                        selected_config = st.session_state.get("selected_build_config")
                         success, message = trigger_full_build(selected_config)
                         if success:
                             st.success(f"✅ {message}")
@@ -284,11 +270,7 @@ def build_manager_page():
 
             with col1:
                 max_workers = st.number_input(
-                    "并行线程数",
-                    min_value=1,
-                    max_value=16,
-                    value=4,
-                    help="控制实体提取的并行度，建议设为 CPU 核心数"
+                    "并行线程数", min_value=1, max_value=16, value=4, help="控制实体提取的并行度，建议设为 CPU 核心数"
                 )
 
                 batch_size = st.number_input(
@@ -296,21 +278,13 @@ def build_manager_page():
                     min_value=1,
                     max_value=50,
                     value=5,
-                    help="每批处理的文本块数量，较大值可能提高速度但占用更多内存"
+                    help="每批处理的文本块数量，较大值可能提高速度但占用更多内存",
                 )
 
             with col2:
-                enable_cache = st.checkbox(
-                    "启用缓存",
-                    value=True,
-                    help="缓存LLM响应以避免重复计算"
-                )
+                enable_cache = st.checkbox("启用缓存", value=True, help="缓存LLM响应以避免重复计算")
 
-                auto_align = st.checkbox(
-                    "自动实体对齐",
-                    value=True,
-                    help="自动识别和合并重复实体"
-                )
+                auto_align = st.checkbox("自动实体对齐", value=True, help="自动识别和合并重复实体")
 
             st.info("💡 修改这些参数需要重新启动构建")
 
@@ -336,7 +310,7 @@ def build_manager_page():
         st.subheader("📊 实时构建状态")
 
         # 检查是否刚刚启动构建
-        if st.session_state.get('build_just_started', False):
+        if st.session_state.get("build_just_started", False):
             st.success("✅ 构建已成功启动！正在后台运行...")
             st.info("💡 构建过程可能需要几分钟到几十分钟，请耐心等待")
             st.session_state.build_just_started = False
@@ -344,8 +318,9 @@ def build_manager_page():
         # 自动刷新选项
         col1, col2 = st.columns([3, 1])
         with col1:
-            auto_refresh = st.checkbox("🔄 自动刷新 (每5秒)", value=False,
-                                      help="启用后将自动刷新构建状态，构建期间建议开启")
+            auto_refresh = st.checkbox(
+                "🔄 自动刷新 (每5秒)", value=False, help="启用后将自动刷新构建状态，构建期间建议开启"
+            )
         with col2:
             if st.button("🔄 立即刷新"):
                 st.rerun()
@@ -353,7 +328,7 @@ def build_manager_page():
         if auto_refresh:
             # 获取当前状态，如果不是running就停止自动刷新
             current_status = get_build_status()
-            if current_status and current_status.get('status') == 'running':
+            if current_status and current_status.get("status") == "running":
                 # 添加自动刷新逻辑
                 placeholder = st.empty()
                 for i in range(5, 0, -1):
@@ -373,13 +348,14 @@ def build_manager_page():
             st.code(f"后端地址: {API_URL}")
             return
 
-        if 'error' in status:
+        if "error" in status:
             st.error(f"❌ 获取构建状态失败: {status['error']}")
             st.info("💡 请检查后端服务是否正常运行")
 
             # 提供诊断命令
             with st.expander("🔍 诊断建议"):
-                st.markdown(f"""
+                st.markdown(
+                    f"""
                 请在终端执行以下命令检查后端状态：
 
                 ```bash
@@ -392,25 +368,27 @@ def build_manager_page():
                 # 检查后端是否运行
                 lsof -i :8000
                 ```
-                """)
+                """
+                )
             return
 
         # 状态正常，显示详细信息
         if status:
             # 检测构建完成（状态从 running 变为 completed）
-            previous_status = st.session_state.get('previous_build_status', 'unknown')
-            current_status = status.get('status', 'unknown')
+            previous_status = st.session_state.get("previous_build_status", "unknown")
+            current_status = status.get("status", "unknown")
 
             # 保存当前状态供下次比较
             st.session_state.previous_build_status = current_status
 
             # 如果刚刚完成构建，显示醒目提示
-            if previous_status == 'running' and current_status == 'completed':
+            if previous_status == "running" and current_status == "completed":
                 st.balloons()
                 st.success("🎉 构建已完成！知识图谱构建成功！")
                 st.info("💡 现在可以在「💬 智能问答」中开始提问了")
                 # 播放提示音（使用浏览器API）
-                st.markdown("""
+                st.markdown(
+                    """
                 <script>
                 // 播放系统提示音
                 if (window.speechSynthesis) {
@@ -420,14 +398,16 @@ def build_manager_page():
                     window.speechSynthesis.speak(utterance);
                 }
                 </script>
-                """, unsafe_allow_html=True)
+                """,
+                    unsafe_allow_html=True,
+                )
 
             # 显示状态指示器
-            status_text = status.get('status', 'unknown')
-            if status_text == 'running':
+            status_text = status.get("status", "unknown")
+            if status_text == "running":
                 st.success("🟢 构建进行中")
                 st.caption("💡 提示：可以勾选「自动刷新」来实时监控进度")
-            elif status_text == 'completed':
+            elif status_text == "completed":
                 st.success("✅ 构建已完成")
                 col1, col2 = st.columns([3, 1])
                 with col1:
@@ -436,16 +416,16 @@ def build_manager_page():
                     if st.button("💬 去提问", type="primary"):
                         st.session_state.page_switch = "💬 智能问答"
                         st.rerun()
-            elif status_text == 'idle':
+            elif status_text == "idle":
                 st.info("⚪ 空闲状态")
-            elif status_text == 'failed':
+            elif status_text == "failed":
                 st.error("🔴 构建失败")
-                error_msg = status.get('error', '未知错误')
+                error_msg = status.get("error", "未知错误")
                 with st.expander("📋 查看错误详情"):
-                    st.code(error_msg, language='text')
+                    st.code(error_msg, language="text")
 
             # 进度条
-            progress = status.get('progress', 0)
+            progress = status.get("progress", 0)
             st.progress(progress / 100 if progress else 0)
             st.caption(f"总体进度: {progress}%")
 
@@ -453,19 +433,19 @@ def build_manager_page():
             col1, col2, col3 = st.columns(3)
 
             with col1:
-                st.metric("当前阶段", status.get('current_stage', 'N/A'))
+                st.metric("当前阶段", status.get("current_stage", "N/A"))
             with col2:
                 st.metric("已处理", f"{status.get('processed', 0)}/{status.get('total', 0)}")
             with col3:
-                elapsed = status.get('elapsed_time', 0)
+                elapsed = status.get("elapsed_time", 0)
                 st.metric("已用时间", f"{elapsed // 60}分{elapsed % 60}秒")
 
             # 日志输出
-            if 'logs' in status:
+            if "logs" in status:
                 with st.expander("📜 构建日志", expanded=True):
-                    st.code("\n".join(status['logs'][-50:]), language='text')
+                    st.code("\n".join(status["logs"][-50:]), language="text")
 
-        elif status and 'error' in status:
+        elif status and "error" in status:
             st.error(f"❌ 无法获取构建状态: {status['error']}")
             st.info("💡 请确保后端服务正在运行")
         else:
@@ -475,7 +455,8 @@ def build_manager_page():
             # 显示模拟状态
             st.markdown("---")
             st.markdown("### 📋 构建流程说明")
-            st.markdown("""
+            st.markdown(
+                """
             完整构建流程包括以下阶段:
 
             1. **文档读取与分块** (10%)
@@ -501,7 +482,8 @@ def build_manager_page():
             6. **社区检测** (5%)
                - 使用 Leiden 或 SLLPA 算法检测社区
                - 生成社区摘要
-            """)
+            """
+            )
 
     # ===== 图谱统计 =====
     with tab3:
@@ -513,11 +495,13 @@ def build_manager_page():
         if not stats:
             st.warning("⚠️ 无法获取图谱统计信息")
             st.info("💡 可能的原因：")
-            st.markdown("""
+            st.markdown(
+                """
             1. 后端服务未运行
             2. Neo4j 数据库未连接
             3. 还未构建知识图谱
-            """)
+            """
+            )
 
             # 提供测试按钮
             if st.button("🔍 测试连接"):
@@ -537,51 +521,37 @@ def build_manager_page():
                         st.error(f"❌ 连接测试失败: {e}")
             return
 
-        if 'error' in stats:
+        if "error" in stats:
             st.error(f"❌ {stats['error']}")
             return
 
         # 检查是否有数据
-        if stats.get('entity_count', 0) == 0:
+        if stats.get("entity_count", 0) == 0:
             st.info("📭 知识图谱为空")
-            st.markdown("""
+            st.markdown(
+                """
             **请先构建知识图谱：**
             1. 前往「📚 文档管理」上传文档
             2. 在「🏗️ 构建管理」中触发构建
             3. 等待构建完成后再查看统计信息
-            """)
+            """
+            )
             return
 
         # 总览
         col1, col2, col3, col4 = st.columns(4)
 
         with col1:
-            st.metric(
-                "实体数量",
-                stats.get('entity_count', 0),
-                help="知识图谱中的实体总数"
-            )
+            st.metric("实体数量", stats.get("entity_count", 0), help="知识图谱中的实体总数")
 
         with col2:
-            st.metric(
-                "关系数量",
-                stats.get('relationship_count', 0),
-                help="实体间的关系总数"
-            )
+            st.metric("关系数量", stats.get("relationship_count", 0), help="实体间的关系总数")
 
         with col3:
-            st.metric(
-                "社区数量",
-                stats.get('community_count', 0),
-                help="检测到的社区数量"
-            )
+            st.metric("社区数量", stats.get("community_count", 0), help="检测到的社区数量")
 
         with col4:
-            st.metric(
-                "文档数量",
-                stats.get('document_count', 0),
-                help="已导入的文档数量"
-            )
+            st.metric("文档数量", stats.get("document_count", 0), help="已导入的文档数量")
 
         st.markdown("---")
 
@@ -590,25 +560,21 @@ def build_manager_page():
 
         with col1:
             st.markdown("### 📊 实体类型分布")
-            if 'entity_type_distribution' in stats:
+            if "entity_type_distribution" in stats:
                 import pandas as pd
-                df = pd.DataFrame(
-                    list(stats['entity_type_distribution'].items()),
-                    columns=['类型', '数量']
-                )
-                st.bar_chart(df.set_index('类型'))
+
+                df = pd.DataFrame(list(stats["entity_type_distribution"].items()), columns=["类型", "数量"])
+                st.bar_chart(df.set_index("类型"))
             else:
                 st.info("暂无数据")
 
         with col2:
             st.markdown("### 🔗 关系类型分布")
-            if 'relationship_type_distribution' in stats:
+            if "relationship_type_distribution" in stats:
                 import pandas as pd
-                df = pd.DataFrame(
-                    list(stats['relationship_type_distribution'].items()),
-                    columns=['类型', '数量']
-                )
-                st.bar_chart(df.set_index('类型'))
+
+                df = pd.DataFrame(list(stats["relationship_type_distribution"].items()), columns=["类型", "数量"])
+                st.bar_chart(df.set_index("类型"))
             else:
                 st.info("暂无数据")
 
@@ -616,8 +582,8 @@ def build_manager_page():
 
         # 最近更新
         st.markdown("### 🕒 最近更新")
-        if 'last_build_time' in stats:
-            last_build = datetime.fromisoformat(stats['last_build_time'])
+        if "last_build_time" in stats:
+            last_build = datetime.fromisoformat(stats["last_build_time"])
             st.info(f"📅 最后构建时间: {last_build.strftime('%Y-%m-%d %H:%M:%S')}")
         else:
             st.warning("暂无构建记录")
@@ -631,17 +597,17 @@ def build_manager_page():
         if build_stats:
             col1, col2, col3, col4 = st.columns(4)
             with col1:
-                st.metric("总构建次数", build_stats.get('total_builds', 0))
+                st.metric("总构建次数", build_stats.get("total_builds", 0))
             with col2:
-                st.metric("成功次数", build_stats.get('completed_builds', 0))
+                st.metric("成功次数", build_stats.get("completed_builds", 0))
             with col3:
-                st.metric("失败次数", build_stats.get('failed_builds', 0))
+                st.metric("失败次数", build_stats.get("failed_builds", 0))
             with col4:
-                success_rate = build_stats.get('success_rate', 0)
+                success_rate = build_stats.get("success_rate", 0)
                 st.metric("成功率", f"{success_rate}%")
 
             # 平均构建时长
-            avg_duration = build_stats.get('avg_duration_seconds', 0)
+            avg_duration = build_stats.get("avg_duration_seconds", 0)
             if avg_duration > 0:
                 st.info(f"⏱️ 平均构建时长: {avg_duration // 60} 分 {avg_duration % 60} 秒")
 
@@ -650,17 +616,9 @@ def build_manager_page():
         # 过滤选项
         col1, col2, col3 = st.columns([2, 2, 1])
         with col1:
-            filter_type = st.selectbox(
-                "构建类型",
-                ["全部", "完整构建", "增量构建"],
-                help="筛选构建类型"
-            )
+            filter_type = st.selectbox("构建类型", ["全部", "完整构建", "增量构建"], help="筛选构建类型")
         with col2:
-            filter_status = st.selectbox(
-                "构建状态",
-                ["全部", "运行中", "已完成", "失败"],
-                help="筛选构建状态"
-            )
+            filter_status = st.selectbox("构建状态", ["全部", "运行中", "已完成", "失败"], help="筛选构建状态")
         with col3:
             if st.button("🔄 刷新"):
                 st.rerun()
@@ -685,16 +643,16 @@ def build_manager_page():
 
         if not history:
             st.warning("⚠️ 无法获取构建历史")
-        elif history.get('count', 0) == 0:
+        elif history.get("count", 0) == 0:
             st.info("📭 暂无构建历史记录")
         else:
-            records = history.get('records', [])
+            records = history.get("records", [])
 
             # 应用前端过滤（因为后端API不支持前端的中文过滤）
             if type_filter:
-                records = [r for r in records if r['task_type'] == type_filter]
+                records = [r for r in records if r["task_type"] == type_filter]
             if status_filter:
-                records = [r for r in records if r['status'] == status_filter]
+                records = [r for r in records if r["status"] == status_filter]
 
             if len(records) == 0:
                 st.info("📭 没有符合条件的记录")
@@ -702,13 +660,13 @@ def build_manager_page():
                 # 显示记录列表
                 for record in records:
                     # 状态图标
-                    if record['status'] == 'completed':
+                    if record["status"] == "completed":
                         status_icon = "✅"
                         status_color = "green"
-                    elif record['status'] == 'failed':
+                    elif record["status"] == "failed":
                         status_icon = "❌"
                         status_color = "red"
-                    elif record['status'] == 'running':
+                    elif record["status"] == "running":
                         status_icon = "🔄"
                         status_color = "blue"
                     else:
@@ -716,12 +674,12 @@ def build_manager_page():
                         status_color = "gray"
 
                     # 类型图标
-                    type_icon = "🔃" if record['task_type'] == 'full' else "🔄"
-                    type_name = "完整构建" if record['task_type'] == 'full' else "增量构建"
+                    type_icon = "🔃" if record["task_type"] == "full" else "🔄"
+                    type_name = "完整构建" if record["task_type"] == "full" else "增量构建"
 
                     # 时间格式化
-                    start_time = datetime.fromisoformat(record['start_time']).strftime('%Y-%m-%d %H:%M:%S')
-                    duration = record.get('duration')
+                    start_time = datetime.fromisoformat(record["start_time"]).strftime("%Y-%m-%d %H:%M:%S")
+                    duration = record.get("duration")
                     duration_str = f"{duration // 60}分{duration % 60}秒" if duration else "N/A"
 
                     with st.expander(f"{status_icon} {type_icon} {type_name} - {start_time}"):
@@ -734,34 +692,35 @@ def build_manager_page():
                             st.markdown(f"**开始时间:** {start_time}")
 
                         with col2:
-                            if record.get('end_time'):
-                                end_time = datetime.fromisoformat(record['end_time']).strftime('%Y-%m-%d %H:%M:%S')
+                            if record.get("end_time"):
+                                end_time = datetime.fromisoformat(record["end_time"]).strftime("%Y-%m-%d %H:%M:%S")
                                 st.markdown(f"**结束时间:** {end_time}")
                             st.markdown(f"**持续时间:** {duration_str}")
-                            if record.get('final_stage'):
+                            if record.get("final_stage"):
                                 st.markdown(f"**最终阶段:** {record['final_stage']}")
 
                         # 统计信息
-                        if record.get('stats'):
+                        if record.get("stats"):
                             st.markdown("**统计信息:**")
-                            stats = record['stats']
+                            stats = record["stats"]
                             stat_cols = st.columns(len(stats))
                             for idx, (key, value) in enumerate(stats.items()):
                                 with stat_cols[idx]:
                                     st.metric(key, value)
 
                         # 错误信息
-                        if record.get('error_msg'):
+                        if record.get("error_msg"):
                             st.error(f"**错误信息:** {record['error_msg']}")
 
                         # 配置快照
-                        if record.get('config_snapshot'):
+                        if record.get("config_snapshot"):
                             with st.expander("🔍 查看配置快照"):
-                                st.json(record['config_snapshot'])
+                                st.json(record["config_snapshot"])
 
     # 帮助信息
     with st.expander("❓ 使用说明"):
-        st.markdown("""
+        st.markdown(
+            """
         ### 构建流程建议
 
         1. **首次使用**
@@ -794,4 +753,5 @@ def build_manager_page():
         - 完整构建会清空所有现有数据
         - 构建过程中不要关闭程序
         - 建议在低峰期进行大规模构建
-        """)
+        """
+        )

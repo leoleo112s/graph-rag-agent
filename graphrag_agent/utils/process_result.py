@@ -20,6 +20,7 @@ class ProcessResult:
         index: 原始输入列表中的索引位置
         error_type: 错误类型（用于分类：transient/database/unknown）
     """
+
     success: bool
     data: Any = None
     error: Optional[Exception] = None
@@ -32,16 +33,6 @@ class ProcessResult:
         return cls(success=True, data=data, index=index)
 
     @classmethod
-    def failure_result(
-        cls,
-        error: Exception,
-        index: int = -1,
-        error_type: str = "unknown"
-    ) -> "ProcessResult":
+    def failure_result(cls, error: Exception, index: int = -1, error_type: str = "unknown") -> "ProcessResult":
         """创建失败结果"""
-        return cls(
-            success=False,
-            error=error,
-            index=index,
-            error_type=error_type
-        )
+        return cls(success=False, error=error, index=index, error_type=error_type)

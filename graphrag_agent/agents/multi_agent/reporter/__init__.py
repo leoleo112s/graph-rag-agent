@@ -8,21 +8,21 @@ from graphrag_agent.agents.multi_agent.reporter.base_reporter import (
     ReportResult,
     SectionContent,
 )
+from graphrag_agent.agents.multi_agent.reporter.consistency_checker import (
+    ConsistencyChecker,
+    ConsistencyCheckResult,
+)
+from graphrag_agent.agents.multi_agent.reporter.formatter import CitationFormatter
 from graphrag_agent.agents.multi_agent.reporter.outline_builder import (
     OutlineBuilder,
     ReportOutline,
     SectionOutline,
 )
 from graphrag_agent.agents.multi_agent.reporter.section_writer import (
+    SectionDraft,
     SectionWriter,
     SectionWriterConfig,
-    SectionDraft,
 )
-from graphrag_agent.agents.multi_agent.reporter.consistency_checker import (
-    ConsistencyChecker,
-    ConsistencyCheckResult,
-)
-from graphrag_agent.agents.multi_agent.reporter.formatter import CitationFormatter
 
 __all__ = [
     "BaseReporter",

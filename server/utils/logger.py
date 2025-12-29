@@ -15,14 +15,14 @@
     logger.error("数据库连接失败", extra={"error_code": 5202})
 """
 
-import logging
 import json
+import logging
 import sys
-from pathlib import Path
-from logging.handlers import RotatingFileHandler
-from typing import Optional, Dict, Any
-from datetime import datetime
 import traceback
+from datetime import datetime
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
+from typing import Any, Dict, Optional
 
 
 class JSONFormatter(logging.Formatter):
@@ -55,11 +55,30 @@ class JSONFormatter(logging.Formatter):
         # 添加其他 extra 字段
         for key, value in record.__dict__.items():
             if key not in [
-                "name", "msg", "args", "created", "filename", "funcName",
-                "levelname", "levelno", "lineno", "module", "msecs",
-                "message", "pathname", "process", "processName", "relativeCreated",
-                "thread", "threadName", "exc_info", "exc_text", "stack_info",
-                "request_id", "user_id", "session_id"
+                "name",
+                "msg",
+                "args",
+                "created",
+                "filename",
+                "funcName",
+                "levelname",
+                "levelno",
+                "lineno",
+                "module",
+                "msecs",
+                "message",
+                "pathname",
+                "process",
+                "processName",
+                "relativeCreated",
+                "thread",
+                "threadName",
+                "exc_info",
+                "exc_text",
+                "stack_info",
+                "request_id",
+                "user_id",
+                "session_id",
             ]:
                 log_data[key] = value
 
@@ -68,7 +87,7 @@ class JSONFormatter(logging.Formatter):
             log_data["exception"] = {
                 "type": record.exc_info[0].__name__,
                 "message": str(record.exc_info[1]),
-                "traceback": "".join(traceback.format_exception(*record.exc_info))
+                "traceback": "".join(traceback.format_exception(*record.exc_info)),
             }
 
         return json.dumps(log_data, ensure_ascii=False)
@@ -82,21 +101,21 @@ class ColoredConsoleFormatter(logging.Formatter):
     """
 
     COLORS = {
-        'DEBUG': '\033[36m',      # 青色
-        'INFO': '\033[32m',       # 绿色
-        'WARNING': '\033[33m',    # 黄色
-        'ERROR': '\033[31m',      # 红色
-        'CRITICAL': '\033[35m',   # 紫色
-        'RESET': '\033[0m'
+        "DEBUG": "\033[36m",  # 青色
+        "INFO": "\033[32m",  # 绿色
+        "WARNING": "\033[33m",  # 黄色
+        "ERROR": "\033[31m",  # 红色
+        "CRITICAL": "\033[35m",  # 紫色
+        "RESET": "\033[0m",
     }
 
     def format(self, record: logging.LogRecord) -> str:
         """格式化日志记录为彩色文本"""
-        color = self.COLORS.get(record.levelname, self.COLORS['RESET'])
-        reset = self.COLORS['RESET']
+        color = self.COLORS.get(record.levelname, self.COLORS["RESET"])
+        reset = self.COLORS["RESET"]
 
         # 基础信息
-        timestamp = datetime.fromtimestamp(record.created).strftime('%Y-%m-%d %H:%M:%S')
+        timestamp = datetime.fromtimestamp(record.created).strftime("%Y-%m-%d %H:%M:%S")
         level = f"{color}{record.levelname:8s}{reset}"
         message = record.getMessage()
 
@@ -171,12 +190,13 @@ class StructuredLogger:
 # 日志配置
 # ============================================================================
 
+
 def setup_logging(
     log_level: str = "INFO",
     log_dir: Optional[Path] = None,
     use_json: bool = False,
     max_bytes: int = 100 * 1024 * 1024,  # 100 MB
-    backup_count: int = 5
+    backup_count: int = 5,
 ):
     """
     配置全局日志系统
@@ -222,22 +242,14 @@ def setup_logging(
 
         # 应用日志（JSON 格式）
         app_log_file = log_dir / "app.log"
-        app_handler = RotatingFileHandler(
-            app_log_file,
-            maxBytes=max_bytes,
-            backupCount=backup_count,
-            encoding="utf-8"
-        )
+        app_handler = RotatingFileHandler(app_log_file, maxBytes=max_bytes, backupCount=backup_count, encoding="utf-8")
         app_handler.setFormatter(JSONFormatter())
         root_logger.addHandler(app_handler)
 
         # 错误日志（单独文件，方便快速定位）
         error_log_file = log_dir / "error.log"
         error_handler = RotatingFileHandler(
-            error_log_file,
-            maxBytes=max_bytes,
-            backupCount=backup_count,
-            encoding="utf-8"
+            error_log_file, maxBytes=max_bytes, backupCount=backup_count, encoding="utf-8"
         )
         error_handler.setLevel(logging.ERROR)
         error_handler.setFormatter(JSONFormatter())
@@ -265,6 +277,7 @@ def get_logger(name: str) -> StructuredLogger:
 # ============================================================================
 # 日志上下文管理器
 # ============================================================================
+
 
 class LogContext:
     """

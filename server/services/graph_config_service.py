@@ -10,11 +10,11 @@
 """
 
 import threading
-from typing import Optional, Dict
 from datetime import datetime
+from typing import Dict, Optional
 
-from graphrag_agent.config.graph_config_storage import get_storage
 from graphrag_agent.config.graph_config_model import GraphConfig
+from graphrag_agent.config.graph_config_storage import get_storage
 
 
 class GraphConfigService:
@@ -30,7 +30,7 @@ class GraphConfigService:
         self._last_reload_time: Optional[datetime] = None
 
     @classmethod
-    def get_instance(cls) -> 'GraphConfigService':
+    def get_instance(cls) -> "GraphConfigService":
         """
         获取单例实例（线程安全）
 
@@ -189,7 +189,7 @@ class GraphConfigService:
                 "project_name": self._cached_config.project_name if self._cached_config else None,
                 "last_reload_time": self._last_reload_time.isoformat() if self._last_reload_time else None,
                 "domain_count": len(self._cached_config.domain_definitions) if self._cached_config else 0,
-                "bridge_count": len(self._cached_config.bridge_definitions) if self._cached_config else 0
+                "bridge_count": len(self._cached_config.bridge_definitions) if self._cached_config else 0,
             }
 
 

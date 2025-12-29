@@ -6,5 +6,5 @@ AI Copilot 模块
 from .document_analyzer import DocumentAnalyzer
 
 __all__ = [
-    'DocumentAnalyzer',
+    "DocumentAnalyzer",
 ]

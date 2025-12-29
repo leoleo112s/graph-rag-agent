@@ -25,10 +25,11 @@
     READ_API_KEY=your_read_only_key_here  # 可选，用于只读访问
 """
 
-import os
-from fastapi import Header, HTTPException, Depends
-from typing import Optional
 import logging
+import os
+from typing import Optional
+
+from fastapi import Depends, Header, HTTPException
 
 logger = logging.getLogger(__name__)
 
@@ -51,9 +52,8 @@ AUTH_ENABLED = os.getenv("AUTH_ENABLED", "true").lower() == "true"
 # 依赖函数
 # ============================================================================
 
-async def verify_admin_token(
-    x_admin_token: Optional[str] = Header(None, description="管理员API密钥")
-) -> str:
+
+async def verify_admin_token(x_admin_token: Optional[str] = Header(None, description="管理员API密钥")) -> str:
     """
     验证管理员权限（用于知识图谱CRUD等写操作）
 
@@ -83,11 +83,7 @@ async def verify_admin_token(
         logger.warning("❌ 未提供管理员Token")
         raise HTTPException(
             status_code=401,
-            detail={
-                "error": "未授权",
-                "message": "需要提供管理员API密钥",
-                "hint": "在HTTP Header中添加 X-Admin-Token"
-            }
+            detail={"error": "未授权", "message": "需要提供管理员API密钥", "hint": "在HTTP Header中添加 X-Admin-Token"},
         )
 
     # 获取有效的Admin Key
@@ -95,31 +91,21 @@ async def verify_admin_token(
 
     # 警告：使用默认密钥
     if valid_key == DEFAULT_DEV_KEY:
-        logger.warning(
-            "⚠️ 使用默认开发密钥！生产环境请设置环境变量 ADMIN_API_KEY"
-        )
+        logger.warning("⚠️ 使用默认开发密钥！生产环境请设置环境变量 ADMIN_API_KEY")
 
     # 验证token
     if x_admin_token != valid_key:
         logger.warning(
             f"❌ 管理员Token验证失败: 提供的token不匹配",
-            extra={"provided": x_admin_token[:8] + "..." if len(x_admin_token) > 8 else x_admin_token}
+            extra={"provided": x_admin_token[:8] + "..." if len(x_admin_token) > 8 else x_admin_token},
         )
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "error": "权限不足",
-                "message": "管理员API密钥无效"
-            }
-        )
+        raise HTTPException(status_code=403, detail={"error": "权限不足", "message": "管理员API密钥无效"})
 
     logger.info("✅ 管理员权限验证通过")
     return x_admin_token
 
 
-async def verify_read_token(
-    x_api_key: Optional[str] = Header(None, description="API密钥（读权限）")
-) -> str:
+async def verify_read_token(x_api_key: Optional[str] = Header(None, description="API密钥（读权限）")) -> str:
     """
     验证读权限（用于查询知识图谱）
 
@@ -147,41 +133,26 @@ async def verify_read_token(
     if not x_api_key:
         raise HTTPException(
             status_code=401,
-            detail={
-                "error": "未授权",
-                "message": "需要提供API密钥",
-                "hint": "在HTTP Header中添加 X-API-Key"
-            }
+            detail={"error": "未授权", "message": "需要提供API密钥", "hint": "在HTTP Header中添加 X-API-Key"},
         )
 
     # 获取有效的Read Key（如果未设置，允许Admin Key通用）
-    valid_keys = [
-        READ_API_KEY if READ_API_KEY else None,
-        ADMIN_API_KEY if ADMIN_API_KEY else DEFAULT_DEV_KEY
-    ]
+    valid_keys = [READ_API_KEY if READ_API_KEY else None, ADMIN_API_KEY if ADMIN_API_KEY else DEFAULT_DEV_KEY]
     valid_keys = [k for k in valid_keys if k]  # 过滤None
 
     # 验证token
     if x_api_key not in valid_keys:
         logger.warning(
             f"❌ API密钥验证失败: 提供的key不匹配",
-            extra={"provided": x_api_key[:8] + "..." if len(x_api_key) > 8 else x_api_key}
+            extra={"provided": x_api_key[:8] + "..." if len(x_api_key) > 8 else x_api_key},
         )
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "error": "权限不足",
-                "message": "API密钥无效"
-            }
-        )
+        raise HTTPException(status_code=403, detail={"error": "权限不足", "message": "API密钥无效"})
 
     logger.debug("✅ 读权限验证通过")
     return x_api_key
 
 
-def get_current_user(
-    token: str = Depends(verify_admin_token)
-) -> dict:
+def get_current_user(token: str = Depends(verify_admin_token)) -> dict:
     """
     获取当前用户信息（可扩展为JWT解析）
 
@@ -195,15 +166,13 @@ def get_current_user(
     """
     # 简化版本：仅返回token标识
     # 生产环境：解析JWT，返回 {"user_id": "...", "role": "admin", ...}
-    return {
-        "token": token,
-        "role": "admin"
-    }
+    return {"token": token, "role": "admin"}
 
 
 # ============================================================================
 # 辅助函数
 # ============================================================================
+
 
 def is_auth_configured() -> bool:
     """
@@ -230,5 +199,5 @@ def get_auth_status() -> dict:
         "admin_key_configured": bool(ADMIN_API_KEY),
         "read_key_configured": bool(READ_API_KEY),
         "using_default_key": ADMIN_API_KEY == "" or ADMIN_API_KEY == DEFAULT_DEV_KEY,
-        "warning": "使用默认密钥不安全！" if (ADMIN_API_KEY == "" or ADMIN_API_KEY == DEFAULT_DEV_KEY) else None
+        "warning": "使用默认密钥不安全！" if (ADMIN_API_KEY == "" or ADMIN_API_KEY == DEFAULT_DEV_KEY) else None,
     }

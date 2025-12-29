@@ -3,13 +3,13 @@
 提供文件上传、列表展示、删除等功能
 """
 
-import streamlit as st
-import requests
 import os
-from pathlib import Path
 from datetime import datetime
-from typing import List, Dict
+from pathlib import Path
+from typing import Dict, List
 
+import requests
+import streamlit as st
 from frontend_config.settings import API_URL, FILES_DIR
 
 
@@ -17,16 +17,16 @@ def get_file_info(filepath: Path) -> Dict:
     """获取文件信息"""
     stat = filepath.stat()
     return {
-        'name': filepath.name,
-        'size': stat.st_size,
-        'modified': datetime.fromtimestamp(stat.st_mtime),
-        'type': filepath.suffix[1:].upper() if filepath.suffix else 'Unknown'
+        "name": filepath.name,
+        "size": stat.st_size,
+        "modified": datetime.fromtimestamp(stat.st_mtime),
+        "type": filepath.suffix[1:].upper() if filepath.suffix else "Unknown",
     }
 
 
 def format_file_size(size_bytes: int) -> str:
     """格式化文件大小"""
-    for unit in ['B', 'KB', 'MB', 'GB']:
+    for unit in ["B", "KB", "MB", "GB"]:
         if size_bytes < 1024.0:
             return f"{size_bytes:.1f} {unit}"
         size_bytes /= 1024.0
@@ -41,11 +41,11 @@ def list_documents() -> List[Dict]:
 
     documents = []
     for file in files_path.iterdir():
-        if file.is_file() and not file.name.startswith('.'):
+        if file.is_file() and not file.name.startswith("."):
             documents.append(get_file_info(file))
 
     # 按修改时间降序排序
-    documents.sort(key=lambda x: x['modified'], reverse=True)
+    documents.sort(key=lambda x: x["modified"], reverse=True)
     return documents
 
 
@@ -65,10 +65,7 @@ def delete_document(filename: str) -> bool:
 def trigger_incremental_build():
     """触发增量构建"""
     try:
-        response = requests.post(
-            f"{API_URL}/admin/build/incremental",
-            timeout=5  # 快速返回，构建在后台进行
-        )
+        response = requests.post(f"{API_URL}/admin/build/incremental", timeout=5)  # 快速返回，构建在后台进行
         if response.status_code == 200:
             return True, "增量构建已启动"
         else:
@@ -92,17 +89,13 @@ def document_manager_page():
     with col1:
         uploaded_files = st.file_uploader(
             "选择要上传的文件",
-            type=['pdf', 'txt', 'md', 'docx', 'doc', 'csv', 'json', 'yaml', 'yml'],
+            type=["pdf", "txt", "md", "docx", "doc", "csv", "json", "yaml", "yml"],
             accept_multiple_files=True,
-            help="支持格式: PDF, TXT, MD, DOCX, DOC, CSV, JSON, YAML"
+            help="支持格式: PDF, TXT, MD, DOCX, DOC, CSV, JSON, YAML",
         )
 
     with col2:
-        auto_build = st.checkbox(
-            "上传后自动构建",
-            value=True,
-            help="上传完成后自动触发增量构建"
-        )
+        auto_build = st.checkbox("上传后自动构建", value=True, help="上传完成后自动触发增量构建")
 
     if uploaded_files:
         if st.button("💾 保存文件", type="primary"):
@@ -124,7 +117,7 @@ def document_manager_page():
                     if file_path.exists():
                         status_text.warning(f"⚠️ {uploaded_file.name} 已存在，将被覆盖")
 
-                    with open(file_path, 'wb') as f:
+                    with open(file_path, "wb") as f:
                         f.write(uploaded_file.getbuffer())
 
                     success_count += 1
@@ -178,7 +171,7 @@ def document_manager_page():
         st.info("📭 暂无文档，请上传文件")
     else:
         # 显示统计信息
-        total_size = sum(doc['size'] for doc in documents)
+        total_size = sum(doc["size"] for doc in documents)
         col1, col2, col3 = st.columns(3)
         with col1:
             st.metric("文档数量", len(documents))
@@ -188,7 +181,7 @@ def document_manager_page():
             # 统计文件类型
             types = {}
             for doc in documents:
-                doc_type = doc['type']
+                doc_type = doc["type"]
                 types[doc_type] = types.get(doc_type, 0) + 1
             st.metric("文件类型", len(types))
 
@@ -199,7 +192,7 @@ def document_manager_page():
 
         # 过滤文档
         if search_query:
-            documents = [doc for doc in documents if search_query.lower() in doc['name'].lower()]
+            documents = [doc for doc in documents if search_query.lower() in doc["name"].lower()]
 
         # 文档表格
         for idx, doc in enumerate(documents):
@@ -208,26 +201,26 @@ def document_manager_page():
             with col1:
                 # 文件图标
                 icon = {
-                    'PDF': '📄',
-                    'TXT': '📝',
-                    'MD': '📘',
-                    'DOCX': '📘',
-                    'DOC': '📘',
-                    'CSV': '📊',
-                    'JSON': '📋',
-                    'YAML': '⚙️',
-                    'YML': '⚙️',
-                }.get(doc['type'], '📎')
+                    "PDF": "📄",
+                    "TXT": "📝",
+                    "MD": "📘",
+                    "DOCX": "📘",
+                    "DOC": "📘",
+                    "CSV": "📊",
+                    "JSON": "📋",
+                    "YAML": "⚙️",
+                    "YML": "⚙️",
+                }.get(doc["type"], "📎")
                 st.text(f"{icon} {doc['name']}")
 
             with col2:
-                st.text(doc['type'])
+                st.text(doc["type"])
 
             with col3:
-                st.text(format_file_size(doc['size']))
+                st.text(format_file_size(doc["size"]))
 
             with col4:
-                st.text(doc['modified'].strftime('%Y-%m-%d %H:%M'))
+                st.text(doc["modified"].strftime("%Y-%m-%d %H:%M"))
 
             with col5:
                 delete_key = f"delete_{idx}"
@@ -243,7 +236,7 @@ def document_manager_page():
                     col_confirm1, col_confirm2 = st.columns(2)
                     with col_confirm1:
                         if st.button("✅", key=f"yes_{idx}", help="确认删除"):
-                            if delete_document(doc['name']):
+                            if delete_document(doc["name"]):
                                 st.success(f"✅ {doc['name']} 已删除")
                                 st.session_state[confirm_key] = False
                                 st.rerun()
@@ -266,13 +259,13 @@ def document_manager_page():
                 st.session_state.confirm_delete_all = True
 
         # 确认删除对话框
-        if st.session_state.get('confirm_delete_all', False):
+        if st.session_state.get("confirm_delete_all", False):
             st.warning("⚠️ 确定要删除所有文档吗？此操作不可恢复！")
             col1, col2, col3 = st.columns([1, 1, 4])
             with col1:
                 if st.button("✅ 确认删除"):
                     for doc in documents:
-                        delete_document(doc['name'])
+                        delete_document(doc["name"])
                     st.success("所有文档已删除")
                     st.session_state.confirm_delete_all = False
                     st.rerun()

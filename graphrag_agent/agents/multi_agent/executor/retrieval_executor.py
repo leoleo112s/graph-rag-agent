@@ -3,9 +3,10 @@
 
 负责解析PlanExecutionSignal中的检索类任务并调用既有搜索工具（local/global/chain等）。
 """
-from typing import Any, Dict, List, Optional
-import time
+
 import logging
+import time
+from typing import Any, Dict, List, Optional
 
 from graphrag_agent.agents.multi_agent.core.execution_record import (
     ExecutionMetadata,
@@ -23,12 +24,12 @@ from graphrag_agent.agents.multi_agent.executor.base_executor import (
     ExecutorConfig,
     TaskExecutionResult,
 )
+from graphrag_agent.agents.multi_agent.tools.evidence_tracker import get_evidence_tracker
 from graphrag_agent.search.tool_registry import (
-    TOOL_REGISTRY,
     EXTRA_TOOL_FACTORIES,
+    TOOL_REGISTRY,
     create_extra_tool,
 )
-from graphrag_agent.agents.multi_agent.tools.evidence_tracker import get_evidence_tracker
 from graphrag_agent.utils.tool_invocation import invoke_tool_structured
 
 _LOGGER = logging.getLogger(__name__)

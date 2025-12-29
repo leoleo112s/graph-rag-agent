@@ -1,5 +1,19 @@
 from fastapi import APIRouter
-from . import chat, feedback, feedback_admin, knowledge_graph, source, admin, build, graph, status, stats, templates, models
+
+from . import (
+    admin,
+    build,
+    chat,
+    feedback,
+    feedback_admin,
+    graph,
+    knowledge_graph,
+    models,
+    source,
+    stats,
+    status,
+    templates,
+)
 
 # 创建总路由器
 api_router = APIRouter()
@@ -18,4 +32,4 @@ api_router.include_router(stats.router, tags=["统计监控"])
 api_router.include_router(templates.router, tags=["模板市场"])
 api_router.include_router(models.router, tags=["模型管理"])
 
-__all__ = ['api_router']
+__all__ = ["api_router"]

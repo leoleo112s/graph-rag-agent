@@ -2,8 +2,8 @@ from typing import Any, Dict, List, Optional
 
 from langchain_core.tools import BaseTool
 
-from graphrag_agent.search.tool.reasoning.validator import AnswerValidator
 from graphrag_agent.search.tool.hybrid_tool import HybridSearchTool
+from graphrag_agent.search.tool.reasoning.validator import AnswerValidator
 
 
 class AnswerValidationTool:

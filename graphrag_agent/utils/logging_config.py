@@ -6,24 +6,18 @@
 
 import logging
 import sys
-from pathlib import Path
 from logging.handlers import RotatingFileHandler
+from pathlib import Path
 from typing import Optional
 
-from graphrag_agent.config.settings import (
-    LOG_LEVEL,
-    LOG_FILE,
-    LOG_FORMAT,
-    LOG_MAX_SIZE_MB,
-    LOG_BACKUP_COUNT
-)
+from graphrag_agent.config.settings import LOG_BACKUP_COUNT, LOG_FILE, LOG_FORMAT, LOG_LEVEL, LOG_MAX_SIZE_MB
 
 
 def init_logging(
     level: Optional[str] = None,
     log_file: Optional[str] = None,
     log_format: Optional[str] = None,
-    app_name: str = "graphrag"
+    app_name: str = "graphrag",
 ):
     """
     初始化日志系统
@@ -49,13 +43,12 @@ def init_logging(
             '{"timestamp": "%(asctime)s", "level": "%(levelname)s", '
             '"name": "%(name)s", "file": "%(filename)s", "line": %(lineno)d, '
             '"message": "%(message)s"}',
-            datefmt="%Y-%m-%d %H:%M:%S"
+            datefmt="%Y-%m-%d %H:%M:%S",
         )
     else:
         # 文本格式（易读）
         formatter = logging.Formatter(
-            f"%(asctime)s [{app_name}] [%(levelname)s] %(name)s:%(lineno)d - %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S"
+            f"%(asctime)s [{app_name}] [%(levelname)s] %(name)s:%(lineno)d - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
         )
 
     # 配置处理器
@@ -78,7 +71,7 @@ def init_logging(
                 log_file,
                 maxBytes=LOG_MAX_SIZE_MB * 1024 * 1024,  # 转换为字节
                 backupCount=LOG_BACKUP_COUNT,
-                encoding='utf-8'
+                encoding="utf-8",
             )
             file_handler.setFormatter(formatter)
             handlers.append(file_handler)
@@ -87,11 +80,7 @@ def init_logging(
             print(f"Warning: 无法创建日志文件 {log_file}: {e}", file=sys.stderr)
 
     # 配置根日志器
-    logging.basicConfig(
-        level=numeric_level,
-        handlers=handlers,
-        force=True  # 强制重新配置（覆盖之前的配置）
-    )
+    logging.basicConfig(level=numeric_level, handlers=handlers, force=True)  # 强制重新配置（覆盖之前的配置）
 
     # 降低第三方库的日志级别（减少噪音）
     logging.getLogger("neo4j").setLevel(logging.WARNING)
@@ -104,8 +93,7 @@ def init_logging(
     # 记录初始化完成
     logger = logging.getLogger(__name__)
     logger.info(
-        f"日志系统初始化完成: level={level}, format={log_format}, "
-        f"file={log_file if log_file else 'console-only'}"
+        f"日志系统初始化完成: level={level}, format={log_format}, " f"file={log_file if log_file else 'console-only'}"
     )
 
 
