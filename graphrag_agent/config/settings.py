@@ -141,6 +141,14 @@ examples = [
     "那上海市奖学金呢？",
 ]  # 前端示例问题
 
+# ===== 日志配置 (Logging) =====
+
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+LOG_FILE = os.getenv("LOG_FILE", "logs/graphrag.log")
+LOG_FORMAT = os.getenv("LOG_FORMAT", "text").lower()
+LOG_MAX_SIZE_MB = _get_env_int("LOG_MAX_SIZE_MB", 10) or 10
+LOG_BACKUP_COUNT = _get_env_int("LOG_BACKUP_COUNT", 5) or 5
+
 # ===== 性能优化配置 =====
 
 MAX_WORKERS = _get_env_int("MAX_WORKERS", 4) or 4  # 并行工作线程数

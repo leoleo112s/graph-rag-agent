@@ -30,6 +30,10 @@ setup_logging(
 # 获取日志器
 logger = get_logger(__name__)
 
+# 初始化日志系统
+from graphrag_agent.utils.logging_config import init_logging
+init_logging(app_name="graphrag-server")
+
 # 初始化 FastAPI 应用
 app = FastAPI(
     title="知识图谱问答系统",
