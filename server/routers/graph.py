@@ -20,10 +20,11 @@ API Endpoints:
 """
 
 import asyncio
-from fastapi import APIRouter, Query, HTTPException
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
+
+from fastapi import APIRouter, HTTPException, Query
 from server_config.database import get_db_manager
-from utils.exceptions import ResourceNotFoundError, DatabaseError
+from utils.exceptions import DatabaseError, ResourceNotFoundError
 from utils.logger import get_logger
 
 # 获取日志器
@@ -31,16 +32,16 @@ logger = get_logger(__name__)
 
 # 导入 kg_service 中的功能
 from services.kg_service import (
-    get_knowledge_graph,
-    get_knowledge_graph_for_ids,
-    get_source_content,
-    get_source_file_info,
-    get_shortest_path,
     get_all_paths,
     get_common_neighbors,
+    get_entity_cycles,
     get_entity_influence,
+    get_knowledge_graph,
+    get_knowledge_graph_for_ids,
+    get_shortest_path,
     get_simplified_community,
-    get_entity_cycles
+    get_source_content,
+    get_source_file_info,
 )
 
 # ============================================================================
@@ -63,7 +64,7 @@ driver = db_manager.driver
 @router.get("/overview", summary="获取图谱概览")
 async def get_graph_overview(
     limit: int = Query(100, description="节点数量限制", ge=1, le=1000),
-    query: Optional[str] = Query(None, description="搜索关键词（可选）")
+    query: Optional[str] = Query(None, description="搜索关键词（可选）"),
 ) -> Dict[str, Any]:
     """
     获取知识图谱概览
@@ -88,17 +89,14 @@ async def get_graph_overview(
     return {
         "status": "success",
         "data": result,
-        "meta": {
-            "node_count": len(result.get("nodes", [])),
-            "link_count": len(result.get("links", []))
-        }
+        "meta": {"node_count": len(result.get("nodes", [])), "link_count": len(result.get("links", []))},
     }
 
 
 @router.get("/subgraph", summary="获取实体子图")
 async def get_subgraph(
     entity_id: str = Query(..., description="中心实体ID"),
-    hops: int = Query(1, description="扩展跳数（1-2）", ge=1, le=MAX_HOPS_LIMIT)
+    hops: int = Query(1, description="扩展跳数（1-2）", ge=1, le=MAX_HOPS_LIMIT),
 ) -> Dict[str, Any]:
     """
     获取指定实体周围的子图
@@ -122,11 +120,8 @@ async def get_subgraph(
         loop = asyncio.get_event_loop()
 
         result = await asyncio.wait_for(
-            loop.run_in_executor(
-                None,
-                lambda: get_entity_influence(driver, entity_id, max_depth=hops)
-            ),
-            timeout=QUERY_TIMEOUT_SECONDS
+            loop.run_in_executor(None, lambda: get_entity_influence(driver, entity_id, max_depth=hops)),
+            timeout=QUERY_TIMEOUT_SECONDS,
         )
 
         if "error" in result:
@@ -143,24 +138,21 @@ async def get_subgraph(
                 entity_id=entity_id,
                 hops=hops,
                 original_nodes=len(nodes),
-                truncated_nodes=MAX_NODES_PER_QUERY
+                truncated_nodes=MAX_NODES_PER_QUERY,
             )
             nodes = nodes[:MAX_NODES_PER_QUERY]
             truncated = True
 
             # 过滤悬空边（edges whose nodes are not in truncated nodes）
             node_ids = {node["id"] for node in nodes}
-            links = [
-                link for link in links
-                if link.get("source") in node_ids and link.get("target") in node_ids
-            ]
+            links = [link for link in links if link.get("source") in node_ids and link.get("target") in node_ids]
 
         return {
             "status": "success",
             "data": {
                 "nodes": nodes,
                 "links": links,
-                **{k: v for k, v in result.items() if k not in ["nodes", "links"]}
+                **{k: v for k, v in result.items() if k not in ["nodes", "links"]},
             },
             "meta": {
                 "center_entity": entity_id,
@@ -168,15 +160,14 @@ async def get_subgraph(
                 "node_count": len(nodes),
                 "link_count": len(links),
                 "truncated": truncated,
-                "max_nodes_limit": MAX_NODES_PER_QUERY
-            }
+                "max_nodes_limit": MAX_NODES_PER_QUERY,
+            },
         }
 
     except asyncio.TimeoutError:
         logger.error("图谱查询超时", entity_id=entity_id, hops=hops, timeout=QUERY_TIMEOUT_SECONDS)
         raise HTTPException(
-            status_code=504,
-            detail=f"查询过于复杂（超时 {QUERY_TIMEOUT_SECONDS}s），请减少跳数或更换中心节点重试"
+            status_code=504, detail=f"查询过于复杂（超时 {QUERY_TIMEOUT_SECONDS}s），请减少跳数或更换中心节点重试"
         )
     except HTTPException:
         raise
@@ -187,8 +178,7 @@ async def get_subgraph(
 
 @router.get("/entity/{entity_id}", summary="获取实体详细信息")
 async def get_entity_details(
-    entity_id: str,
-    include_neighbors: bool = Query(False, description="是否包含邻居节点")
+    entity_id: str, include_neighbors: bool = Query(False, description="是否包含邻居节点")
 ) -> Dict[str, Any]:
     """
     获取实体的详细信息
@@ -221,7 +211,7 @@ async def get_entity_details(
             "id": record.get("id"),
             "description": record.get("description", ""),
             "labels": [lbl for lbl in record.get("labels", []) if lbl != "__Entity__"],
-            "properties": dict(record.get("properties", {}))
+            "properties": dict(record.get("properties", {})),
         }
 
         # 如果需要邻居信息
@@ -231,16 +221,10 @@ async def get_entity_details(
             neighbors = {
                 "nodes": neighbor_result.get("nodes", []),
                 "links": neighbor_result.get("links", []),
-                "stats": neighbor_result.get("influence_stats", {})
+                "stats": neighbor_result.get("influence_stats", {}),
             }
 
-        return {
-            "status": "success",
-            "data": {
-                "entity": entity_info,
-                "neighbors": neighbors
-            }
-        }
+        return {"status": "success", "data": {"entity": entity_info, "neighbors": neighbors}}
     except HTTPException:
         raise
     except Exception as e:
@@ -253,7 +237,7 @@ async def get_entity_details(
 async def query_shortest_path(
     source: str = Query(..., description="起始实体ID"),
     target: str = Query(..., description="目标实体ID"),
-    max_hops: int = Query(3, description="最大跳数（1-4）", ge=1, le=4)
+    max_hops: int = Query(3, description="最大跳数（1-4）", ge=1, le=4),
 ) -> Dict[str, Any]:
     """
     查询两个实体之间的最短路径
@@ -281,8 +265,8 @@ async def query_shortest_path(
                 "source": source,
                 "target": target,
                 "path_length": result.get("path_length", 0),
-                "max_hops": max_hops
-            }
+                "max_hops": max_hops,
+            },
         }
     except HTTPException:
         raise
@@ -296,7 +280,7 @@ async def query_shortest_path(
 async def query_all_paths(
     source: str = Query(..., description="起始实体ID"),
     target: str = Query(..., description="目标实体ID"),
-    max_depth: int = Query(3, description="最大路径深度（1-5）", ge=1, le=5)
+    max_depth: int = Query(3, description="最大路径深度（1-5）", ge=1, le=5),
 ) -> Dict[str, Any]:
     """
     查询两个实体之间的所有路径（限制最多10条）
@@ -322,8 +306,8 @@ async def query_all_paths(
                 "source": source,
                 "target": target,
                 "path_count": result.get("path_count", 0),
-                "max_depth": max_depth
-            }
+                "max_depth": max_depth,
+            },
         }
     except HTTPException:
         raise
@@ -335,8 +319,7 @@ async def query_all_paths(
 
 @router.get("/common-neighbors", summary="查询共同邻居")
 async def query_common_neighbors(
-    entity_a: str = Query(..., description="实体A的ID"),
-    entity_b: str = Query(..., description="实体B的ID")
+    entity_a: str = Query(..., description="实体A的ID"), entity_b: str = Query(..., description="实体B的ID")
 ) -> Dict[str, Any]:
     """
     查询两个实体的共同邻居
@@ -357,11 +340,7 @@ async def query_common_neighbors(
         return {
             "status": "success",
             "data": result,
-            "meta": {
-                "entity_a": entity_a,
-                "entity_b": entity_b,
-                "neighbor_count": result.get("neighbor_count", 0)
-            }
+            "meta": {"entity_a": entity_a, "entity_b": entity_b, "neighbor_count": result.get("neighbor_count", 0)},
         }
     except HTTPException:
         raise
@@ -374,7 +353,7 @@ async def query_common_neighbors(
 @router.get("/influence", summary="查询实体影响范围")
 async def query_entity_influence(
     entity_id: str = Query(..., description="实体ID"),
-    max_depth: int = Query(2, description="扩展深度（1-3）", ge=1, le=3)
+    max_depth: int = Query(2, description="扩展深度（1-3）", ge=1, le=3),
 ) -> Dict[str, Any]:
     """
     分析实体的影响范围（周围N跳的所有实体）
@@ -392,14 +371,7 @@ async def query_entity_influence(
         if "error" in result:
             raise HTTPException(status_code=404, detail=result["error"])
 
-        return {
-            "status": "success",
-            "data": result,
-            "meta": {
-                "entity_id": entity_id,
-                "max_depth": max_depth
-            }
-        }
+        return {"status": "success", "data": result, "meta": {"entity_id": entity_id, "max_depth": max_depth}}
     except HTTPException:
         raise
     except Exception as e:
@@ -411,7 +383,7 @@ async def query_entity_influence(
 @router.get("/community", summary="查询实体社区")
 async def query_entity_community(
     entity_id: str = Query(..., description="实体ID"),
-    max_depth: int = Query(2, description="社区扩展深度（1-3）", ge=1, le=3)
+    max_depth: int = Query(2, description="社区扩展深度（1-3）", ge=1, le=3),
 ) -> Dict[str, Any]:
     """
     查询实体所属的社区
@@ -435,8 +407,8 @@ async def query_entity_community(
             "meta": {
                 "entity_id": entity_id,
                 "max_depth": max_depth,
-                "community_count": result.get("community_count", 0)
-            }
+                "community_count": result.get("community_count", 0),
+            },
         }
     except HTTPException:
         raise
@@ -449,7 +421,7 @@ async def query_entity_community(
 @router.get("/cycles", summary="查询实体环路")
 async def query_entity_cycles(
     entity_id: str = Query(..., description="实体ID"),
-    max_depth: int = Query(4, description="环路最大深度（1-4）", ge=1, le=4)
+    max_depth: int = Query(4, description="环路最大深度（1-4）", ge=1, le=4),
 ) -> Dict[str, Any]:
     """
     查询实体的环路（从实体出发又回到自身的路径）
@@ -470,11 +442,7 @@ async def query_entity_cycles(
         return {
             "status": "success",
             "data": result,
-            "meta": {
-                "entity_id": entity_id,
-                "max_depth": max_depth,
-                "cycle_count": result.get("cycle_count", 0)
-            }
+            "meta": {"entity_id": entity_id, "max_depth": max_depth, "cycle_count": result.get("cycle_count", 0)},
         }
     except HTTPException:
         raise
@@ -485,9 +453,7 @@ async def query_entity_cycles(
 
 
 @router.get("/source/chunk", summary="获取原文片段")
-async def get_chunk_content(
-    chunk_id: str = Query(..., description="文本块ID")
-) -> Dict[str, Any]:
+async def get_chunk_content(chunk_id: str = Query(..., description="文本块ID")) -> Dict[str, Any]:
     """
     获取文本块的原文内容
 
@@ -503,11 +469,7 @@ async def get_chunk_content(
 
         return {
             "status": "success",
-            "data": {
-                "chunk_id": chunk_id,
-                "content": content,
-                "file_name": file_info.get("file_name", "未知文件")
-            }
+            "data": {"chunk_id": chunk_id, "content": content, "file_name": file_info.get("file_name", "未知文件")},
         }
     except Exception as e:
         print(f"获取原文片段失败: {str(e)}")
@@ -531,10 +493,7 @@ async def get_file_information(
     try:
         file_info = get_source_file_info(source_id)
 
-        return {
-            "status": "success",
-            "data": file_info
-        }
+        return {"status": "success", "data": file_info}
     except Exception as e:
         print(f"获取文件信息失败: {str(e)}")
         traceback.print_exc()
@@ -565,10 +524,7 @@ async def get_graph_stats() -> Dict[str, Any]:
         """
 
         entity_result = driver.execute_query(entity_query)
-        entity_types = [
-            {"type": r.get("type"), "count": r.get("count")}
-            for r in entity_result.records
-        ]
+        entity_types = [{"type": r.get("type"), "count": r.get("count")} for r in entity_result.records]
 
         # 查询关系统计
         rel_query = """
@@ -578,10 +534,7 @@ async def get_graph_stats() -> Dict[str, Any]:
         """
 
         rel_result = driver.execute_query(rel_query)
-        rel_types = [
-            {"type": r.get("type"), "count": r.get("count")}
-            for r in rel_result.records
-        ]
+        rel_types = [{"type": r.get("type"), "count": r.get("count")} for r in rel_result.records]
 
         # 查询总数
         total_entities_query = "MATCH (e:__Entity__) RETURN count(e) AS total"
@@ -598,8 +551,8 @@ async def get_graph_stats() -> Dict[str, Any]:
                 "total_entities": total_entities,
                 "total_relationships": total_rels,
                 "entity_types": entity_types,
-                "relationship_types": rel_types
-            }
+                "relationship_types": rel_types,
+            },
         }
     except Exception as e:
         print(f"获取图谱统计信息失败: {str(e)}")

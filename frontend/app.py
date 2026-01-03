@@ -8,32 +8,29 @@ ROOT_PATH = Path(__file__).resolve().parents[1]
 if str(ROOT_PATH) not in sys.path:
     sys.path.insert(0, str(ROOT_PATH))
 
-from utils.state import init_session_state
-from components.styles import custom_css
 from components.chat import display_chat_interface
-from components.sidebar import display_sidebar
 from components.debug import display_debug_panel
-from utils.performance import init_performance_monitoring
+from components.sidebar import display_sidebar
+from components.styles import custom_css
+from page_components.admin_feedback import render_feedback_admin
+from page_components.ai_config_wizard import ai_config_wizard_page
+from page_components.build_manager import build_manager_page
+from page_components.config_manager import config_manager_page
 
 # 导入管理页面
 from page_components.document_manager import document_manager_page
-from page_components.config_manager import config_manager_page
-from page_components.build_manager import build_manager_page
-from page_components.ai_config_wizard import ai_config_wizard_page
-from page_components.admin_feedback import render_feedback_admin
 from page_components.metrics_dashboard import render_metrics_dashboard
-from page_components.template_marketplace import render_template_marketplace
 from page_components.model_hub import render_model_hub
+from page_components.template_marketplace import render_template_marketplace
+from utils.performance import init_performance_monitoring
+from utils.state import init_session_state
 
 
 def main():
     """主应用入口函数"""
     # 页面配置
     st.set_page_config(
-        page_title="GraphRAG 智能问答系统",
-        page_icon="🤖",
-        layout="wide",
-        initial_sidebar_state="expanded"
+        page_title="GraphRAG 智能问答系统", page_icon="🤖", layout="wide", initial_sidebar_state="expanded"
     )
 
     # 初始化会话状态
@@ -58,8 +55,18 @@ def main():
         else:
             page = st.radio(
                 "导航菜单",
-                options=["💬 智能问答", "📚 文档管理", "🤖 AI 配置向导", "⚙️ 配置管理", "🏗️ 构建管理", "🏪 模板市场", "🧠 模型中心", "📋 反馈管理", "📊 指标监控"],
-                label_visibility="collapsed"
+                options=[
+                    "💬 智能问答",
+                    "📚 文档管理",
+                    "🤖 AI 配置向导",
+                    "⚙️ 配置管理",
+                    "🏗️ 构建管理",
+                    "🏪 模板市场",
+                    "🧠 模型中心",
+                    "📋 反馈管理",
+                    "📊 指标监控",
+                ],
+                label_visibility="collapsed",
             )
 
         st.markdown("---")
@@ -107,7 +114,9 @@ def main():
     elif page == "📊 指标监控":
         render_metrics_dashboard()
 
+
 if __name__ == "__main__":
     import shutup
+
     shutup.please()
     main()

@@ -5,19 +5,21 @@
 支持实体合并、关系纠错等多种反馈类型的自动化应用。
 """
 
+import logging
+from typing import Any, Dict, List, Optional
+
 from fastapi import APIRouter, HTTPException
-from typing import Optional, Dict, Any, List
+
 from server.models.feedback_models import (
-    FeedbackDB,
-    get_feedback_db,
-    FeedbackType,
-    FeedbackStatus,
     DetailedFeedbackRequest,
+    FeedbackDB,
+    FeedbackRecord,
     FeedbackReviewRequest,
-    FeedbackRecord
+    FeedbackStatus,
+    FeedbackType,
+    get_feedback_db,
 )
 from server.services.kg_service import get_neo4j_driver
-import logging
 
 router = APIRouter(prefix="/admin/feedback", tags=["feedback_admin"])
 logger = logging.getLogger(__name__)
@@ -46,14 +48,10 @@ async def submit_detailed_feedback(request: DetailedFeedbackRequest) -> Dict[str
             user_id=request.user_id,
             target_id=request.target_id,
             thread_id=request.thread_id,
-            agent_type=request.agent_type
+            agent_type=request.agent_type,
         )
 
-        return {
-            "status": "success",
-            "feedback_id": record_id,
-            "message": "反馈已提交，等待审核"
-        }
+        return {"status": "success", "feedback_id": record_id, "message": "反馈已提交，等待审核"}
 
     except Exception as e:
         logger.error(f"Failed to submit feedback: {e}")
@@ -61,11 +59,7 @@ async def submit_detailed_feedback(request: DetailedFeedbackRequest) -> Dict[str
 
 
 @router.get("/pending")
-async def get_pending_feedback(
-    limit: int = 50,
-    offset: int = 0,
-    feedback_type: Optional[str] = None
-) -> Dict[str, Any]:
+async def get_pending_feedback(limit: int = 50, offset: int = 0, feedback_type: Optional[str] = None) -> Dict[str, Any]:
     """
     获取待审核反馈列表
 
@@ -85,12 +79,7 @@ async def get_pending_feedback(
             except ValueError:
                 raise HTTPException(status_code=400, detail=f"Invalid feedback type: {feedback_type}")
 
-        records = db.list_records(
-            limit=limit,
-            offset=offset,
-            status=FeedbackStatus.PENDING,
-            feedback_type=type_filter
-        )
+        records = db.list_records(limit=limit, offset=offset, status=FeedbackStatus.PENDING, feedback_type=type_filter)
 
         # 获取总数
         total_pending = db.count_by_status(FeedbackStatus.PENDING)
@@ -99,7 +88,7 @@ async def get_pending_feedback(
             "records": [record.model_dump() for record in records],
             "total": total_pending,
             "limit": limit,
-            "offset": offset
+            "offset": offset,
         }
 
     except HTTPException:
@@ -115,7 +104,7 @@ async def list_all_feedback(
     offset: int = 0,
     status: Optional[str] = None,
     feedback_type: Optional[str] = None,
-    user_id: Optional[str] = None
+    user_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     列出所有反馈（支持过滤）
@@ -146,18 +135,10 @@ async def list_all_feedback(
                 raise HTTPException(status_code=400, detail=f"Invalid feedback type: {feedback_type}")
 
         records = db.list_records(
-            limit=limit,
-            offset=offset,
-            status=status_filter,
-            feedback_type=type_filter,
-            user_id=user_id
+            limit=limit, offset=offset, status=status_filter, feedback_type=type_filter, user_id=user_id
         )
 
-        return {
-            "records": [record.model_dump() for record in records],
-            "limit": limit,
-            "offset": offset
-        }
+        return {"records": [record.model_dump() for record in records], "limit": limit, "offset": offset}
 
     except HTTPException:
         raise
@@ -206,10 +187,7 @@ async def get_feedback_detail(feedback_id: str) -> Dict[str, Any]:
 
 
 @router.post("/{feedback_id}/review")
-async def review_feedback(
-    feedback_id: str,
-    request: FeedbackReviewRequest
-) -> Dict[str, Any]:
+async def review_feedback(feedback_id: str, request: FeedbackReviewRequest) -> Dict[str, Any]:
     """
     审核反馈
 
@@ -227,10 +205,7 @@ async def review_feedback(
 
         # 验证状态
         if record.status != FeedbackStatus.PENDING:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Cannot review feedback with status: {record.status}"
-            )
+            raise HTTPException(status_code=400, detail=f"Cannot review feedback with status: {record.status}")
 
         # 更新状态
         if request.action == "approve":
@@ -239,22 +214,18 @@ async def review_feedback(
             new_status = FeedbackStatus.REJECTED
         else:
             raise HTTPException(
-                status_code=400,
-                detail=f"Invalid action: {request.action}. Must be 'approve' or 'reject'"
+                status_code=400, detail=f"Invalid action: {request.action}. Must be 'approve' or 'reject'"
             )
 
         db.update_status(
-            record_id=feedback_id,
-            status=new_status,
-            reviewer_id=request.reviewer_id,
-            review_note=request.note
+            record_id=feedback_id, status=new_status, reviewer_id=request.reviewer_id, review_note=request.note
         )
 
         return {
             "status": "success",
             "feedback_id": feedback_id,
             "action": request.action,
-            "new_status": new_status.value
+            "new_status": new_status.value,
         }
 
     except HTTPException:
@@ -288,8 +259,7 @@ async def apply_feedback(feedback_id: str) -> Dict[str, Any]:
         # 验证状态
         if record.status != FeedbackStatus.APPROVED:
             raise HTTPException(
-                status_code=400,
-                detail=f"Cannot apply feedback with status: {record.status}. Must be APPROVED first."
+                status_code=400, detail=f"Cannot apply feedback with status: {record.status}. Must be APPROVED first."
             )
 
         # 根据类型应用反馈
@@ -309,23 +279,12 @@ async def apply_feedback(feedback_id: str) -> Dict[str, Any]:
             result = _apply_entity_deletion(driver, record)
 
         else:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Cannot auto-apply feedback type: {record.type}"
-            )
+            raise HTTPException(status_code=400, detail=f"Cannot auto-apply feedback type: {record.type}")
 
         # 更新状态为已应用
-        db.update_status(
-            record_id=feedback_id,
-            status=FeedbackStatus.APPLIED
-        )
+        db.update_status(record_id=feedback_id, status=FeedbackStatus.APPLIED)
 
-        return {
-            "status": "success",
-            "feedback_id": feedback_id,
-            "applied_action": record.type.value,
-            "result": result
-        }
+        return {"status": "success", "feedback_id": feedback_id, "applied_action": record.type.value, "result": result}
 
     except HTTPException:
         raise
@@ -335,6 +294,7 @@ async def apply_feedback(feedback_id: str) -> Dict[str, Any]:
 
 
 # ========== 反馈应用辅助函数 ==========
+
 
 def _apply_entity_merge(driver, record: FeedbackRecord) -> Dict[str, Any]:
     """
@@ -389,7 +349,7 @@ def _apply_entity_merge(driver, record: FeedbackRecord) -> Dict[str, Any]:
             return {
                 "merged_id": record_result["merged_id"],
                 "merged_name": record_result["merged_name"],
-                "message": f"Successfully merged {from_id} into {to_id}"
+                "message": f"Successfully merged {from_id} into {to_id}",
             }
         else:
             return {"message": "Merge completed but no result returned"}
@@ -410,10 +370,7 @@ def _apply_relation_correction(driver, record: FeedbackRecord) -> Dict[str, Any]
     new_weight = content.get("weight", 0.5)
 
     if not all([source, target, old_type, new_type]):
-        raise HTTPException(
-            status_code=400,
-            detail="Missing required fields: source, target, old_type, new_type"
-        )
+        raise HTTPException(status_code=400, detail="Missing required fields: source, target, old_type, new_type")
 
     query = """
     MATCH (s:__Entity__ {id: $source})
@@ -440,7 +397,7 @@ def _apply_relation_correction(driver, record: FeedbackRecord) -> Dict[str, Any]
             old_type=old_type,
             new_type=new_type,
             description=new_description,
-            weight=new_weight
+            weight=new_weight,
         )
         record_result = result.single()
 
@@ -449,7 +406,7 @@ def _apply_relation_correction(driver, record: FeedbackRecord) -> Dict[str, Any]
                 "source": record_result["source_id"],
                 "target": record_result["target_id"],
                 "new_relation_type": record_result["new_relation_type"],
-                "message": f"Successfully corrected relation from {old_type} to {new_type}"
+                "message": f"Successfully corrected relation from {old_type} to {new_type}",
             }
         else:
             return {"message": "Relation correction completed"}
@@ -493,7 +450,7 @@ def _apply_entity_update(driver, record: FeedbackRecord) -> Dict[str, Any]:
                 "entity_id": record_result["id"],
                 "name": record_result["name"],
                 "type": record_result["type"],
-                "message": "Successfully updated entity"
+                "message": "Successfully updated entity",
             }
         else:
             raise HTTPException(status_code=404, detail="Entity not found")
@@ -519,9 +476,6 @@ def _apply_entity_deletion(driver, record: FeedbackRecord) -> Dict[str, Any]:
         record_result = result.single()
 
         if record_result:
-            return {
-                "deleted_id": record_result["deleted_id"],
-                "message": "Successfully deleted hallucination entity"
-            }
+            return {"deleted_id": record_result["deleted_id"], "message": "Successfully deleted hallucination entity"}
         else:
             raise HTTPException(status_code=404, detail="Entity not found")

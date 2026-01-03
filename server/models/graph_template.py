@@ -4,18 +4,20 @@
 用于模板市场的模板存储、评分、下载追踪。
 """
 
-import sqlite3
 import json
+import sqlite3
 import uuid
 from datetime import datetime
-from pathlib import Path
-from typing import Optional, List, Dict, Any
 from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field
 
 
 class TemplateDomain(str, Enum):
     """模板领域枚举"""
+
     LEGAL = "legal"  # 法务
     MEDICAL = "medical"  # 医疗
     ECOMMERCE = "ecommerce"  # 电商
@@ -28,6 +30,7 @@ class TemplateDomain(str, Enum):
 
 class GraphTemplate(BaseModel):
     """图谱模板模型"""
+
     id: str
     name: str
     domain: str  # 领域
@@ -48,6 +51,7 @@ class GraphTemplate(BaseModel):
 
 class TemplateRating(BaseModel):
     """模板评分记录"""
+
     id: str
     template_id: str
     user_id: str
@@ -74,7 +78,8 @@ class GraphTemplateDB:
         """初始化数据库表"""
         with sqlite3.connect(self.db_path) as conn:
             # 模板表
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS templates (
                     id TEXT PRIMARY KEY,
                     name TEXT NOT NULL,
@@ -93,10 +98,12 @@ class GraphTemplateDB:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
+            """
+            )
 
             # 评分表
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS template_ratings (
                     id TEXT PRIMARY KEY,
                     template_id TEXT NOT NULL,
@@ -106,25 +113,34 @@ class GraphTemplateDB:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (template_id) REFERENCES templates(id) ON DELETE CASCADE
                 )
-            """)
+            """
+            )
 
             # 创建索引
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_domain
                 ON templates(domain)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_rating
                 ON templates(rating DESC)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_downloads
                 ON templates(downloads DESC)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE UNIQUE INDEX IF NOT EXISTS idx_user_template_rating
                 ON template_ratings(user_id, template_id)
-            """)
+            """
+            )
 
             conn.commit()
 
@@ -139,7 +155,7 @@ class GraphTemplateDB:
         schema_definition: Optional[Dict[str, Any]] = None,
         tags: Optional[List[str]] = None,
         is_official: bool = False,
-        is_public: bool = True
+        is_public: bool = True,
     ) -> str:
         """
         创建新模板
@@ -183,8 +199,8 @@ class GraphTemplateDB:
                     1 if is_official else 0,
                     1 if is_public else 0,
                     created_at,
-                    created_at
-                )
+                    created_at,
+                ),
             )
             conn.commit()
 
@@ -202,10 +218,7 @@ class GraphTemplateDB:
         """
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
-            cursor = conn.execute(
-                "SELECT * FROM templates WHERE id = ?",
-                (template_id,)
-            )
+            cursor = conn.execute("SELECT * FROM templates WHERE id = ?", (template_id,))
             row = cursor.fetchone()
 
             if not row:
@@ -221,7 +234,7 @@ class GraphTemplateDB:
         is_public: bool = True,
         sort_by: str = "rating",  # rating, downloads, created_at
         limit: int = 50,
-        offset: int = 0
+        offset: int = 0,
     ) -> List[GraphTemplate]:
         """
         列出模板
@@ -281,19 +294,10 @@ class GraphTemplateDB:
             template_id: 模板ID
         """
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute(
-                "UPDATE templates SET downloads = downloads + 1 WHERE id = ?",
-                (template_id,)
-            )
+            conn.execute("UPDATE templates SET downloads = downloads + 1 WHERE id = ?", (template_id,))
             conn.commit()
 
-    def rate_template(
-        self,
-        template_id: str,
-        user_id: str,
-        rating: int,
-        comment: Optional[str] = None
-    ) -> str:
+    def rate_template(self, template_id: str, user_id: str, rating: int, comment: Optional[str] = None) -> str:
         """
         为模板评分
 
@@ -315,8 +319,7 @@ class GraphTemplateDB:
         with sqlite3.connect(self.db_path) as conn:
             # 检查是否已评分
             existing = conn.execute(
-                "SELECT id, rating FROM template_ratings WHERE template_id = ? AND user_id = ?",
-                (template_id, user_id)
+                "SELECT id, rating FROM template_ratings WHERE template_id = ? AND user_id = ?", (template_id, user_id)
             ).fetchone()
 
             if existing:
@@ -324,7 +327,7 @@ class GraphTemplateDB:
                 old_rating = existing[1]
                 conn.execute(
                     "UPDATE template_ratings SET rating = ?, comment = ?, created_at = ? WHERE id = ?",
-                    (rating, comment, created_at, existing[0])
+                    (rating, comment, created_at, existing[0]),
                 )
                 rating_id = existing[0]
 
@@ -337,7 +340,7 @@ class GraphTemplateDB:
                     INSERT INTO template_ratings (id, template_id, user_id, rating, comment, created_at)
                     VALUES (?, ?, ?, ?, ?, ?)
                     """,
-                    (rating_id, template_id, user_id, rating, comment, created_at)
+                    (rating_id, template_id, user_id, rating, comment, created_at),
                 )
 
                 # 更新模板平均分
@@ -358,10 +361,7 @@ class GraphTemplateDB:
             delta_count: 评分次数变化量
         """
         # 获取当前评分信息
-        row = conn.execute(
-            "SELECT rating, rating_count FROM templates WHERE id = ?",
-            (template_id,)
-        ).fetchone()
+        row = conn.execute("SELECT rating, rating_count FROM templates WHERE id = ?", (template_id,)).fetchone()
 
         if not row:
             return
@@ -379,7 +379,7 @@ class GraphTemplateDB:
         # 更新
         conn.execute(
             "UPDATE templates SET rating = ?, rating_count = ?, updated_at = ? WHERE id = ?",
-            (new_rating, new_count, datetime.now().isoformat(), template_id)
+            (new_rating, new_count, datetime.now().isoformat(), template_id),
         )
 
     def get_template_ratings(self, template_id: str, limit: int = 50) -> List[TemplateRating]:
@@ -402,20 +402,22 @@ class GraphTemplateDB:
                 ORDER BY created_at DESC
                 LIMIT ?
                 """,
-                (template_id, limit)
+                (template_id, limit),
             )
             rows = cursor.fetchall()
 
             ratings = []
             for row in rows:
-                ratings.append(TemplateRating(
-                    id=row["id"],
-                    template_id=row["template_id"],
-                    user_id=row["user_id"],
-                    rating=row["rating"],
-                    comment=row["comment"],
-                    created_at=row["created_at"]
-                ))
+                ratings.append(
+                    TemplateRating(
+                        id=row["id"],
+                        template_id=row["template_id"],
+                        user_id=row["user_id"],
+                        rating=row["rating"],
+                        comment=row["comment"],
+                        created_at=row["created_at"],
+                    )
+                )
 
             return ratings
 
@@ -464,7 +466,7 @@ class GraphTemplateDB:
             is_official=bool(row["is_official"]),
             is_public=bool(row["is_public"]),
             created_at=row["created_at"],
-            updated_at=row["updated_at"]
+            updated_at=row["updated_at"],
         )
 
 

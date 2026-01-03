@@ -3,23 +3,24 @@
 
 负责对任务图进行审校并生成完整的PlanSpec
 """
-from typing import Optional, Dict, Any
+
 import json
 import logging
+from typing import Any, Dict, Optional
 
-from pydantic import BaseModel, Field
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage
+from pydantic import BaseModel, Field
 
-from graphrag_agent.config.prompts import PLAN_REVIEW_PROMPT
-from graphrag_agent.models.get_models import get_llm_model
 from graphrag_agent.agents.multi_agent.core.plan_spec import (
+    AcceptanceCriteria,
     PlanSpec,
     ProblemStatement,
-    AcceptanceCriteria,
     TaskGraph,
 )
 from graphrag_agent.agents.multi_agent.tools.json_parser import parse_json_text
+from graphrag_agent.config.prompts import PLAN_REVIEW_PROMPT
+from graphrag_agent.models.get_models import get_llm_model
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -28,6 +29,7 @@ class PlanValidationResult(BaseModel):
     """
     审校校验结果
     """
+
     is_valid: bool = Field(default=True, description="计划是否通过内置审校")
     issues: list[str] = Field(default_factory=list, description="发现的问题列表")
     suggestions: list[str] = Field(default_factory=list, description="改进建议")
@@ -40,6 +42,7 @@ class PlanReviewOutcome(BaseModel):
     """
     审校节点产出
     """
+
     plan_spec: PlanSpec = Field(description="最终PlanSpec")
     validation: PlanValidationResult = Field(description="审校校验结果")
     reviewed_task_graph: TaskGraph = Field(description="审校后的任务图")

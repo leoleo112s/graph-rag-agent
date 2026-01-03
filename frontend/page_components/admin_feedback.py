@@ -4,11 +4,12 @@
 提供反馈审核、批准/拒绝、应用到图谱等功能的管理界面。
 """
 
-import streamlit as st
-import requests
-from typing import Dict, List, Optional, Any
-from datetime import datetime
 import json
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+import requests
+import streamlit as st
 
 # API 基础 URL
 API_URL = "http://localhost:8000"
@@ -81,22 +82,13 @@ def render_filters():
             "待审核": "pending",
             "已批准": "approved",
             "已拒绝": "rejected",
-            "已应用": "applied"
+            "已应用": "applied",
         }
         selected_status = st.selectbox("状态", status_options, index=1)  # 默认选择"待审核"
         st.session_state.filter_status = status_display_to_value[selected_status]
 
     with col2:
-        type_options = [
-            "全部",
-            "回答评分",
-            "实体合并",
-            "关系纠错",
-            "缺失实体",
-            "幻觉检测",
-            "实体错误",
-            "配置建议"
-        ]
+        type_options = ["全部", "回答评分", "实体合并", "关系纠错", "缺失实体", "幻觉检测", "实体错误", "配置建议"]
         type_display_to_value = {
             "全部": None,
             "回答评分": "answer_rating",
@@ -105,7 +97,7 @@ def render_filters():
             "缺失实体": "missing_entity",
             "幻觉检测": "hallucination",
             "实体错误": "entity_error",
-            "配置建议": "config_suggestion"
+            "配置建议": "config_suggestion",
         }
         selected_type = st.selectbox("类型", type_options)
         st.session_state.filter_type = type_display_to_value[selected_type]
@@ -182,18 +174,8 @@ def render_feedback_card(record: Dict[str, Any]):
     user_id = record.get("user_id", "匿名")
 
     # 状态图标
-    status_icons = {
-        "pending": "🟡",
-        "approved": "🟢",
-        "rejected": "🔴",
-        "applied": "✅"
-    }
-    status_names = {
-        "pending": "待审核",
-        "approved": "已批准",
-        "rejected": "已拒绝",
-        "applied": "已应用"
-    }
+    status_icons = {"pending": "🟡", "approved": "🟢", "rejected": "🔴", "applied": "✅"}
+    status_names = {"pending": "待审核", "approved": "已批准", "rejected": "已拒绝", "applied": "已应用"}
 
     # 类型图标
     type_icons = {
@@ -203,7 +185,7 @@ def render_feedback_card(record: Dict[str, Any]):
         "missing_entity": "❓",
         "hallucination": "👻",
         "entity_error": "⚠️",
-        "config_suggestion": "⚙️"
+        "config_suggestion": "⚙️",
     }
     type_names = {
         "answer_rating": "回答评分",
@@ -212,7 +194,7 @@ def render_feedback_card(record: Dict[str, Any]):
         "missing_entity": "缺失实体",
         "hallucination": "幻觉检测",
         "entity_error": "实体错误",
-        "config_suggestion": "配置建议"
+        "config_suggestion": "配置建议",
     }
 
     status_icon = status_icons.get(status, "⚪")
@@ -277,11 +259,7 @@ def review_feedback(feedback_id: str, action: str):
     try:
         response = requests.post(
             f"{API_URL}/admin/feedback/{feedback_id}/review",
-            json={
-                "action": action,
-                "note": note,
-                "reviewer_id": "admin"
-            }
+            json={"action": action, "note": note, "reviewer_id": "admin"},
         )
 
         if response.status_code == 200:
@@ -298,9 +276,7 @@ def apply_feedback(feedback_id: str):
     """应用反馈到图谱"""
     try:
         with st.spinner("正在应用反馈到知识图谱..."):
-            response = requests.post(
-                f"{API_URL}/admin/feedback/{feedback_id}/apply"
-            )
+            response = requests.post(f"{API_URL}/admin/feedback/{feedback_id}/apply")
 
             if response.status_code == 200:
                 result = response.json()

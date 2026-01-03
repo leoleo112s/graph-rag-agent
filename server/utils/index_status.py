@@ -8,8 +8,8 @@
 """
 
 import logging
-from typing import Dict, Optional, Literal
 from enum import Enum
+from typing import Dict, Literal, Optional
 
 from graphrag_agent.graph.core import connection_manager
 from server.utils.build_lock import get_build_lock_manager
@@ -20,10 +20,11 @@ _LOGGER = logging.getLogger(__name__)
 
 class IndexStatus(str, Enum):
     """索引状态枚举"""
-    READY = "ready"           # 就绪：索引存在且无构建任务
-    BUILDING = "building"     # 构建中：索引可能不完整，有构建任务正在运行
-    EMPTY = "empty"           # 空：索引不存在且无构建任务
-    ERROR = "error"           # 错误：检查失败
+
+    READY = "ready"  # 就绪：索引存在且无构建任务
+    BUILDING = "building"  # 构建中：索引可能不完整，有构建任务正在运行
+    EMPTY = "empty"  # 空：索引不存在且无构建任务
+    ERROR = "error"  # 错误：检查失败
 
 
 def check_vector_index_exists(index_name: str) -> bool:
@@ -46,7 +47,7 @@ def check_vector_index_exists(index_name: str) -> bool:
         result = connection_manager.execute_query(query, {"index_name": index_name})
 
         if result and len(result) > 0:
-            count = result[0].get('count', 0)
+            count = result[0].get("count", 0)
             return count > 0
 
         return False
@@ -70,7 +71,7 @@ def check_index_has_data(label: str) -> bool:
         result = connection_manager.execute_query(query)
 
         if result and len(result) > 0:
-            count = result[0].get('count', 0)
+            count = result[0].get("count", 0)
             return count > 0
 
         return False
@@ -121,7 +122,7 @@ def get_index_status() -> Dict:
             "entity_index_exists": entity_index_exists,
             "chunk_data_exists": chunk_data_exists,
             "entity_data_exists": entity_data_exists,
-            "is_building": is_building
+            "is_building": is_building,
         }
 
         # 5. 判断总体状态
@@ -134,14 +135,14 @@ def get_index_status() -> Dict:
             details["build_progress"] = {
                 "percent": progress.get("percent", 0),
                 "stage": progress.get("stage", "unknown"),
-                "details": progress.get("details", "构建中...")
+                "details": progress.get("details", "构建中..."),
             }
 
             return {
                 "status": IndexStatus.BUILDING,
                 "message": "知识图谱正在构建中，请稍候...",
                 "details": details,
-                "retry_after": 10  # 建议 10 秒后重试
+                "retry_after": 10,  # 建议 10 秒后重试
             }
 
         elif not (chunk_index_exists or entity_index_exists) or not (chunk_data_exists or entity_data_exists):
@@ -155,23 +156,13 @@ def get_index_status() -> Dict:
                     "3. 等待构建完成后再进行查询\n\n"
                     "注意：首次构建可能需要几分钟时间，具体取决于文档数量。"
                 ),
-                "details": details
+                "details": details,
             }
 
         else:
             # 索引就绪
-            return {
-                "status": IndexStatus.READY,
-                "message": "索引就绪，可以查询",
-                "details": details
-            }
+            return {"status": IndexStatus.READY, "message": "索引就绪，可以查询", "details": details}
 
     except Exception as e:
         _LOGGER.exception(f"获取索引状态失败: {e}")
-        return {
-            "status": IndexStatus.ERROR,
-            "message": f"检查索引状态时出错: {str(e)}",
-            "details": {
-                "error": str(e)
-            }
-        }
+        return {"status": IndexStatus.ERROR, "message": f"检查索引状态时出错: {str(e)}", "details": {"error": str(e)}}

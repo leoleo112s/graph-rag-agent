@@ -1,5 +1,3 @@
 from .struct_builder import GraphStructureBuilder
 
-__all__ = [
-    'GraphStructureBuilder'
-]
+__all__ = ["GraphStructureBuilder"]

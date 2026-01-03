@@ -3,17 +3,18 @@
 
 负责在Map-Reduce流程中对章节结果进行全局组装，生成最终报告。
 """
-from typing import Any, Dict
+
 import json
 import logging
+from typing import Any, Dict
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage
 
 from graphrag_agent.agents.multi_agent.reporter.outline_builder import ReportOutline
 from graphrag_agent.config.prompts import (
-    INTRO_PROMPT,
     CONCLUSION_PROMPT,
+    INTRO_PROMPT,
     TERMINOLOGY_PROMPT,
 )
 from graphrag_agent.models.get_models import get_llm_model
@@ -45,15 +46,9 @@ class ReportAssembler:
         introduction_needed = not self._has_intro_section(outline)
         conclusion_needed = not self._has_conclusion_section(outline)
         introduction = (
-            self._generate_introduction(outline, section_contents, global_context)
-            if introduction_needed
-            else ""
+            self._generate_introduction(outline, section_contents, global_context) if introduction_needed else ""
         )
-        conclusion = (
-            self._generate_conclusion(outline, section_contents, global_context)
-            if conclusion_needed
-            else ""
-        )
+        conclusion = self._generate_conclusion(outline, section_contents, global_context) if conclusion_needed else ""
 
         parts = [f"# {outline.title}"]
 
@@ -89,10 +84,7 @@ class ReportAssembler:
         try:
             data = json.loads(content)
             if isinstance(data, dict):
-                return {
-                    str(key): str(value)
-                    for key, value in data.items()
-                }
+                return {str(key): str(value) for key, value in data.items()}
         except json.JSONDecodeError as exc:
             _LOGGER.debug("术语解析失败，忽略: %s error=%s", content, exc)
         return {}
@@ -103,10 +95,7 @@ class ReportAssembler:
         section_contents: Dict[str, str],
         global_context: Dict[str, Any],
     ) -> str:
-        section_summaries = "\n".join(
-            f"- {section.title}: {section.summary}"
-            for section in outline.sections
-        )
+        section_summaries = "\n".join(f"- {section.title}: {section.summary}" for section in outline.sections)
         prompt = INTRO_PROMPT.format(
             report_title=outline.title,
             query=global_context.get("query", ""),
@@ -147,10 +136,7 @@ class ReportAssembler:
         return self._invoke_llm(prompt)
 
     def _format_terminology(self, terminology: Dict[str, str]) -> str:
-        lines = [
-            f"- **{term}**: {meaning}"
-            for term, meaning in terminology.items()
-        ]
+        lines = [f"- **{term}**: {meaning}" for term, meaning in terminology.items()]
         return "\n".join(lines)
 
     def _invoke_llm(self, prompt: str) -> str:

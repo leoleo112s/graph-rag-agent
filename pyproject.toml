@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "graphrag-agent"
+version = "0.1.0"
+description = "GraphRAG + Deep Search implementation with multi-agent collaboration"
+readme = "README.md"
+requires-python = ">=3.10"
+
+[tool.black]
+line-length = 120
+target-version = ['py310']
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | __pycache__
+  | build
+  | dist
+  | \.eggs
+  | cache
+  | data
+  | files
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 120
+skip_gitignore = true
+skip = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "cache",
+    "data",
+    "files",
+]
+known_first_party = ["graphrag_agent"]
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+# 渐进式类型检查 - 暂时允许未类型化的代码
+disallow_untyped_defs = false
+ignore_missing_imports = true

@@ -5,8 +5,8 @@ Map-Reduce reporter组件集合。
 """
 
 from .evidence_mapper import EvidenceMapper, EvidenceSummary
-from .section_reducer import SectionReducer, ReduceStrategy
 from .report_assembler import ReportAssembler
+from .section_reducer import ReduceStrategy, SectionReducer
 
 __all__ = [
     "EvidenceMapper",

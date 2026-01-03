@@ -1,10 +1,10 @@
 """执行层与报告层共享的证据追踪工具。"""
+
 from dataclasses import dataclass, field
 from typing import Dict, Iterable, List, Optional, Tuple
 
 from graphrag_agent.agents.multi_agent.core.retrieval_result import RetrievalResult
 from graphrag_agent.agents.multi_agent.core.state import PlanExecuteState
-
 
 EvidenceTrackingState = Dict[str, Dict[str, Dict[str, object]]]
 

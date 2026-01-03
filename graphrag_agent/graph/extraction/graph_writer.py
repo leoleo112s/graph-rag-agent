@@ -1,14 +1,16 @@
-import re
-import logging
 import concurrent.futures
-from typing import List, Set, Union, Dict, Any, Optional
+import logging
+import re
 from dataclasses import dataclass, field
-from langchain_community.graphs import Neo4jGraph
-from langchain_core.documents import Document
-from langchain_community.graphs.graph_document import GraphDocument, Node, Relationship
+from typing import Any, Dict, List, Optional, Set, Union
 
+from langchain_community.graphs import Neo4jGraph
+from langchain_community.graphs.graph_document import GraphDocument, Node, Relationship
+from langchain_core.documents import Document
+
+from graphrag_agent.config.settings import BATCH_SIZE as DEFAULT_BATCH_SIZE
+from graphrag_agent.config.settings import MAX_WORKERS as DEFAULT_MAX_WORKERS
 from graphrag_agent.graph.core import connection_manager
-from graphrag_agent.config.settings import BATCH_SIZE as DEFAULT_BATCH_SIZE, MAX_WORKERS as DEFAULT_MAX_WORKERS
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -16,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 class InvalidGraphDataError(Exception):
     """图数据验证失败异常"""
+
     def __init__(self, message: str, field: str = None, value: Any = None):
         self.field = field
         self.value = value
@@ -25,6 +28,7 @@ class InvalidGraphDataError(Exception):
 @dataclass
 class WriteResult:
     """图写入结果"""
+
     total: int = 0
     success_count: int = 0
     failed_count: int = 0
@@ -39,10 +43,7 @@ class WriteResult:
         """添加失败记录"""
         self.failed_count += 1
         self.failed_ids.append(chunk_id)
-        self.errors.append({
-            "chunk_id": chunk_id,
-            "error": error
-        })
+        self.errors.append({"chunk_id": chunk_id, "error": error})
 
     @property
     def failure_rate(self) -> float:
@@ -55,16 +56,17 @@ class WriteResult:
         """判断是否应该熔断（默认阈值 10%）"""
         return self.failure_rate > threshold
 
+
 class GraphWriter:
     """
     图写入器，负责将提取的实体和关系写入Neo4j图数据库。
     处理实体和关系的解析、转换为GraphDocument，以及批量写入图数据库。
     """
-    
+
     def __init__(self, graph: Neo4jGraph = None, batch_size: int = 50, max_workers: int = 4):
         """
         初始化图写入器
-        
+
         Args:
             graph: Neo4j图数据库对象，如果为None则使用连接管理器获取
             batch_size: 批处理大小
@@ -73,10 +75,10 @@ class GraphWriter:
         self.graph = graph or connection_manager.get_connection()
         self.batch_size = batch_size or DEFAULT_BATCH_SIZE
         self.max_workers = max_workers or DEFAULT_MAX_WORKERS
-        
+
         # 节点缓存，用于减少重复节点的创建
         self.node_cache = {}
-        
+
         # 用于跟踪已经处理的节点，减少重复操作
         self.processed_nodes: Set[str] = set()
 
@@ -96,19 +98,13 @@ class GraphWriter:
         """
         if not isinstance(entity, dict):
             raise InvalidGraphDataError(
-                f"实体必须是字典类型，实际类型: {type(entity).__name__}",
-                field="entity",
-                value=entity
+                f"实体必须是字典类型，实际类型: {type(entity).__name__}", field="entity", value=entity
             )
 
         # 验证 name 字段
         name = entity.get("name", "")
         if not name or not isinstance(name, str) or not name.strip():
-            raise InvalidGraphDataError(
-                f"实体 name 字段缺失或无效 (chunk_id: {chunk_id})",
-                field="name",
-                value=name
-            )
+            raise InvalidGraphDataError(f"实体 name 字段缺失或无效 (chunk_id: {chunk_id})", field="name", value=name)
 
         # 验证 type 字段
         entity_type = entity.get("type", "")
@@ -134,38 +130,36 @@ class GraphWriter:
         """
         if not isinstance(relation, dict):
             raise InvalidGraphDataError(
-                f"关系必须是字典类型，实际类型: {type(relation).__name__}",
-                field="relation",
-                value=relation
+                f"关系必须是字典类型，实际类型: {type(relation).__name__}", field="relation", value=relation
             )
 
         # 验证 source 字段
         source = relation.get("source", "")
         if not source or not isinstance(source, str) or not source.strip():
             raise InvalidGraphDataError(
-                f"关系 source 字段缺失或无效 (chunk_id: {chunk_id})",
-                field="source",
-                value=source
+                f"关系 source 字段缺失或无效 (chunk_id: {chunk_id})", field="source", value=source
             )
 
         # 验证 target 字段
         target = relation.get("target", "")
         if not target or not isinstance(target, str) or not target.strip():
             raise InvalidGraphDataError(
-                f"关系 target 字段缺失或无效 (chunk_id: {chunk_id})",
-                field="target",
-                value=target
+                f"关系 target 字段缺失或无效 (chunk_id: {chunk_id})", field="target", value=target
             )
 
         # 验证 type 字段
         rel_type = relation.get("type", "")
         if not rel_type or not isinstance(rel_type, str) or not rel_type.strip():
-            logger.warning(f"关系 type 字段缺失或无效，使用默认值 'RELATED_TO' (chunk_id: {chunk_id}, {source} -> {target})")
+            logger.warning(
+                f"关系 type 字段缺失或无效，使用默认值 'RELATED_TO' (chunk_id: {chunk_id}, {source} -> {target})"
+            )
             relation["type"] = "RELATED_TO"
 
         return True
 
-    def convert_to_graph_document(self, chunk_id: str, input_text: str, result: Union[str, Dict[str, Any]]) -> GraphDocument:
+    def convert_to_graph_document(
+        self, chunk_id: str, input_text: str, result: Union[str, Dict[str, Any]]
+    ) -> GraphDocument:
         """
         将提取的实体关系转换为GraphDocument对象
 
@@ -188,7 +182,7 @@ class GraphWriter:
                 raise InvalidGraphDataError(
                     f"entities 字段必须是列表类型，实际类型: {type(entities).__name__} (chunk_id: {chunk_id})",
                     field="entities",
-                    value=entities
+                    value=entities,
                 )
 
             relations = result.get("relations", [])
@@ -199,7 +193,7 @@ class GraphWriter:
                 raise InvalidGraphDataError(
                     f"relations/relationships 字段必须是列表类型，实际类型: {type(relations).__name__} (chunk_id: {chunk_id})",
                     field="relations",
-                    value=relations
+                    value=relations,
                 )
 
             # 处理实体
@@ -218,11 +212,7 @@ class GraphWriter:
                 if node_id in self.node_cache:
                     nodes[node_id] = self.node_cache[node_id]
                 elif node_id not in nodes:
-                    new_node = Node(
-                        id=node_id,
-                        type=node_type,
-                        properties={'description': description}
-                    )
+                    new_node = Node(id=node_id, type=node_type, properties={"description": description})
                     nodes[node_id] = new_node
                     self.node_cache[node_id] = new_node
 
@@ -246,11 +236,7 @@ class GraphWriter:
                     if source_id in self.node_cache:
                         nodes[source_id] = self.node_cache[source_id]
                     else:
-                        new_node = Node(
-                            id=source_id,
-                            type="未知",
-                            properties={'description': 'No additional data'}
-                        )
+                        new_node = Node(id=source_id, type="未知", properties={"description": "No additional data"})
                         nodes[source_id] = new_node
                         self.node_cache[source_id] = new_node
 
@@ -259,11 +245,7 @@ class GraphWriter:
                     if target_id in self.node_cache:
                         nodes[target_id] = self.node_cache[target_id]
                     else:
-                        new_node = Node(
-                            id=target_id,
-                            type="未知",
-                            properties={'description': 'No additional data'}
-                        )
+                        new_node = Node(id=target_id, type="未知", properties={"description": "No additional data"})
                         nodes[target_id] = new_node
                         self.node_cache[target_id] = new_node
 
@@ -272,7 +254,7 @@ class GraphWriter:
                         source=nodes[source_id],
                         target=nodes[target_id],
                         type=rel_type,
-                        properties={'description': description, 'weight': weight}
+                        properties={"description": description, "weight": weight},
                     )
                 )
 
@@ -290,11 +272,7 @@ class GraphWriter:
                     if node_id in self.node_cache:
                         nodes[node_id] = self.node_cache[node_id]
                     elif node_id not in nodes:
-                        new_node = Node(
-                            id=node_id,
-                            type=node_type,
-                            properties={'description': description}
-                        )
+                        new_node = Node(id=node_id, type=node_type, properties={"description": description})
                         nodes[node_id] = new_node
                         self.node_cache[node_id] = new_node
 
@@ -306,11 +284,7 @@ class GraphWriter:
                         if source_id in self.node_cache:
                             nodes[source_id] = self.node_cache[source_id]
                         else:
-                            new_node = Node(
-                                id=source_id,
-                                type="未知",
-                                properties={'description': 'No additional data'}
-                            )
+                            new_node = Node(id=source_id, type="未知", properties={"description": "No additional data"})
                             nodes[source_id] = new_node
                             self.node_cache[source_id] = new_node
 
@@ -319,11 +293,7 @@ class GraphWriter:
                         if target_id in self.node_cache:
                             nodes[target_id] = self.node_cache[target_id]
                         else:
-                            new_node = Node(
-                                id=target_id,
-                                type="未知",
-                                properties={'description': 'No additional data'}
-                            )
+                            new_node = Node(id=target_id, type="未知", properties={"description": "No additional data"})
                             nodes[target_id] = new_node
                             self.node_cache[target_id] = new_node
 
@@ -332,31 +302,23 @@ class GraphWriter:
                             source=nodes[source_id],
                             target=nodes[target_id],
                             type=rel_type,
-                            properties={
-                                "description": description,
-                                "weight": float(weight)
-                            }
+                            properties={"description": description, "weight": float(weight)},
                         )
                     )
             except Exception as e:
                 logger.error(f"解析文本时出错 (chunk_id: {chunk_id}): {e}", exc_info=True)
                 # 抛出异常以便上层处理
                 raise InvalidGraphDataError(
-                    f"解析旧格式文本失败 (chunk_id: {chunk_id}): {e}",
-                    field="result",
-                    value=result
+                    f"解析旧格式文本失败 (chunk_id: {chunk_id}): {e}", field="result", value=result
                 )
 
         # 创建并返回GraphDocument对象
         return GraphDocument(
             nodes=list(nodes.values()),
             relationships=relationships,
-            source=Document(
-                page_content=input_text,
-                metadata={"chunk_id": chunk_id}
-            )
+            source=Document(page_content=input_text, metadata={"chunk_id": chunk_id}),
         )
-        
+
     def process_and_write_graph_documents(self, file_contents: List) -> WriteResult:
         """
         处理并写入所有文件的GraphDocument对象 - 使用并行处理和批处理优化
@@ -381,26 +343,23 @@ class GraphWriter:
         chunk_index = 0
 
         logger.info(f"开始处理 {total_chunks} 个chunks的GraphDocument")
-        
+
         # 使用线程池并行处理
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             future_to_index = {}
-            
+
             # 提交所有任务
             for file_content in file_contents:
                 chunks = file_content[3]  # chunks_with_hash在索引3的位置
                 results = file_content[4]  # 提取结果在索引4的位置
-                
+
                 for i, (chunk, result) in enumerate(zip(chunks, results)):
                     future = executor.submit(
-                        self.convert_to_graph_document,
-                        chunk["chunk_id"],
-                        chunk["chunk_doc"].page_content,
-                        result
+                        self.convert_to_graph_document, chunk["chunk_id"], chunk["chunk_doc"].page_content, result
                     )
                     future_to_index[future] = chunk_index
                     chunk_index += 1
-            
+
             # 收集处理结果
             for future in concurrent.futures.as_completed(future_to_index):
                 idx = future_to_index[future]
@@ -444,7 +403,7 @@ class GraphWriter:
             f"共处理 {total_chunks} 个chunks, 成功 {write_result.success_count}, "
             f"失败 {write_result.failed_count}, 失败率 {write_result.failure_rate:.2%}"
         )
-        
+
         # 批量写入图文档
         self._batch_write_graph_documents(all_graph_documents)
 
@@ -453,7 +412,7 @@ class GraphWriter:
             self.merge_chunk_relationships(all_chunk_ids)
 
         return write_result
-    
+
     def _batch_write_graph_documents(self, documents: List[GraphDocument]) -> None:
         """
         批量写入图文档（使用显式事务）
@@ -472,17 +431,13 @@ class GraphWriter:
 
         # 批量写入图文档
         for i in range(0, len(documents), optimal_batch_size):
-            batch = documents[i:i+optimal_batch_size]
+            batch = documents[i : i + optimal_batch_size]
             if batch:
                 # 使用显式事务确保原子性
                 try:
                     # LangChain的add_graph_documents内部使用write transaction
                     # 但我们可以通过在外层catch异常来确保整个批次的原子性
-                    self.graph.add_graph_documents(
-                        batch,
-                        baseEntityLabel=True,
-                        include_source=True
-                    )
+                    self.graph.add_graph_documents(batch, baseEntityLabel=True, include_source=True)
                     logger.info(f"已写入批次 {i//optimal_batch_size + 1}/{total_batches} (使用事务)")
                 except Exception as e:
                     logger.error(f"写入图文档批次时出错（事务已回滚）: {e}", exc_info=True)
@@ -490,14 +445,13 @@ class GraphWriter:
                     logger.info(f"尝试逐个写入该批次的 {len(batch)} 个文档...")
                     for idx, doc in enumerate(batch):
                         try:
-                            self.graph.add_graph_documents(
-                                [doc],
-                                baseEntityLabel=True,
-                                include_source=True
-                            )
+                            self.graph.add_graph_documents([doc], baseEntityLabel=True, include_source=True)
                         except Exception as e2:
-                            logger.error(f"单个文档写入失败 (批次 {i//optimal_batch_size + 1}, 文档 {idx+1}): {e2}", exc_info=True)
-    
+                            logger.error(
+                                f"单个文档写入失败 (批次 {i//optimal_batch_size + 1}, 文档 {idx+1}): {e2}",
+                                exc_info=True,
+                            )
+
     def merge_chunk_relationships(self, chunk_ids: List[str]) -> None:
         """
         合并Chunk节点与Document节点的关系（使用显式事务）
@@ -520,7 +474,7 @@ class GraphWriter:
 
         # 分批处理，避免一次性处理过多数据
         for i in range(0, len(unique_chunk_ids), optimal_batch_size):
-            batch_chunk_ids = unique_chunk_ids[i:i+optimal_batch_size]
+            batch_chunk_ids = unique_chunk_ids[i : i + optimal_batch_size]
             batch_data = [{"chunk_id": chunk_id} for chunk_id in batch_chunk_ids]
 
             try:

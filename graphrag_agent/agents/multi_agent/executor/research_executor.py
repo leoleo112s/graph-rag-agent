@@ -3,11 +3,12 @@
 
 负责处理深度研究类任务，调用DeepResearch/DeeperResearch工具并生成结构化ExecutionRecord。
 """
-from typing import Any, Dict, Optional, List
-import time
-import logging
+
 import json
+import logging
 import re
+import time
+from typing import Any, Dict, List, Optional
 
 from graphrag_agent.agents.multi_agent.core.execution_record import (
     ExecutionMetadata,
@@ -28,9 +29,9 @@ from graphrag_agent.agents.multi_agent.executor.base_executor import (
     ExecutorConfig,
     TaskExecutionResult,
 )
-from graphrag_agent.utils.tool_invocation import invoke_tool_structured
 from graphrag_agent.agents.multi_agent.tools.evidence_tracker import get_evidence_tracker
 from graphrag_agent.search.tool_registry import TOOL_REGISTRY
+from graphrag_agent.utils.tool_invocation import invoke_tool_structured
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -325,7 +326,7 @@ class ResearchExecutor(BaseExecutor):
         if answer_text and not references:
             _LOGGER.warning(
                 "结构化引用提取失败，回退到正则表达式解析（不稳定）。"
-                "建议修改 Tool 返回格式为: {\"content\": \"...\", \"references\": [...]}"
+                '建议修改 Tool 返回格式为: {"content": "...", "references": [...]}'
             )
 
             # 最基础的正则：仅提取形如 [证据ID: xxx] 的标签

@@ -3,29 +3,20 @@ Reporter编排基类
 
 负责串联纲要生成、章节写作、引用整理与一致性校验
 """
-from typing import List, Dict, Any, Optional, Iterable, Tuple
+
 import hashlib
 import json
 import logging
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from pydantic import BaseModel, Field
 
-from graphrag_agent.agents.multi_agent.core.plan_spec import PlanSpec
 from graphrag_agent.agents.multi_agent.core.execution_record import ExecutionRecord
+from graphrag_agent.agents.multi_agent.core.plan_spec import PlanSpec
 from graphrag_agent.agents.multi_agent.core.retrieval_result import RetrievalResult
 from graphrag_agent.agents.multi_agent.core.state import PlanExecuteState
-from graphrag_agent.agents.multi_agent.reporter.outline_builder import (
-    OutlineBuilder,
-    ReportOutline,
-    SectionOutline,
-)
-from graphrag_agent.agents.multi_agent.reporter.section_writer import (
-    SectionWriter,
-    SectionWriterConfig,
-    SectionDraft,
-)
 from graphrag_agent.agents.multi_agent.reporter.consistency_checker import (
     ConsistencyChecker,
     ConsistencyCheckResult,
@@ -34,9 +25,19 @@ from graphrag_agent.agents.multi_agent.reporter.formatter import CitationFormatt
 from graphrag_agent.agents.multi_agent.reporter.mapreduce import (
     EvidenceMapper,
     EvidenceSummary,
-    SectionReducer,
     ReduceStrategy,
     ReportAssembler,
+    SectionReducer,
+)
+from graphrag_agent.agents.multi_agent.reporter.outline_builder import (
+    OutlineBuilder,
+    ReportOutline,
+    SectionOutline,
+)
+from graphrag_agent.agents.multi_agent.reporter.section_writer import (
+    SectionDraft,
+    SectionWriter,
+    SectionWriterConfig,
 )
 from graphrag_agent.agents.multi_agent.tools.evidence_tracker import EvidenceTracker
 from graphrag_agent.cache_manager.manager import CacheManager
@@ -44,11 +45,11 @@ from graphrag_agent.config.settings import (
     MULTI_AGENT_DEFAULT_REPORT_TYPE,
     MULTI_AGENT_ENABLE_CONSISTENCY_CHECK,
     MULTI_AGENT_ENABLE_MAPREDUCE,
+    MULTI_AGENT_ENABLE_PARALLEL_MAP,
     MULTI_AGENT_MAPREDUCE_THRESHOLD,
     MULTI_AGENT_MAX_TOKENS_PER_REDUCE,
-    MULTI_AGENT_ENABLE_PARALLEL_MAP,
-    MULTI_AGENT_SECTION_MAX_EVIDENCE,
     MULTI_AGENT_SECTION_MAX_CONTEXT_CHARS,
+    MULTI_AGENT_SECTION_MAX_EVIDENCE,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -58,6 +59,7 @@ class ReporterConfig(BaseModel):
     """
     Reporter层配置
     """
+
     default_report_type: str = Field(default="long_document", description="默认报告类型")
     citation_style: str = Field(default="default", description="引用格式类型")
     max_evidence_summary: int = Field(default=30, description="纲要生成时展示的最大证据条数")
@@ -74,6 +76,7 @@ class SectionContent(BaseModel):
     """
     章节内容包装
     """
+
     section_id: str = Field(description="章节ID")
     title: str = Field(description="章节标题")
     content: str = Field(description="章节内容（Markdown）")
@@ -84,6 +87,7 @@ class ReportResult(BaseModel):
     """
     Reporter最终结果
     """
+
     outline: ReportOutline = Field(description="报告纲要")
     sections: List[SectionContent] = Field(description="章节内容列表")
     final_report: str = Field(description="最终报告Markdown文本")
@@ -148,9 +152,7 @@ class BaseReporter:
 
         execution_records = execution_records or state.execution_records
 
-        resolved_report_type = report_type or (
-            state.report_context.report_type if state.report_context else None
-        )
+        resolved_report_type = report_type or (state.report_context.report_type if state.report_context else None)
         if not resolved_report_type:
             resolved_report_type = self.config.default_report_type
 
@@ -159,10 +161,7 @@ class BaseReporter:
         evidence_fingerprint = self._build_evidence_fingerprint(evidence_map)
 
         cached_payload = self._load_cached_payload(report_id)
-        if (
-            cached_payload
-            and cached_payload.get("evidence_fingerprint") == evidence_fingerprint
-        ):
+        if cached_payload and cached_payload.get("evidence_fingerprint") == evidence_fingerprint:
             report_result = self._deserialize_report_result(cached_payload)
             self._update_state_report_context(
                 state,
@@ -216,9 +215,7 @@ class BaseReporter:
         if self.config.enable_consistency_check and evidence_map:
             evidence_text = self._format_evidence_for_check(evidence_map.values())
             try:
-                consistency_result = self._consistency_checker.check(
-                    final_report, evidence_text
-                )
+                consistency_result = self._consistency_checker.check(final_report, evidence_text)
             except Exception as exc:  # noqa: BLE001
                 _LOGGER.warning("一致性检查失败: %s", exc)
 
@@ -509,10 +506,7 @@ class BaseReporter:
         if not evidence_batches:
             return []
 
-        if (
-            self.config.enable_parallel_map
-            and len(evidence_batches) > 1
-        ):
+        if self.config.enable_parallel_map and len(evidence_batches) > 1:
             max_workers = min(len(evidence_batches), 4)
             try:
                 with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -564,10 +558,7 @@ class BaseReporter:
     ) -> str:
         self._ensure_mapreduce_components()
         assert self._report_assembler is not None
-        section_payload = {
-            section.section_id: section.content
-            for section in section_contents
-        }
+        section_payload = {section.section_id: section.content for section in section_contents}
         return self._report_assembler.assemble(
             outline,
             section_payload,
@@ -615,10 +606,7 @@ class BaseReporter:
                 snippet = item.evidence.replace("\n", " ")[:200]
             elif isinstance(item.evidence, dict):
                 snippet = str(item.evidence)
-            lines.append(
-                f"{item.result_id} | {item.granularity} | {item.source} | "
-                f"{snippet}"
-            )
+            lines.append(f"{item.result_id} | {item.granularity} | {item.source} | " f"{snippet}")
         return "\n".join(lines)
 
     def _append_evidence_annex(
@@ -673,12 +661,7 @@ class BaseReporter:
             return report
 
         annex_json = json.dumps(annex_entries, ensure_ascii=False, indent=2)
-        annex_block = (
-            "\n\n## 证据附录\n"
-            "```json\n"
-            f"{annex_json}\n"
-            "```\n"
-        )
+        annex_block = "\n\n## 证据附录\n" "```json\n" f"{annex_json}\n" "```\n"
         return report.rstrip() + annex_block
 
     @staticmethod
@@ -720,9 +703,7 @@ class BaseReporter:
 
         sanitized = re.sub(r"\[证据ID[:：]\s*([A-Za-z0-9\-]+)\]", replacer, content or "")
 
-        candidate_order = [
-            eid for eid in candidate_ids if eid in evidence_map and eid not in valid_ids
-        ]
+        candidate_order = [eid for eid in candidate_ids if eid in evidence_map and eid not in valid_ids]
         ordered_ids = valid_ids + candidate_order
         return sanitized.strip(), ordered_ids
 
@@ -839,9 +820,7 @@ class BaseReporter:
             "final_report": report_result.final_report,
             "references": report_result.references,
             "consistency_check": (
-                report_result.consistency_check.model_dump(mode="json")
-                if report_result.consistency_check
-                else None
+                report_result.consistency_check.model_dump(mode="json") if report_result.consistency_check else None
             ),
             "evidence_fingerprint": evidence_fingerprint,
             "evidence_ids": list(evidence_map.keys()),
@@ -892,16 +871,12 @@ class BaseReporter:
 
         context.report_type = report_result.outline.report_type
         context.outline = report_result.outline.model_dump()
-        context.section_drafts = {
-            section.section_id: section.content for section in report_result.sections
-        }
+        context.section_drafts = {section.section_id: section.content for section in report_result.sections}
         context.citations = []
         if report_result.references:
             context.citations.append({"formatted": report_result.references})
         context.consistency_check_results = (
-            report_result.consistency_check.model_dump()
-            if report_result.consistency_check
-            else None
+            report_result.consistency_check.model_dump() if report_result.consistency_check else None
         )
         context.report_id = report_id
         context.cache_hit = cache_hit

@@ -4,18 +4,20 @@
 使用 SQLite 存储问答查询的历史记录，支持性能监控、Token 统计和用户反馈跟踪。
 """
 
-import sqlite3
 import json
+import sqlite3
 import uuid
 from datetime import datetime
-from pathlib import Path
-from typing import Optional, List, Dict, Any
 from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel
 
 
 class QueryLog(BaseModel):
     """查询日志模型"""
+
     id: str
     question: str
     agent_type: str
@@ -49,7 +51,8 @@ class QueryLogDB:
     def _init_db(self):
         """初始化数据库表"""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS query_logs (
                     id TEXT PRIMARY KEY,
                     question TEXT NOT NULL,
@@ -66,24 +69,33 @@ class QueryLogDB:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP
                 )
-            """)
+            """
+            )
             # 创建索引以加速查询
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_created_at
                 ON query_logs(created_at DESC)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_agent_type
                 ON query_logs(agent_type)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_session_id
                 ON query_logs(session_id)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_feedback_score
                 ON query_logs(feedback_score)
-            """)
+            """
+            )
             conn.commit()
 
     def create_log(
@@ -97,7 +109,7 @@ class QueryLogDB:
         retriever_type: Optional[str] = None,
         search_time: Optional[float] = None,
         llm_time: Optional[float] = None,
-        cache_hit: Optional[bool] = None
+        cache_hit: Optional[bool] = None,
     ) -> str:
         """
         创建新的查询日志
@@ -140,19 +152,14 @@ class QueryLogDB:
                     search_time,
                     llm_time,
                     1 if cache_hit else 0 if cache_hit is not None else None,
-                    created_at
-                )
+                    created_at,
+                ),
             )
             conn.commit()
 
         return log_id
 
-    def update_feedback(
-        self,
-        log_id: Optional[str] = None,
-        message_id: Optional[str] = None,
-        feedback_score: int = 1
-    ):
+    def update_feedback(self, log_id: Optional[str] = None, message_id: Optional[str] = None, feedback_score: int = 1):
         """
         更新查询的反馈评分
 
@@ -174,7 +181,7 @@ class QueryLogDB:
                     SET feedback_score = ?, updated_at = ?
                     WHERE id = ?
                     """,
-                    (feedback_score, updated_at, log_id)
+                    (feedback_score, updated_at, log_id),
                 )
             else:
                 conn.execute(
@@ -183,7 +190,7 @@ class QueryLogDB:
                     SET feedback_score = ?, updated_at = ?
                     WHERE message_id = ?
                     """,
-                    (feedback_score, updated_at, message_id)
+                    (feedback_score, updated_at, message_id),
                 )
             conn.commit()
 
@@ -199,10 +206,7 @@ class QueryLogDB:
         """
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
-            cursor = conn.execute(
-                "SELECT * FROM query_logs WHERE id = ?",
-                (log_id,)
-            )
+            cursor = conn.execute("SELECT * FROM query_logs WHERE id = ?", (log_id,))
             row = cursor.fetchone()
 
             if not row:
@@ -217,7 +221,7 @@ class QueryLogDB:
         agent_type: Optional[str] = None,
         session_id: Optional[str] = None,
         start_time: Optional[str] = None,
-        end_time: Optional[str] = None
+        end_time: Optional[str] = None,
     ) -> List[QueryLog]:
         """
         列出查询日志
@@ -263,10 +267,7 @@ class QueryLogDB:
             return [self._row_to_log(row) for row in rows]
 
     def get_statistics(
-        self,
-        start_time: Optional[str] = None,
-        end_time: Optional[str] = None,
-        agent_type: Optional[str] = None
+        self, start_time: Optional[str] = None, end_time: Optional[str] = None, agent_type: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         获取查询统计信息
@@ -297,51 +298,41 @@ class QueryLogDB:
                 params.append(agent_type)
 
             # 总查询数
-            total = conn.execute(
-                f"SELECT COUNT(*) FROM query_logs {where_clause}",
-                params
-            ).fetchone()[0]
+            total = conn.execute(f"SELECT COUNT(*) FROM query_logs {where_clause}", params).fetchone()[0]
 
             # 平均响应时间
             avg_response_time = conn.execute(
-                f"SELECT AVG(response_time) FROM query_logs {where_clause}",
-                params
+                f"SELECT AVG(response_time) FROM query_logs {where_clause}", params
             ).fetchone()[0]
 
             # 平均搜索时间
             avg_search_time = conn.execute(
-                f"SELECT AVG(search_time) FROM query_logs {where_clause} AND search_time IS NOT NULL",
-                params
+                f"SELECT AVG(search_time) FROM query_logs {where_clause} AND search_time IS NOT NULL", params
             ).fetchone()[0]
 
             # 平均LLM时间
             avg_llm_time = conn.execute(
-                f"SELECT AVG(llm_time) FROM query_logs {where_clause} AND llm_time IS NOT NULL",
-                params
+                f"SELECT AVG(llm_time) FROM query_logs {where_clause} AND llm_time IS NOT NULL", params
             ).fetchone()[0]
 
             # 缓存命中率
             cache_hits = conn.execute(
-                f"SELECT COUNT(*) FROM query_logs {where_clause} AND cache_hit = 1",
-                params
+                f"SELECT COUNT(*) FROM query_logs {where_clause} AND cache_hit = 1", params
             ).fetchone()[0]
 
             cache_total = conn.execute(
-                f"SELECT COUNT(*) FROM query_logs {where_clause} AND cache_hit IS NOT NULL",
-                params
+                f"SELECT COUNT(*) FROM query_logs {where_clause} AND cache_hit IS NOT NULL", params
             ).fetchone()[0]
 
             cache_hit_rate = (cache_hits / cache_total * 100) if cache_total > 0 else 0
 
             # 反馈统计
             positive_feedback = conn.execute(
-                f"SELECT COUNT(*) FROM query_logs {where_clause} AND feedback_score = 1",
-                params
+                f"SELECT COUNT(*) FROM query_logs {where_clause} AND feedback_score = 1", params
             ).fetchone()[0]
 
             negative_feedback = conn.execute(
-                f"SELECT COUNT(*) FROM query_logs {where_clause} AND feedback_score = -1",
-                params
+                f"SELECT COUNT(*) FROM query_logs {where_clause} AND feedback_score = -1", params
             ).fetchone()[0]
 
             feedback_total = positive_feedback + negative_feedback
@@ -349,22 +340,20 @@ class QueryLogDB:
 
             # 代理类型分布
             cursor = conn.execute(
-                f"SELECT agent_type, COUNT(*) as count FROM query_logs {where_clause} GROUP BY agent_type",
-                params
+                f"SELECT agent_type, COUNT(*) as count FROM query_logs {where_clause} GROUP BY agent_type", params
             )
             agent_distribution = {row[0]: row[1] for row in cursor}
 
             # 检索器类型分布
             cursor = conn.execute(
                 f"SELECT retriever_type, COUNT(*) as count FROM query_logs {where_clause} AND retriever_type IS NOT NULL GROUP BY retriever_type",
-                params
+                params,
             )
             retriever_distribution = {row[0]: row[1] for row in cursor}
 
             # Token 统计
             cursor = conn.execute(
-                f"SELECT token_usage FROM query_logs {where_clause} AND token_usage IS NOT NULL",
-                params
+                f"SELECT token_usage FROM query_logs {where_clause} AND token_usage IS NOT NULL", params
             )
             total_tokens = 0
             for row in cursor:
@@ -386,7 +375,7 @@ class QueryLogDB:
                 "agent_distribution": agent_distribution,
                 "retriever_distribution": retriever_distribution,
                 "avg_tokens_per_query": round(avg_tokens, 2),
-                "total_tokens": total_tokens
+                "total_tokens": total_tokens,
             }
 
     def get_time_series(
@@ -395,7 +384,7 @@ class QueryLogDB:
         start_time: Optional[str] = None,
         end_time: Optional[str] = None,
         interval: str = "hour",  # hour, day, week
-        agent_type: Optional[str] = None
+        agent_type: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         获取时间序列数据
@@ -463,18 +452,17 @@ class QueryLogDB:
 
             for row in cursor:
                 if metric == "token_usage":
-                    results.append({
-                        "time": row[0],
-                        "count": row[1]
-                    })
+                    results.append({"time": row[0], "count": row[1]})
                 else:
-                    results.append({
-                        "time": row[0],
-                        "avg": round(row[1], 3) if row[1] else 0,
-                        "min": round(row[2], 3) if row[2] else 0,
-                        "max": round(row[3], 3) if row[3] else 0,
-                        "count": row[4]
-                    })
+                    results.append(
+                        {
+                            "time": row[0],
+                            "avg": round(row[1], 3) if row[1] else 0,
+                            "min": round(row[2], 3) if row[2] else 0,
+                            "max": round(row[3], 3) if row[3] else 0,
+                            "count": row[4],
+                        }
+                    )
 
             return results
 
@@ -502,7 +490,7 @@ class QueryLogDB:
             llm_time=row["llm_time"],
             cache_hit=bool(row["cache_hit"]) if row["cache_hit"] is not None else None,
             created_at=row["created_at"],
-            updated_at=row["updated_at"]
+            updated_at=row["updated_at"],
         )
 
 

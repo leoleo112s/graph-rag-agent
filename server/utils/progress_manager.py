@@ -4,19 +4,21 @@ SSE 进度管理器（单例模式）
 用于在后台任务和 SSE 接口之间共享构建进度状态。
 与 WebSocket 方案互补，提供更轻量的单向推送方案。
 """
+
 import asyncio
 import json
 import logging
-from typing import Dict, Any, List, Optional
+import threading
 from datetime import datetime
 from enum import Enum
-import threading
+from typing import Any, Dict, List, Optional
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class BuildStage(str, Enum):
     """构建阶段枚举（标准化）"""
+
     IDLE = "idle"
     INITIALIZING = "initializing"
     DETECTING_CHANGES = "detecting_changes"
@@ -40,7 +42,7 @@ STAGE_DISPLAY_NAMES = {
     BuildStage.INDEXING: "向量索引构建",
     BuildStage.COMMUNITY_DETECTION: "社区检测",
     BuildStage.COMPLETED: "已完成",
-    BuildStage.FAILED: "失败"
+    BuildStage.FAILED: "失败",
 }
 
 
@@ -55,7 +57,7 @@ STAGE_WEIGHTS = {
     BuildStage.INDEXING: 85,
     BuildStage.COMMUNITY_DETECTION: 95,
     BuildStage.COMPLETED: 100,
-    BuildStage.FAILED: 0
+    BuildStage.FAILED: 0,
 }
 
 
@@ -88,13 +90,8 @@ class ProgressManager:
             "stage": "idle",
             "details": "等待开始",
             "logs": [],
-            "stats": {
-                "l0_files": 0,
-                "l1_tasks": 0,
-                "entities": 0,
-                "relations": 0
-            },
-            "last_update": datetime.now().isoformat()
+            "stats": {"l0_files": 0, "l1_tasks": 0, "entities": 0, "relations": 0},
+            "last_update": datetime.now().isoformat(),
         }
 
         # 用于通知 SSE 有新数据的事件
@@ -107,7 +104,7 @@ class ProgressManager:
         stage: Optional[str] = None,
         details: Optional[str] = None,
         log: Optional[str] = None,
-        stats: Optional[Dict[str, int]] = None
+        stats: Optional[Dict[str, int]] = None,
     ):
         """
         更新进度状态并通知所有订阅者
@@ -192,13 +189,7 @@ class ProgressManager:
         """
         return self.current_status.copy()
 
-    def update_status(
-        self,
-        stage: str,
-        percent: int = 0,
-        details: str = "",
-        log: Optional[str] = None
-    ):
+    def update_status(self, stage: str, percent: int = 0, details: str = "", log: Optional[str] = None):
         """
         同步更新状态（用于非异步环境，如后台线程）
 
@@ -250,16 +241,12 @@ class ProgressManager:
             # 立即发送当前状态
             yield {
                 "event": "connected",
-                "data": json.dumps({
-                    "message": "SSE 连接成功",
-                    "timestamp": datetime.now().isoformat()
-                }, ensure_ascii=False)
+                "data": json.dumps(
+                    {"message": "SSE 连接成功", "timestamp": datetime.now().isoformat()}, ensure_ascii=False
+                ),
             }
 
-            yield {
-                "event": "status",
-                "data": json.dumps(self.current_status, ensure_ascii=False)
-            }
+            yield {"event": "status", "data": json.dumps(self.current_status, ensure_ascii=False)}
 
             # 持续监听更新
             while True:
@@ -268,10 +255,7 @@ class ProgressManager:
                 event.clear()
 
                 # 发送更新后的状态
-                yield {
-                    "event": "status",
-                    "data": json.dumps(self.current_status, ensure_ascii=False)
-                }
+                yield {"event": "status", "data": json.dumps(self.current_status, ensure_ascii=False)}
 
         except asyncio.CancelledError:
             _LOGGER.info("SSE 连接被取消")
@@ -288,13 +272,8 @@ class ProgressManager:
             "stage": "idle",
             "details": "等待开始",
             "logs": [],
-            "stats": {
-                "l0_files": 0,
-                "l1_tasks": 0,
-                "entities": 0,
-                "relations": 0
-            },
-            "last_update": datetime.now().isoformat()
+            "stats": {"l0_files": 0, "l1_tasks": 0, "entities": 0, "relations": 0},
+            "last_update": datetime.now().isoformat(),
         }
 
     def has_subscribers(self) -> bool:

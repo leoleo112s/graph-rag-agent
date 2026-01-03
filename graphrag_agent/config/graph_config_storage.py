@@ -5,9 +5,9 @@
 
 import json
 import os
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
-from datetime import datetime
 
 from .graph_config_model import GraphConfig, IndustryTemplate
 
@@ -48,10 +48,10 @@ class GraphConfigStorage:
             config.updated_at = datetime.now()
 
             # 转换为 JSON
-            config_dict = config.model_dump(mode='json')
+            config_dict = config.model_dump(mode="json")
 
             # 写入文件
-            with open(self.config_path, 'w', encoding='utf-8') as f:
+            with open(self.config_path, "w", encoding="utf-8") as f:
                 json.dump(config_dict, f, ensure_ascii=False, indent=2)
 
             return True
@@ -70,7 +70,7 @@ class GraphConfigStorage:
             return None
 
         try:
-            with open(self.config_path, 'r', encoding='utf-8') as f:
+            with open(self.config_path, "r", encoding="utf-8") as f:
                 config_dict = json.load(f)
 
             return GraphConfig(**config_dict)
@@ -120,14 +120,14 @@ class GraphConfigStorage:
                 "industry": config.industry,
                 "description": config.description,
                 "bridge_count": len(config.bridge_definitions),
-                "domain_count": len(config.domain_definitions)
+                "domain_count": len(config.domain_definitions),
             }
             for name, config in templates.items()
         }
 
-    def save_from_template(self, template_name: str,
-                          project_name: Optional[str] = None,
-                          created_by: Optional[str] = None) -> bool:
+    def save_from_template(
+        self, template_name: str, project_name: Optional[str] = None, created_by: Optional[str] = None
+    ) -> bool:
         """
         从模板创建并保存配置
 

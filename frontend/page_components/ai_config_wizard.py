@@ -3,9 +3,11 @@ AI 配置向导页面
 提供智能化的配置推荐和优化功能
 """
 
-import streamlit as st
-import requests
 from typing import Dict, Optional
+
+import requests
+import streamlit as st
+
 from frontend.frontend_config.settings import API_URL
 
 
@@ -25,9 +27,7 @@ def analyze_documents_with_ai(industry_hint: Optional[str] = None) -> Optional[D
             params["industry_hint"] = industry_hint
 
         response = requests.post(
-            f"{API_URL}/admin/ai-copilot/analyze-documents",
-            params=params,
-            timeout=300  # 5分钟超时
+            f"{API_URL}/admin/ai-copilot/analyze-documents", params=params, timeout=300  # 5分钟超时
         )
         response.raise_for_status()
         return response.json()
@@ -40,9 +40,9 @@ def analyze_documents_with_ai(industry_hint: Optional[str] = None) -> Optional[D
         return None
 
 
-def apply_ai_recommendations(recommendations: Dict, project_name: str,
-                            industry: Optional[str] = None,
-                            description: Optional[str] = None) -> bool:
+def apply_ai_recommendations(
+    recommendations: Dict, project_name: str, industry: Optional[str] = None, description: Optional[str] = None
+) -> bool:
     """
     应用 AI 推荐创建配置
 
@@ -65,10 +65,7 @@ def apply_ai_recommendations(recommendations: Dict, project_name: str,
         if description:
             payload["description"] = description
 
-        response = requests.post(
-            f"{API_URL}/admin/ai-copilot/apply-recommendations",
-            json=payload
-        )
+        response = requests.post(f"{API_URL}/admin/ai-copilot/apply-recommendations", json=payload)
         response.raise_for_status()
         return True
 
@@ -89,17 +86,11 @@ def refine_with_ai(user_feedback: str, current_config: Optional[Dict] = None) ->
         优化后的配置
     """
     try:
-        payload = {
-            "user_feedback": user_feedback
-        }
+        payload = {"user_feedback": user_feedback}
         if current_config:
             payload["current_config"] = current_config
 
-        response = requests.post(
-            f"{API_URL}/admin/ai-copilot/refine-config",
-            json=payload,
-            timeout=120
-        )
+        response = requests.post(f"{API_URL}/admin/ai-copilot/refine-config", json=payload, timeout=120)
         response.raise_for_status()
         return response.json()
 
@@ -244,12 +235,7 @@ def ai_config_wizard_page():
 
     # 显示步骤进度
     progress_cols = st.columns(4)
-    steps = [
-        ("1️⃣", "上传文档"),
-        ("2️⃣", "AI 分析"),
-        ("3️⃣", "查看推荐"),
-        ("4️⃣", "应用配置")
-    ]
+    steps = [("1️⃣", "上传文档"), ("2️⃣", "AI 分析"), ("3️⃣", "查看推荐"), ("4️⃣", "应用配置")]
 
     for i, (icon, label) in enumerate(steps):
         with progress_cols[i]:
@@ -298,7 +284,7 @@ def ai_config_wizard_page():
         industry_hint = st.text_input(
             "行业提示（可选）",
             placeholder="例如：法务、电商、医疗、教育等",
-            help="提供行业提示可以帮助 AI 生成更准确的推荐"
+            help="提供行业提示可以帮助 AI 生成更准确的推荐",
         )
 
         col1, col2, col3 = st.columns([1, 1, 2])
@@ -367,27 +353,16 @@ def ai_config_wizard_page():
 
             st.write("请为你的配置命名：")
 
-            project_name = st.text_input(
-                "项目名称 *",
-                placeholder="例如：我的知识图谱项目",
-                key="wizard_project_name"
-            )
+            project_name = st.text_input("项目名称 *", placeholder="例如：我的知识图谱项目", key="wizard_project_name")
 
             col1, col2 = st.columns(2)
 
             with col1:
-                industry = st.text_input(
-                    "所属行业",
-                    placeholder="例如：法务、电商、医疗",
-                    key="wizard_industry"
-                )
+                industry = st.text_input("所属行业", placeholder="例如：法务、电商、医疗", key="wizard_industry")
 
             with col2:
                 description = st.text_area(
-                    "项目描述",
-                    placeholder="简要描述此知识图谱的用途",
-                    key="wizard_description",
-                    height=100
+                    "项目描述", placeholder="简要描述此知识图谱的用途", key="wizard_description", height=100
                 )
 
             st.markdown("---")
@@ -400,12 +375,7 @@ def ai_config_wizard_page():
                         st.error("请输入项目名称")
                     else:
                         with st.spinner("正在创建配置..."):
-                            success = apply_ai_recommendations(
-                                recommendations,
-                                project_name,
-                                industry,
-                                description
-                            )
+                            success = apply_ai_recommendations(recommendations, project_name, industry, description)
 
                             if success:
                                 st.success("🎉 配置创建成功！")
@@ -440,7 +410,8 @@ def ai_config_wizard_page():
 
     # 帮助信息
     with st.expander("❓ 使用说明"):
-        st.markdown("""
+        st.markdown(
+            """
         ### AI 配置向导工作流程
 
         1. **上传文档**
@@ -467,4 +438,5 @@ def ai_config_wizard_page():
         - AI 分析可能需要几分钟时间
         - 推荐结果仅供参考，你可以随后手动调整
         - 如果对推荐不满意，可以选择「切换模板」或手动创建配置
-        """)
+        """
+        )

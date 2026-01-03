@@ -2,6 +2,10 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 
+# 初始化日志系统
+from graphrag_agent.utils.logging_config import init_logging
+init_logging(app_name="graphrag-build")
+
 from graphrag_agent.graph.core import connection_manager
 from graphrag_agent.integrations.build.build_graph import KnowledgeGraphBuilder
 from graphrag_agent.integrations.build.build_index_and_community import IndexCommunityBuilder

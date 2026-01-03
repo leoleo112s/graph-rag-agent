@@ -3,10 +3,11 @@
 
 负责将原始检索证据批次压缩为结构化摘要，作为章节级Reduce的输入。
 """
-from typing import Iterable, List, Optional
+
 import asyncio
 import json
 import logging
+from typing import Iterable, List, Optional
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage
@@ -97,10 +98,7 @@ class EvidenceMapper:
                 batch_index=index,
             )
 
-        tasks = [
-            _run(idx, batch)
-            for idx, batch in enumerate(evidence_batches)
-        ]
+        tasks = [_run(idx, batch) for idx, batch in enumerate(evidence_batches)]
         return await asyncio.gather(*tasks)
 
     def split_batches(
@@ -115,7 +113,7 @@ class EvidenceMapper:
             return [[]]
         batches: List[List[RetrievalResult]] = []
         for start in range(0, len(entries), self._batch_size):
-            batches.append(entries[start: start + self._batch_size])
+            batches.append(entries[start : start + self._batch_size])
         return batches
 
     def _invoke_llm(self, prompt: str) -> str:
@@ -176,10 +174,7 @@ class EvidenceMapper:
             if isinstance(item.evidence, str):
                 snippet = item.evidence.replace("\n", " ")[:240]
             elif isinstance(item.evidence, dict):
-                preview = {
-                    key: item.evidence[key]
-                    for key in list(item.evidence.keys())[:4]
-                }
+                preview = {key: item.evidence[key] for key in list(item.evidence.keys())[:4]}
                 snippet = json.dumps(preview, ensure_ascii=False)
             lines.append(
                 f"- {item.result_id} | {item.granularity} | {item.source} | "

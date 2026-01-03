@@ -25,19 +25,19 @@
       -F "files=@file2.txt"
 """
 
+import hashlib
 import os
 import re
-import hashlib
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
-from server.utils.logger import get_logger
-from server.utils.exceptions import ValidationError, BusinessException
-from server.models.schemas import BaseResponse, ErrorCode
 from graphrag_agent.config.settings import FILES_DIR
+from server.models.schemas import BaseResponse, ErrorCode
+from server.utils.exceptions import BusinessException, ValidationError
+from server.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -49,10 +49,7 @@ router = APIRouter(prefix="/upload", tags=["文件上传（示例）"])
 # ============================================================================
 
 # 允许的文件类型（扩展名小写）
-ALLOWED_EXTENSIONS = {
-    ".pdf", ".txt", ".md", ".doc", ".docx",
-    ".csv", ".json", ".yaml", ".yml"
-}
+ALLOWED_EXTENSIONS = {".pdf", ".txt", ".md", ".doc", ".docx", ".csv", ".json", ".yaml", ".yml"}
 
 # MIME 类型白名单（扩展名 → MIME 类型映射）
 MIME_TYPE_WHITELIST = {
@@ -60,9 +57,7 @@ MIME_TYPE_WHITELIST = {
     ".txt": ["text/plain"],
     ".md": ["text/markdown", "text/plain"],
     ".doc": ["application/msword"],
-    ".docx": [
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    ],
+    ".docx": ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
     ".csv": ["text/csv", "application/csv"],
     ".json": ["application/json"],
     ".yaml": ["application/x-yaml", "text/yaml"],
@@ -95,8 +90,10 @@ DANGEROUS_PATTERNS = [
 # 请求/响应模型
 # ============================================================================
 
+
 class UploadResponse(BaseModel):
     """上传响应"""
+
     filename: str = Field(description="保存的文件名")
     file_path: str = Field(description="文件路径")
     file_size: int = Field(description="文件大小（字节）")
@@ -106,6 +103,7 @@ class UploadResponse(BaseModel):
 
 class BatchUploadResponse(BaseModel):
     """批量上传响应"""
+
     success_count: int = Field(description="成功上传数量")
     failed_count: int = Field(description="失败数量")
     results: List[dict] = Field(description="每个文件的上传结果")
@@ -114,6 +112,7 @@ class BatchUploadResponse(BaseModel):
 # ============================================================================
 # 校验函数
 # ============================================================================
+
 
 def validate_filename(filename: str) -> None:
     """
@@ -127,20 +126,12 @@ def validate_filename(filename: str) -> None:
     """
     # 长度检查
     if len(filename) > MAX_FILENAME_LENGTH:
-        raise ValidationError(
-            f"文件名过长（最大 {MAX_FILENAME_LENGTH} 字符）",
-            filename=filename,
-            length=len(filename)
-        )
+        raise ValidationError(f"文件名过长（最大 {MAX_FILENAME_LENGTH} 字符）", filename=filename, length=len(filename))
 
     # 危险模式检查（防止路径遍历）
     for pattern in DANGEROUS_PATTERNS:
         if re.search(pattern, filename):
-            raise ValidationError(
-                f"文件名包含非法字符: {pattern}",
-                filename=filename,
-                pattern=pattern
-            )
+            raise ValidationError(f"文件名包含非法字符: {pattern}", filename=filename, pattern=pattern)
 
     logger.debug("文件名校验通过", filename=filename)
 
@@ -161,17 +152,11 @@ def validate_file_extension(filename: str) -> str:
     ext = Path(filename).suffix.lower()
 
     if not ext:
-        raise ValidationError(
-            "文件缺少扩展名",
-            filename=filename
-        )
+        raise ValidationError("文件缺少扩展名", filename=filename)
 
     if ext not in ALLOWED_EXTENSIONS:
         raise ValidationError(
-            f"不支持的文件类型: {ext}",
-            filename=filename,
-            extension=ext,
-            allowed=list(ALLOWED_EXTENSIONS)
+            f"不支持的文件类型: {ext}", filename=filename, extension=ext, allowed=list(ALLOWED_EXTENSIONS)
         )
 
     logger.debug("扩展名校验通过", filename=filename, extension=ext)
@@ -193,11 +178,7 @@ def validate_mime_type(content_type: str, extension: str) -> None:
 
     if not allowed_mimes:
         # 扩展名在白名单但没有 MIME 校验规则（警告）
-        logger.warning(
-            "扩展名无 MIME 校验规则",
-            extension=extension,
-            content_type=content_type
-        )
+        logger.warning("扩展名无 MIME 校验规则", extension=extension, content_type=content_type)
         return
 
     if content_type not in allowed_mimes:
@@ -205,20 +186,13 @@ def validate_mime_type(content_type: str, extension: str) -> None:
             f"MIME 类型不匹配: 期望 {allowed_mimes}，实际 {content_type}",
             extension=extension,
             expected=allowed_mimes,
-            actual=content_type
+            actual=content_type,
         )
 
-    logger.debug(
-        "MIME 类型校验通过",
-        content_type=content_type,
-        extension=extension
-    )
+    logger.debug("MIME 类型校验通过", content_type=content_type, extension=extension)
 
 
-async def validate_file_content(
-    file: UploadFile,
-    extension: str
-) -> bytes:
+async def validate_file_content(file: UploadFile, extension: str) -> bytes:
     """
     校验文件内容（流式读取 + 魔术字节检查 + 大小限制）
 
@@ -259,7 +233,7 @@ async def validate_file_content(
                     f"文件过大（最大 {MAX_FILE_SIZE / 1024 / 1024:.1f}MB）",
                     filename=file.filename,
                     size=total_size,
-                    max_size=MAX_FILE_SIZE
+                    max_size=MAX_FILE_SIZE,
                 )
 
             chunks.append(chunk)
@@ -268,17 +242,11 @@ async def validate_file_content(
         raise
     except Exception as e:
         logger.error(f"文件读取失败: {str(e)}", filename=file.filename, exc_info=True)
-        raise ValidationError(
-            f"文件读取失败: {str(e)}",
-            filename=file.filename
-        )
+        raise ValidationError(f"文件读取失败: {str(e)}", filename=file.filename)
 
     # 大小检查
     if total_size == 0:
-        raise ValidationError(
-            "文件为空",
-            filename=file.filename
-        )
+        raise ValidationError("文件为空", filename=file.filename)
 
     # ✅ 深度魔术字节检查（检查前 2KB，比之前的 100 字节更严格）
     magic_bytes = MAGIC_BYTES.get(extension)
@@ -289,19 +257,16 @@ async def validate_file_content(
             raise ValidationError(
                 f"文件内容与扩展名 {extension} 不匹配（魔术字节检查失败，可能是伪造的文件）",
                 filename=file.filename,
-                extension=extension
+                extension=extension,
             )
 
-        logger.debug(
-            "魔术字节校验通过（深度检测 2KB）",
-            filename=file.filename,
-            extension=extension
-        )
+        logger.debug("魔术字节校验通过（深度检测 2KB）", filename=file.filename, extension=extension)
 
     # ✅ 可选：使用 python-magic 进行深度 MIME 检测
     # 注意：需要系统安装 libmagic 库，可能不是所有环境都有
     try:
         import magic
+
         if header:
             detected_mime = magic.from_buffer(header, mime=True)
             allowed_mimes = MIME_TYPE_WHITELIST.get(extension, [])
@@ -311,7 +276,7 @@ async def validate_file_content(
                     "python-magic 深度检测失败（MIME 不匹配）",
                     filename=file.filename,
                     expected=allowed_mimes,
-                    actual=detected_mime
+                    actual=detected_mime,
                 )
                 # 警告：可能是伪造文件，但不一定立即拒绝（因为 magic 库可能误判）
                 # raise ValidationError(
@@ -321,11 +286,7 @@ async def validate_file_content(
                 #     actual=detected_mime
                 # )
             else:
-                logger.debug(
-                    "python-magic 深度检测通过",
-                    filename=file.filename,
-                    mime=detected_mime
-                )
+                logger.debug("python-magic 深度检测通过", filename=file.filename, mime=detected_mime)
     except ImportError:
         # python-magic 未安装，跳过深度检测
         logger.debug("python-magic 未安装，跳过深度 MIME 检测")
@@ -333,12 +294,7 @@ async def validate_file_content(
         # python-magic 检测失败，记录警告但不阻塞
         logger.warning(f"python-magic 检测失败: {str(e)}", filename=file.filename)
 
-    logger.info(
-        "文件内容校验通过（流式读取）",
-        filename=file.filename,
-        size=total_size,
-        chunks=len(chunks)
-    )
+    logger.info("文件内容校验通过（流式读取）", filename=file.filename, size=total_size, chunks=len(chunks))
 
     # 合并所有 chunks
     content = b"".join(chunks)
@@ -378,6 +334,7 @@ def save_file(filename: str, content: bytes) -> Path:
 
         # 生成唯一文件名（添加时间戳避免冲突）
         from datetime import datetime
+
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         name, ext = os.path.splitext(filename)
         unique_filename = f"{name}_{timestamp}{ext}"
@@ -388,21 +345,14 @@ def save_file(filename: str, content: bytes) -> Path:
         with open(file_path, "wb") as f:
             f.write(content)
 
-        logger.info(
-            "文件保存成功",
-            filename=unique_filename,
-            path=str(file_path),
-            size=len(content)
-        )
+        logger.info("文件保存成功", filename=unique_filename, path=str(file_path), size=len(content))
 
         return file_path
 
     except Exception as e:
         logger.error(f"文件保存失败: {str(e)}", filename=filename, exc_info=True)
         raise BusinessException(
-            f"文件保存失败: {str(e)}",
-            code=ErrorCode.FILE_WRITE_ERROR,
-            details={"filename": filename}
+            f"文件保存失败: {str(e)}", code=ErrorCode.FILE_WRITE_ERROR, details={"filename": filename}
         )
 
 
@@ -410,10 +360,11 @@ def save_file(filename: str, content: bytes) -> Path:
 # API Endpoints
 # ============================================================================
 
+
 @router.post("/file", response_model=BaseResponse[UploadResponse], summary="上传单个文件")
 async def upload_file(
     file: UploadFile = File(..., description="上传的文件"),
-    description: Optional[str] = Form(None, description="文件描述（可选）")
+    description: Optional[str] = Form(None, description="文件描述（可选）"),
 ):
     """
     上传单个文件（含完整校验）
@@ -474,23 +425,16 @@ async def upload_file(
         file_path=str(saved_path),
         file_size=len(content),
         file_hash=file_hash,
-        content_type=file.content_type
+        content_type=file.content_type,
     )
 
-    logger.info(
-        "文件上传成功",
-        filename=result.filename,
-        size=result.file_size,
-        hash=result.file_hash
-    )
+    logger.info("文件上传成功", filename=result.filename, size=result.file_size, hash=result.file_hash)
 
     return BaseResponse(code=200, msg="上传成功", data=result)
 
 
 @router.post("/batch", response_model=BaseResponse[BatchUploadResponse], summary="批量上传文件")
-async def upload_batch(
-    files: List[UploadFile] = File(..., description="文件列表（最多10个）")
-):
+async def upload_batch(files: List[UploadFile] = File(..., description="文件列表（最多10个）")):
     """
     批量上传文件
 
@@ -515,11 +459,7 @@ async def upload_batch(
 
     # 数量限制
     if len(files) > MAX_BATCH_SIZE:
-        raise ValidationError(
-            f"单次最多上传 {MAX_BATCH_SIZE} 个文件",
-            current=len(files),
-            max=MAX_BATCH_SIZE
-        )
+        raise ValidationError(f"单次最多上传 {MAX_BATCH_SIZE} 个文件", current=len(files), max=MAX_BATCH_SIZE)
 
     results = []
     success_count = 0
@@ -535,47 +475,31 @@ async def upload_batch(
             file_hash = compute_file_hash(content)
             saved_path = save_file(file.filename, content)
 
-            results.append({
-                "filename": file.filename,
-                "status": "success",
-                "saved_path": str(saved_path),
-                "size": len(content),
-                "hash": file_hash
-            })
+            results.append(
+                {
+                    "filename": file.filename,
+                    "status": "success",
+                    "saved_path": str(saved_path),
+                    "size": len(content),
+                    "hash": file_hash,
+                }
+            )
 
             success_count += 1
 
         except ValidationError as e:
             logger.warning(f"文件校验失败: {e.message}", filename=file.filename)
-            results.append({
-                "filename": file.filename,
-                "status": "failed",
-                "error": e.message,
-                "details": e.details
-            })
+            results.append({"filename": file.filename, "status": "failed", "error": e.message, "details": e.details})
             failed_count += 1
 
         except Exception as e:
             logger.error(f"文件上传失败: {str(e)}", filename=file.filename, exc_info=True)
-            results.append({
-                "filename": file.filename,
-                "status": "failed",
-                "error": f"上传失败: {str(e)}"
-            })
+            results.append({"filename": file.filename, "status": "failed", "error": f"上传失败: {str(e)}"})
             failed_count += 1
 
-    response = BatchUploadResponse(
-        success_count=success_count,
-        failed_count=failed_count,
-        results=results
-    )
+    response = BatchUploadResponse(success_count=success_count, failed_count=failed_count, results=results)
 
-    logger.info(
-        "批量上传完成",
-        total=len(files),
-        success=success_count,
-        failed=failed_count
-    )
+    logger.info("批量上传完成", total=len(files), success=success_count, failed=failed_count)
 
     return BaseResponse(code=200, msg="批量上传完成", data=response)
 
@@ -605,37 +529,23 @@ async def delete_file(filename: str):
     try:
         file_path = file_path.resolve()
         if not str(file_path).startswith(str(FILES_DIR.resolve())):
-            raise ValidationError(
-                "非法文件路径",
-                filename=filename,
-                path=str(file_path)
-            )
+            raise ValidationError("非法文件路径", filename=filename, path=str(file_path))
     except Exception as e:
         raise ValidationError(f"路径解析失败: {str(e)}", filename=filename)
 
     # 检查文件是否存在
     if not file_path.exists():
-        raise BusinessException(
-            "文件不存在",
-            code=ErrorCode.NOT_FOUND,
-            details={"filename": filename}
-        )
+        raise BusinessException("文件不存在", code=ErrorCode.NOT_FOUND, details={"filename": filename})
 
     # 删除文件
     try:
         file_path.unlink()
         logger.info("文件删除成功", filename=filename, path=str(file_path))
 
-        return BaseResponse(
-            code=200,
-            msg="删除成功",
-            data={"filename": filename, "path": str(file_path)}
-        )
+        return BaseResponse(code=200, msg="删除成功", data={"filename": filename, "path": str(file_path)})
 
     except Exception as e:
         logger.error(f"文件删除失败: {str(e)}", filename=filename, exc_info=True)
         raise BusinessException(
-            f"文件删除失败: {str(e)}",
-            code=ErrorCode.FILE_DELETE_ERROR,
-            details={"filename": filename}
+            f"文件删除失败: {str(e)}", code=ErrorCode.FILE_DELETE_ERROR, details={"filename": filename}
         )

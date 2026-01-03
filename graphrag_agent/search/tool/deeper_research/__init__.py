@@ -5,13 +5,13 @@
 用于保持主文件精简且便于维护。
 """
 
-from .enhancer import enhance_search_with_coe
 from .branching import (
     create_multiple_reasoning_branches,
     detect_and_resolve_contradictions,
     generate_citations,
     merge_reasoning_branches,
 )
+from .enhancer import enhance_search_with_coe
 
 __all__ = [
     "enhance_search_with_coe",

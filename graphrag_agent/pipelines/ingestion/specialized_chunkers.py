@@ -22,8 +22,9 @@
 """
 
 from typing import List, Tuple
-from graphrag_agent.pipelines.ingestion.text_chunker import ChineseTextChunker
+
 from graphrag_agent.config.settings import MAX_TEXT_LENGTH
+from graphrag_agent.pipelines.ingestion.text_chunker import ChineseTextChunker
 
 
 class GraphChunker(ChineseTextChunker):
@@ -50,10 +51,10 @@ class GraphChunker(ChineseTextChunker):
 
     def __init__(
         self,
-        chunk_size: int = 900,        # 生产级验证：900 tokens（800-1200 范围）
-        overlap: int = 50,             # 极小 overlap
+        chunk_size: int = 900,  # 生产级验证：900 tokens（800-1200 范围）
+        overlap: int = 50,  # 极小 overlap
         max_text_length: int = MAX_TEXT_LENGTH,
-        respect_sentence: bool = True  # 尊重句子边界
+        respect_sentence: bool = True,  # 尊重句子边界
     ):
         """
         初始化 GraphChunker（生产级配置）
@@ -73,19 +74,17 @@ class GraphChunker(ChineseTextChunker):
             print(f"⚠️  警告：GraphChunker 的 overlap={overlap} 过大，可能导致实体重复抽取")
             print(f"   推荐使用极小 overlap: 50")
 
-        super().__init__(
-            chunk_size=chunk_size,
-            overlap=overlap,
-            max_text_length=max_text_length
-        )
+        super().__init__(chunk_size=chunk_size, overlap=overlap, max_text_length=max_text_length)
 
         self.respect_sentence = respect_sentence
 
     def __repr__(self):
-        return (f"GraphChunker(chunk_size={self.chunk_size}, "
-                f"overlap={self.overlap}, "
-                f"respect_sentence={self.respect_sentence}, "
-                f"use_hanlp={self.use_hanlp})")
+        return (
+            f"GraphChunker(chunk_size={self.chunk_size}, "
+            f"overlap={self.overlap}, "
+            f"respect_sentence={self.respect_sentence}, "
+            f"use_hanlp={self.use_hanlp})"
+        )
 
 
 class RAGChunker(ChineseTextChunker):
@@ -110,9 +109,9 @@ class RAGChunker(ChineseTextChunker):
 
     def __init__(
         self,
-        chunk_size: int = 400,        # 默认 400 tokens（可配置 300-500）
-        overlap: int = 80,             # 默认 80 tokens（可配置 50-100）
-        max_text_length: int = MAX_TEXT_LENGTH
+        chunk_size: int = 400,  # 默认 400 tokens（可配置 300-500）
+        overlap: int = 80,  # 默认 80 tokens（可配置 50-100）
+        max_text_length: int = MAX_TEXT_LENGTH,
     ):
         """
         初始化 RAGChunker
@@ -129,16 +128,10 @@ class RAGChunker(ChineseTextChunker):
         if overlap < 50 or overlap > 100:
             print(f"⚠️  警告：RAGChunker 的 overlap={overlap} 不在推荐范围 [50, 100]")
 
-        super().__init__(
-            chunk_size=chunk_size,
-            overlap=overlap,
-            max_text_length=max_text_length
-        )
+        super().__init__(chunk_size=chunk_size, overlap=overlap, max_text_length=max_text_length)
 
     def __repr__(self):
-        return (f"RAGChunker(chunk_size={self.chunk_size}, "
-                f"overlap={self.overlap}, "
-                f"use_hanlp={self.use_hanlp})")
+        return f"RAGChunker(chunk_size={self.chunk_size}, " f"overlap={self.overlap}, " f"use_hanlp={self.use_hanlp})"
 
 
 def create_graph_chunker(chunk_size: int = 900, overlap: int = 50) -> GraphChunker:

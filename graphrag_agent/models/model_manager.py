@@ -6,23 +6,23 @@
 
 import json
 import os
-from pathlib import Path
-from typing import Dict, Any, Optional, List
 from datetime import datetime
+from pathlib import Path
 from threading import Lock
+from typing import Any, Dict, List, Optional
 
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from pydantic import BaseModel, Field
 
-from graphrag_agent.config.settings import (
-    OPENAI_LLM_CONFIG,
-    OPENAI_EMBEDDING_CONFIG,
-    TIKTOKEN_CACHE_DIR
-)
+from graphrag_agent.config.settings import OPENAI_EMBEDDING_CONFIG, OPENAI_LLM_CONFIG, TIKTOKEN_CACHE_DIR
+from graphrag_agent.utils.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 class ModelConfig(BaseModel):
     """模型配置"""
+
     id: str
     name: str
     model_type: str  # llm | embedding
@@ -81,22 +81,22 @@ class ModelManager:
         """从文件加载模型注册表"""
         if self.config_file.exists():
             try:
-                with open(self.config_file, 'r', encoding='utf-8') as f:
+                with open(self.config_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     for model_data in data:
                         model_config = ModelConfig(**model_data)
                         self.models[model_config.id] = model_config
             except Exception as e:
-                print(f"加载模型注册表失败: {e}")
+                logger.error(f"加载模型注册表失败: {e}", exc_info=True)
 
     def _save_registry(self):
         """保存模型注册表到文件"""
         try:
-            with open(self.config_file, 'w', encoding='utf-8') as f:
+            with open(self.config_file, "w", encoding="utf-8") as f:
                 data = [model.model_dump() for model in self.models.values()]
                 json.dump(data, f, ensure_ascii=False, indent=2)
         except Exception as e:
-            print(f"保存模型注册表失败: {e}")
+            logger.error(f"保存模型注册表失败: {e}", exc_info=True)
 
     def _register_default_models(self):
         """注册默认模型（从环境变量）"""
@@ -112,7 +112,7 @@ class ModelManager:
             description="从环境变量加载的默认LLM模型",
             tags=["default", "openai"],
             created_at=datetime.now().isoformat(),
-            updated_at=datetime.now().isoformat()
+            updated_at=datetime.now().isoformat(),
         )
         self.models[default_llm.id] = default_llm
 
@@ -128,7 +128,7 @@ class ModelManager:
             description="从环境变量加载的默认Embedding模型",
             tags=["default", "openai"],
             created_at=datetime.now().isoformat(),
-            updated_at=datetime.now().isoformat()
+            updated_at=datetime.now().isoformat(),
         )
         self.models[default_embedding.id] = default_embedding
 
@@ -142,7 +142,7 @@ class ModelManager:
         config: Dict[str, Any],
         description: Optional[str] = None,
         tags: Optional[List[str]] = None,
-        set_active: bool = False
+        set_active: bool = False,
     ) -> str:
         """
         注册新模型
@@ -160,6 +160,7 @@ class ModelManager:
             模型ID
         """
         import uuid
+
         model_id = str(uuid.uuid4())
 
         model_config = ModelConfig(
@@ -173,7 +174,7 @@ class ModelManager:
             description=description,
             tags=tags or [],
             created_at=datetime.now().isoformat(),
-            updated_at=datetime.now().isoformat()
+            updated_at=datetime.now().isoformat(),
         )
 
         self.models[model_id] = model_config
@@ -185,10 +186,7 @@ class ModelManager:
         return model_id
 
     def list_models(
-        self,
-        model_type: Optional[str] = None,
-        provider: Optional[str] = None,
-        active_only: bool = False
+        self, model_type: Optional[str] = None, provider: Optional[str] = None, active_only: bool = False
     ) -> List[ModelConfig]:
         """
         列出模型
@@ -250,6 +248,36 @@ class ModelManager:
         self._save_registry()
         return True
 
+    def update_model_config(self, model_id: str, new_config: Dict[str, Any]) -> bool:
+        """
+        更新模型配置（参数调整）
+
+        Args:
+            model_id: 模型ID
+            new_config: 新的配置参数
+
+        Returns:
+            是否成功
+        """
+        model = self.models.get(model_id)
+        if not model:
+            return False
+
+        # 更新配置
+        model.config.update(new_config)
+        model.updated_at = datetime.now().isoformat()
+
+        # 如果是活跃模型，清空缓存实例以强制重新加载
+        if model.is_active:
+            if model.model_type == "llm":
+                self._active_llm = None
+            elif model.model_type == "embedding":
+                self._active_embedding = None
+
+        self._save_registry()
+        logger.info(f"Updated config for model {model.name} ({model_id})")
+        return True
+
     def delete_model(self, model_id: str) -> bool:
         """
         删除模型
@@ -270,8 +298,7 @@ class ModelManager:
 
         # 如果是活跃模型，先激活默认模型
         if model.is_active:
-            default_models = [m for m in self.models.values()
-                            if m.model_type == model.model_type and m.is_default]
+            default_models = [m for m in self.models.values() if m.model_type == model.model_type and m.is_default]
             if default_models:
                 self.activate_model(default_models[0].id)
 
@@ -290,13 +317,11 @@ class ModelManager:
             return self._active_llm
 
         # 查找活跃的LLM模型
-        active_llms = [m for m in self.models.values()
-                      if m.model_type == "llm" and m.is_active]
+        active_llms = [m for m in self.models.values() if m.model_type == "llm" and m.is_active]
 
         if not active_llms:
             # 如果没有活跃模型，激活默认模型
-            default_llms = [m for m in self.models.values()
-                           if m.model_type == "llm" and m.is_default]
+            default_llms = [m for m in self.models.values() if m.model_type == "llm" and m.is_default]
             if default_llms:
                 self.activate_model(default_llms[0].id)
                 active_llms = [default_llms[0]]
@@ -321,13 +346,11 @@ class ModelManager:
             return self._active_embedding
 
         # 查找活跃的Embedding模型
-        active_embeddings = [m for m in self.models.values()
-                            if m.model_type == "embedding" and m.is_active]
+        active_embeddings = [m for m in self.models.values() if m.model_type == "embedding" and m.is_active]
 
         if not active_embeddings:
             # 如果没有活跃模型，激活默认模型
-            default_embeddings = [m for m in self.models.values()
-                                 if m.model_type == "embedding" and m.is_default]
+            default_embeddings = [m for m in self.models.values() if m.model_type == "embedding" and m.is_default]
             if default_embeddings:
                 self.activate_model(default_embeddings[0].id)
                 active_embeddings = [default_embeddings[0]]

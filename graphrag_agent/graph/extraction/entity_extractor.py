@@ -15,17 +15,17 @@
 - 关系合法性校验
 """
 
-import time
+import concurrent.futures
+import json
+import logging
 import os
 import pickle
-import json
 import re
-import logging
+import time
 import unicodedata
-import concurrent.futures
-from typing import List, Tuple, Optional, Dict, Any
 from collections import Counter, defaultdict
 from difflib import SequenceMatcher
+from typing import Any, Dict, List, Optional, Tuple
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -37,46 +37,46 @@ from langchain.prompts import (
     SystemMessagePromptTemplate,
 )
 
-from graphrag_agent.graph.core import retry, generate_hash
-from graphrag_agent.config.settings import MAX_WORKERS as DEFAULT_MAX_WORKERS, BATCH_SIZE as DEFAULT_BATCH_SIZE
-
+from graphrag_agent.config.settings import BATCH_SIZE as DEFAULT_BATCH_SIZE
+from graphrag_agent.config.settings import MAX_WORKERS as DEFAULT_MAX_WORKERS
+from graphrag_agent.graph.core import generate_hash, retry
 
 # =========================
 # 生产级配置（硬约束）
 # =========================
 
 ALLOWED_ENTITY_TYPES = {
-    "机构",         # 对应 Organization (如: 华东理工大学, 答辩委员会)
-    "部门",         # 对应 Department (如: 研究生院, 学生工作部)
-    "政策",         # 对应 Policy (如: 奖学金管理办法)
-    "规章制度",     # 对应 Regulation
-    "法条",         # 对应 Law/Article
-    "条款",         # 对应 Clause/Condition (如: 6学分, 违纪处分)
-    "文档",         # 对应 Document (如: 申请表)
-    "当事人",       # 对应 Person/Party (如: 毕业生, 学生本人)
-    "地点",         # 对应 Location (如: 中西部地区)
-    "概念",         # 对应 Concept (如: 学费代偿)
-    "流程",         # 对应 Process
-    "条件"          # 对应 Condition
+    "机构",  # 对应 Organization (如: 华东理工大学, 答辩委员会)
+    "部门",  # 对应 Department (如: 研究生院, 学生工作部)
+    "政策",  # 对应 Policy (如: 奖学金管理办法)
+    "规章制度",  # 对应 Regulation
+    "法条",  # 对应 Law/Article
+    "条款",  # 对应 Clause/Condition (如: 6学分, 违纪处分)
+    "文档",  # 对应 Document (如: 申请表)
+    "当事人",  # 对应 Person/Party (如: 毕业生, 学生本人)
+    "地点",  # 对应 Location (如: 中西部地区)
+    "概念",  # 对应 Concept (如: 学费代偿)
+    "流程",  # 对应 Process
+    "条件",  # 对应 Condition
 }
 
 ALLOWED_RELATION_TYPES = {
-    "包含",         # PART_OF / INCLUDES
-    "属于",         # PART_OF
-    "发布",         # ISSUED_BY
-    "负责",         # RESPONSIBLE_FOR
-    "需要",         # REQUIRES
-    "依据",         # BASED_ON
-    "适用于",       # APPLIES_TO
-    "有步骤",       # HAS_STEP
-    "有条件",       # HAS_CONDITION
-    "关联",         # RELATED_TO (兜底)
-    "提交给"        # SUBMIT_TO
+    "包含",  # PART_OF / INCLUDES
+    "属于",  # PART_OF
+    "发布",  # ISSUED_BY
+    "负责",  # RESPONSIBLE_FOR
+    "需要",  # REQUIRES
+    "依据",  # BASED_ON
+    "适用于",  # APPLIES_TO
+    "有步骤",  # HAS_STEP
+    "有条件",  # HAS_CONDITION
+    "关联",  # RELATED_TO (兜底)
+    "提交给",  # SUBMIT_TO
 }
 
 # 默认后处理参数（可通过初始化覆盖）
-DEFAULT_MIN_ENTITY_FREQUENCY = 1            # 默认最小实体频率
-DEFAULT_NAME_SIMILARITY_THRESHOLD = 0.85    # 默认名称相似度阈值
+DEFAULT_MIN_ENTITY_FREQUENCY = 1  # 默认最小实体频率
+DEFAULT_NAME_SIMILARITY_THRESHOLD = 0.85  # 默认名称相似度阈值
 
 # 默认常量（用作 fallback）
 DEFAULT_ALLOWED_ENTITY_TYPES = ALLOWED_ENTITY_TYPES
@@ -86,6 +86,7 @@ DEFAULT_ALLOWED_RELATION_TYPES = ALLOWED_RELATION_TYPES
 # =========================
 # 工具函数（生产级）
 # =========================
+
 
 def normalize_entity_name(name: str) -> str:
     """
@@ -111,7 +112,7 @@ def normalize_entity_name(name: str) -> str:
         return ""
 
     # Unicode NFKC 标准化：全角 → 半角，统一 Unicode 变体
-    normalized = unicodedata.normalize('NFKC', name)
+    normalized = unicodedata.normalize("NFKC", name)
 
     # 去除空格并清理
     normalized = normalized.replace(" ", "").strip()
@@ -171,11 +172,9 @@ def _extract_json_dict(text: str) -> Optional[Dict]:
 # 后处理核心逻辑（生产级）
 # =========================
 
+
 def post_process_entities(
-    raw_entities: List[Dict[str, Any]],
-    allowed_entity_types: set,
-    min_freq: int,
-    similarity_threshold: float
+    raw_entities: List[Dict[str, Any]], allowed_entity_types: set, min_freq: int, similarity_threshold: float
 ) -> List[Dict[str, Any]]:
     """
     实体后处理（生产级验证 + 动态 Schema）
@@ -202,17 +201,9 @@ def post_process_entities(
     allowed_types_upper = {t.upper() for t in allowed_entity_types}
 
     # --- [DEBUG] 实体类型过滤日志 ---
-    logger.debug(
-        "实体类型过滤白名单",
-        allowed_types=list(allowed_types_upper),
-        raw_entity_count=len(raw_entities)
-    )
+    logger.debug("实体类型过滤白名单", allowed_types=list(allowed_types_upper), raw_entity_count=len(raw_entities))
     for e in raw_entities:
-        logger.debug(
-            "LLM输出实体",
-            entity_name=e.get('name'),
-            entity_type=e.get('type')
-        )
+        logger.debug("LLM输出实体", entity_name=e.get("name"), entity_type=e.get("type"))
     # --------------------------
 
     # normalize names
@@ -253,10 +244,7 @@ def post_process_entities(
 
         # 只与同一桶内的实体比对
         candidates = buckets[bucket_key]
-        is_duplicate = any(
-            is_similar(name, candidate["name"], similarity_threshold)
-            for candidate in candidates
-        )
+        is_duplicate = any(is_similar(name, candidate["name"], similarity_threshold) for candidate in candidates)
 
         if not is_duplicate:
             deduped.append(e)
@@ -274,7 +262,7 @@ def post_process_relations(
     raw_relations: List[Dict[str, Any]],
     entities: List[Dict[str, Any]],
     allowed_relation_types: set,
-    similarity_threshold: float
+    similarity_threshold: float,
 ) -> List[Dict[str, Any]]:
     """
     关系后处理（生产级验证 + 动态 Schema）
@@ -309,19 +297,11 @@ def post_process_relations(
         r_type = r.get("type", "")
 
         # [修改] 2. 核心修改：类型转大写后对比
-        if (
-            src in entity_names and
-            tgt in entity_names and
-            r_type and r_type.upper() in allowed_rels_upper
-        ):
+        if src in entity_names and tgt in entity_names and r_type and r_type.upper() in allowed_rels_upper:
             # Key 使用大写类型以防止重复
             key = (src, tgt, r_type.upper())
             if key not in seen:
-                cleaned.append({
-                    "source": src,
-                    "target": tgt,
-                    "type": r_type
-                })
+                cleaned.append({"source": src, "target": tgt, "type": r_type})
                 seen.add(key)
 
     print(f"✅ 关系后处理：{len(raw_relations)} → {len(cleaned)} 条关系（Schema: {len(allowed_relation_types)} 类型）")
@@ -331,6 +311,7 @@ def post_process_relations(
 # =========================
 # 主类（生产级重构）
 # =========================
+
 
 class EntityRelationExtractor:
     """
@@ -346,12 +327,20 @@ class EntityRelationExtractor:
     - 保留原有的缓存和并行处理逻辑
     """
 
-    def __init__(self, llm, system_template, human_template,
-                 entity_types: List[str], relationship_types: List[str],
-                 cache_dir="./cache/graph", max_workers=4, batch_size=5,
-                 graph_config=None,
-                 min_entity_frequency: int = None,
-                 name_similarity_threshold: float = None):
+    def __init__(
+        self,
+        llm,
+        system_template,
+        human_template,
+        entity_types: List[str],
+        relationship_types: List[str],
+        cache_dir="./cache/graph",
+        max_workers=4,
+        batch_size=5,
+        graph_config=None,
+        min_entity_frequency: int = None,
+        name_similarity_threshold: float = None,
+    ):
         """
         初始化实体关系提取器（+ GraphConfig 支持 + 参数化配置 + 缓存版本隔离）
 
@@ -378,12 +367,10 @@ class EntityRelationExtractor:
 
         # 🔥 新增：后处理参数化配置
         self.min_entity_frequency = (
-            min_entity_frequency if min_entity_frequency is not None
-            else DEFAULT_MIN_ENTITY_FREQUENCY
+            min_entity_frequency if min_entity_frequency is not None else DEFAULT_MIN_ENTITY_FREQUENCY
         )
         self.name_similarity_threshold = (
-            name_similarity_threshold if name_similarity_threshold is not None
-            else DEFAULT_NAME_SIMILARITY_THRESHOLD
+            name_similarity_threshold if name_similarity_threshold is not None else DEFAULT_NAME_SIMILARITY_THRESHOLD
         )
 
         # 🔥 新增：保存模板用于缓存版本控制
@@ -402,11 +389,9 @@ class EntityRelationExtractor:
         system_message_prompt = SystemMessagePromptTemplate.from_template(system_template)
         human_message_prompt = HumanMessagePromptTemplate.from_template(human_template)
 
-        self.chat_prompt = ChatPromptTemplate.from_messages([
-            system_message_prompt,
-            MessagesPlaceholder("chat_history"),
-            human_message_prompt
-        ])
+        self.chat_prompt = ChatPromptTemplate.from_messages(
+            [system_message_prompt, MessagesPlaceholder("chat_history"), human_message_prompt]
+        )
 
         # 创建处理链
         self.chain = self.chat_prompt | self.llm
@@ -417,11 +402,7 @@ class EntityRelationExtractor:
 
         # 构建带版本隔离的缓存目录
         # 格式: cache_dir/model_name/prompt_version/
-        self.cache_dir = os.path.join(
-            cache_dir,
-            self.model_name,
-            self.prompt_version
-        )
+        self.cache_dir = os.path.join(cache_dir, self.model_name, self.prompt_version)
         self.enable_cache = True
 
         # 确保缓存目录存在
@@ -460,12 +441,12 @@ class EntityRelationExtractor:
             str: 模型名称（用于缓存隔离）
         """
         # 策略 1: model_name 属性
-        if hasattr(llm, 'model_name') and llm.model_name:
-            return str(llm.model_name).replace('/', '_')  # 避免路径问题
+        if hasattr(llm, "model_name") and llm.model_name:
+            return str(llm.model_name).replace("/", "_")  # 避免路径问题
 
         # 策略 2: model 属性
-        if hasattr(llm, 'model') and llm.model:
-            return str(llm.model).replace('/', '_')
+        if hasattr(llm, "model") and llm.model:
+            return str(llm.model).replace("/", "_")
 
         # 策略 3: 类名 fallback
         return llm.__class__.__name__
@@ -487,6 +468,7 @@ class EntityRelationExtractor:
             # 使用 Python ThreadPoolExecutor 的默认策略
             # min(32, (cpu_count or 1) + 4)
             import os
+
             cpu_count = os.cpu_count() or 1
             computed = min(32, cpu_count + 4)
             logger.info(f"动态计算线程数：CPU 核数 {cpu_count} → {computed} 个线程")
@@ -519,7 +501,7 @@ class EntityRelationExtractor:
 
         cache_path = self._cache_path(cache_key)
         try:
-            with open(cache_path, 'wb') as f:
+            with open(cache_path, "wb") as f:
                 pickle.dump(result, f)
         except Exception as e:
             print(f"缓存保存错误: {e}")
@@ -540,7 +522,7 @@ class EntityRelationExtractor:
         cache_path = self._cache_path(cache_key)
         if os.path.exists(cache_path):
             try:
-                with open(cache_path, 'rb') as f:
+                with open(cache_path, "rb") as f:
                     result = pickle.load(f)
                     self.cache_hits += 1
                     return result
@@ -571,7 +553,7 @@ class EntityRelationExtractor:
             return self.graph_config
 
         # 2. 尝试从 prompt_builder 获取 (extractor_factory 注入的方式)
-        if hasattr(self, 'prompt_builder') and self.prompt_builder and hasattr(self.prompt_builder, 'config'):
+        if hasattr(self, "prompt_builder") and self.prompt_builder and hasattr(self.prompt_builder, "config"):
             return self.prompt_builder.config
 
         # 🔥 3. 从 GraphConfigService 动态读取（运行时热更新）
@@ -612,7 +594,7 @@ class EntityRelationExtractor:
         # [修改] 使用 _get_graph_config() 获取配置，防止 self.graph_config 为 None
         config = self._get_graph_config()
 
-        if config and hasattr(config, 'route_domain'):
+        if config and hasattr(config, "route_domain"):
             return config.route_domain(filename, content)
         return "default"
 
@@ -650,7 +632,7 @@ class EntityRelationExtractor:
         """
         config = self._get_graph_config()
 
-        if config and hasattr(config, 'domain_definitions'):
+        if config and hasattr(config, "domain_definitions"):
             # 遍历 domain_definitions 查找匹配的领域
             for domain_def in config.domain_definitions:
                 if domain_def.domain_name == domain:
@@ -659,7 +641,9 @@ class EntityRelationExtractor:
                     entities = set(domain_def.schema.entities) if domain_def.schema.entities else set()
                     relations = set(domain_def.schema.relations) if domain_def.schema.relations else set()
 
-                    print(f"[Extractor] 找到领域 '{domain}' 的 Schema: {len(entities)} 个实体类型, {len(relations)} 个关系类型")
+                    print(
+                        f"[Extractor] 找到领域 '{domain}' 的 Schema: {len(entities)} 个实体类型, {len(relations)} 个关系类型"
+                    )
                     return (entities, relations)
 
         # 未找到匹配或无配置，返回初始化时传入的类型
@@ -672,10 +656,7 @@ class EntityRelationExtractor:
 
     @retry(times=3, exceptions=(Exception,), delay=1.0)
     def _process_single_chunk(
-        self,
-        input_text: str,
-        domain_entity_types: set = None,
-        domain_relation_types: set = None
+        self, input_text: str, domain_entity_types: set = None, domain_relation_types: set = None
     ) -> Dict:
         """
         处理单个文本块（生产级重构 + Schema-aware）
@@ -729,27 +710,23 @@ class EntityRelationExtractor:
             return {"entities": [], "relations": [], "relationships": []}
 
         # 未缓存，调用 LLM 处理
-        response = self.chain.invoke({
-            "chat_history": self.chat_history,
-            "entity_types": self.entity_types,
-            "relationship_types": self.relationship_types,
-            "tuple_delimiter": self.tuple_delimiter,
-            "record_delimiter": self.record_delimiter,
-            "completion_delimiter": self.completion_delimiter,
-            "input_text": input_text
-        })
+        response = self.chain.invoke(
+            {
+                "chat_history": self.chat_history,
+                "entity_types": self.entity_types,
+                "relationship_types": self.relationship_types,
+                "tuple_delimiter": self.tuple_delimiter,
+                "record_delimiter": self.record_delimiter,
+                "completion_delimiter": self.completion_delimiter,
+                "input_text": input_text,
+            }
+        )
 
         # 从 AIMessage 获取内容
         raw = getattr(response, "content", response)  # 兼容 AIMessage / str
 
         # 🔥 生产级后处理（关键改进 + 动态 Schema）
-        result = {
-            "entities": [],
-            "relations": [],
-            "relationships": [],
-            "domains": [],
-            "bridges": []
-        }
+        result = {"entities": [], "relations": [], "relationships": [], "domains": [], "bridges": []}
 
         try:
             # 1. 解析 JSON（使用强化版解析器）
@@ -763,7 +740,7 @@ class EntityRelationExtractor:
                     "relationships": [],
                     "domains": [],
                     "bridges": [],
-                    "raw": str(raw)
+                    "raw": str(raw),
                 }
 
             # 2. 后处理实体（动态 Schema + 参数化配置）
@@ -772,7 +749,7 @@ class EntityRelationExtractor:
                 raw_entities,
                 allowed_entity_types=domain_entity_types,
                 min_freq=self.min_entity_frequency,
-                similarity_threshold=self.name_similarity_threshold
+                similarity_threshold=self.name_similarity_threshold,
             )
 
             # 3. 后处理关系（动态 Schema + 参数化配置）
@@ -785,7 +762,7 @@ class EntityRelationExtractor:
                 raw_relations,
                 entities,
                 allowed_relation_types=domain_relation_types,
-                similarity_threshold=self.name_similarity_threshold
+                similarity_threshold=self.name_similarity_threshold,
             )
 
             # 4. 构建统一的 dict 结果
@@ -795,7 +772,7 @@ class EntityRelationExtractor:
                 "relationships": relations,  # 兼容字段
                 "domains": parsed.get("domains", []),
                 "bridges": parsed.get("bridges", []),
-                "raw": str(raw)  # 保留原始输出用于调试
+                "raw": str(raw),  # 保留原始输出用于调试
             }
 
         except Exception as e:
@@ -821,11 +798,12 @@ class EntityRelationExtractor:
         {completion_delimiter}
         """
         import warnings
+
         warnings.warn(
             "_build_compatible_result is deprecated and will be removed in v2.0. "
             "Use dict format (ExtractionResult) instead.",
             DeprecationWarning,
-            stacklevel=2
+            stacklevel=2,
         )
         lines = []
 
@@ -866,7 +844,7 @@ class EntityRelationExtractor:
         file_domain_schema = {}
         for file_content in file_contents:
             filename = file_content[0]  # file_content: (filename, content, chunks, ...)
-            content = file_content[1]   # 原始文本内容
+            content = file_content[1]  # 原始文本内容
 
             # 路由领域
             domain = self._route_domain(filename, content)
@@ -877,7 +855,9 @@ class EntityRelationExtractor:
             # 保存到映射表
             file_domain_schema[filename] = (entity_types, relation_types)
 
-            print(f"📋 文件 '{filename}' → Domain: {domain} (实体类型: {len(entity_types)}, 关系类型: {len(relation_types)})")
+            print(
+                f"📋 文件 '{filename}' → Domain: {domain} (实体类型: {len(entity_types)}, 关系类型: {len(relation_types)})"
+            )
 
         # [修改] 不要原地修改 tuple，构造新列表
         new_file_contents = []
@@ -890,7 +870,7 @@ class EntityRelationExtractor:
             domain_entity_types, domain_relation_types = file_domain_schema[filename]
 
             # 预检查缓存命中率
-            cache_keys = [self._generate_cache_key(''.join(chunk)) for chunk in chunks]
+            cache_keys = [self._generate_cache_key("".join(chunk)) for chunk in chunks]
             cached_results = {key: self._load_from_cache(key) for key in cache_keys}
             non_cached_indices = [idx for idx, key in enumerate(cache_keys) if cached_results[key] is None]
 
@@ -899,10 +879,7 @@ class EntityRelationExtractor:
                     # 🔥 传递 domain schema 给 _process_single_chunk
                     future_to_chunk = {
                         executor.submit(
-                            self._process_single_chunk,
-                            ''.join(chunks[idx]),
-                            domain_entity_types,
-                            domain_relation_types
+                            self._process_single_chunk, "".join(chunks[idx]), domain_entity_types, domain_relation_types
                         ): idx
                         for idx in non_cached_indices
                     }
@@ -918,20 +895,18 @@ class EntityRelationExtractor:
                             chunk_index += 1
 
                         except Exception as exc:
-                            print(f'Chunk {chunk_idx} 处理异常: {exc}')
+                            print(f"Chunk {chunk_idx} 处理异常: {exc}")
                             retry_count = 0
                             while retry_count < 3:
                                 try:
-                                    print(f'尝试重试 Chunk {chunk_idx}, 第 {retry_count+1} 次')
+                                    print(f"尝试重试 Chunk {chunk_idx}, 第 {retry_count+1} 次")
                                     result = self._process_single_chunk(
-                                        ''.join(chunks[chunk_idx]),
-                                        domain_entity_types,
-                                        domain_relation_types
+                                        "".join(chunks[chunk_idx]), domain_entity_types, domain_relation_types
                                     )
                                     cached_results[cache_keys[chunk_idx]] = result
                                     break
                                 except Exception as retry_exc:
-                                    print(f'重试失败: {retry_exc}')
+                                    print(f"重试失败: {retry_exc}")
                                     retry_count += 1
                                     time.sleep(1)
 
@@ -943,7 +918,7 @@ class EntityRelationExtractor:
                                     "relationships": [],
                                     "domains": [],
                                     "bridges": [],
-                                    "raw": ""
+                                    "raw": "",
                                 }
 
             ordered_results = [cached_results[key] for key in cache_keys]
@@ -953,14 +928,20 @@ class EntityRelationExtractor:
             new_fc = tuple(list(file_content) + [ordered_results])
             new_file_contents.append(new_fc)
 
-            cache_ratio = self.cache_hits / (self.cache_hits + self.cache_misses) * 100 if (self.cache_hits + self.cache_misses) > 0 else 0
+            cache_ratio = (
+                self.cache_hits / (self.cache_hits + self.cache_misses) * 100
+                if (self.cache_hits + self.cache_misses) > 0
+                else 0
+            )
             print(f"文件 {i+1}/{len(file_contents)} 处理完成, 缓存命中率: {cache_ratio:.1f}%")
 
         process_time = time.time() - t0
         print(f"所有chunks处理完成, 总耗时: {process_time:.2f}秒, 平均每chunk: {process_time/total_chunks:.2f}秒")
         return new_file_contents
 
-    def _extract_one_chunk(self, chunk_text: str, allowed_entity_types: set, allowed_relation_types: set) -> Dict[str, Any]:
+    def _extract_one_chunk(
+        self, chunk_text: str, allowed_entity_types: set, allowed_relation_types: set
+    ) -> Dict[str, Any]:
         """
         包装单 chunk 抽取逻辑，供 batch 调用。
 
@@ -1008,7 +989,7 @@ class EntityRelationExtractor:
                     # chunk 可能是 str 或 list（带分隔符的）
                     if all(isinstance(x, str) for x in v):
                         avg_len = sum(len(x) for x in v) / max(1, len(v))
-                        if avg_len >= 20:   # chunk 一般不会是单字
+                        if avg_len >= 20:  # chunk 一般不会是单字
                             return fname, v
                     elif all(isinstance(x, list) for x in v):
                         # chunks 是 [[text, sep1, sep2], ...] 这种格式
@@ -1017,7 +998,11 @@ class EntityRelationExtractor:
                         for chunk_item in v:
                             if isinstance(chunk_item, list) and len(chunk_item) > 0:
                                 # 取第一个元素作为文本，或者拼接所有元素
-                                text = ''.join(chunk_item) if all(isinstance(x, str) for x in chunk_item) else str(chunk_item[0])
+                                text = (
+                                    "".join(chunk_item)
+                                    if all(isinstance(x, str) for x in chunk_item)
+                                    else str(chunk_item[0])
+                                )
                                 chunk_texts.append(text)
                             else:
                                 chunk_texts.append(str(chunk_item))
@@ -1035,7 +1020,9 @@ class EntityRelationExtractor:
 
         bad = [fn for fn, ch in normalized if not ch]
         if bad:
-            raise ValueError(f"process_chunks_batch: 未能从输入中解析出 chunk 列表，出问题的文件: {bad[:5]} (共{len(bad)}个)")
+            raise ValueError(
+                f"process_chunks_batch: 未能从输入中解析出 chunk 列表，出问题的文件: {bad[:5]} (共{len(bad)}个)"
+            )
 
         # 2) 准备每个文件的 schema（使用内部方法）
         file_schema_map: Dict[str, Tuple[set, set]] = {}
@@ -1055,7 +1042,7 @@ class EntityRelationExtractor:
         # 3) 扁平化所有 chunks，记录每个文件的范围
         flat_chunks = []
         flat_schemas = []
-        spans = []   # (fname, start, end)
+        spans = []  # (fname, start, end)
         cursor = 0
 
         for fname, chunks in normalized:
@@ -1093,10 +1080,7 @@ class EntityRelationExtractor:
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             futures = {
                 executor.submit(
-                    self._extract_one_chunk,
-                    flat_chunks[idx],
-                    flat_schemas[idx][0],
-                    flat_schemas[idx][1]
+                    self._extract_one_chunk, flat_chunks[idx], flat_schemas[idx][0], flat_schemas[idx][1]
                 ): idx
                 for idx in range(len(flat_chunks))
             }
@@ -1128,7 +1112,7 @@ class EntityRelationExtractor:
                         "relationships": [],
                         "domains": [],
                         "bridges": [],
-                        "raw": ""
+                        "raw": "",
                     }
 
                 completed += 1
@@ -1189,9 +1173,7 @@ class EntityRelationExtractor:
         # 🔥 新增：完整性校验
         # 1. 检查数量对齐
         if len(llm_results) != total_chunks:
-            raise RuntimeError(
-                f"严重错误：结果数量({len(llm_results)})与输入块数({total_chunks})不一致！"
-            )
+            raise RuntimeError(f"严重错误：结果数量({len(llm_results)})与输入块数({total_chunks})不一致！")
 
         # 2. 检查 None 值（防止意外漏填）
         none_indices = [i for i, r in enumerate(llm_results) if r is None]

@@ -1,7 +1,9 @@
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
 
-def create_multiple_reasoning_branches(tool, query_id, hypotheses: Optional[List[str]] = None) -> Dict[str, Dict[str, Any]]:
+def create_multiple_reasoning_branches(
+    tool, query_id, hypotheses: Optional[List[str]] = None
+) -> Dict[str, Dict[str, Any]]:
     """
     基于生成的假设创建多个推理分支。
     """

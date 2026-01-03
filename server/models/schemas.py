@@ -1,13 +1,16 @@
+from typing import Any, Dict, Generic, List, Optional, TypeVar
+
 from pydantic import BaseModel
-from typing import Optional, List, Dict, Any, TypeVar, Generic
+
 from graphrag_agent.config.settings import community_algorithm
 
 # 泛型类型变量
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class ChatRequest(BaseModel):
     """聊天请求模型"""
+
     message: str
     session_id: str
     debug: bool = False
@@ -18,6 +21,7 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     """聊天响应模型"""
+
     answer: str
     execution_log: Optional[List[Dict]] = None
     kg_data: Optional[Dict] = None
@@ -27,32 +31,38 @@ class ChatResponse(BaseModel):
 
 class SourceRequest(BaseModel):
     """源内容请求模型"""
+
     source_id: str
 
 
 class SourceResponse(BaseModel):
     """源内容响应模型"""
+
     content: str
 
 
 class SourceInfoResponse(BaseModel):
     """源文件信息响应模型"""
+
     file_name: str
 
 
 class ClearRequest(BaseModel):
     """清除聊天历史请求模型"""
+
     session_id: str
 
 
 class ClearResponse(BaseModel):
     """清除聊天历史响应模型"""
+
     status: str
     remaining_messages: Optional[str] = None
 
 
 class FeedbackRequest(BaseModel):
     """反馈请求模型"""
+
     message_id: str
     query: str
     is_positive: bool
@@ -62,14 +72,18 @@ class FeedbackRequest(BaseModel):
 
 class FeedbackResponse(BaseModel):
     """反馈响应模型"""
+
     status: str
     action: str
+
 
 class SourceInfoBatchRequest(BaseModel):
     source_ids: List[str]
 
+
 class ContentBatchRequest(BaseModel):
     chunk_ids: List[str]
+
 
 class ReasoningRequest(BaseModel):
     reasoning_type: str
@@ -78,12 +92,14 @@ class ReasoningRequest(BaseModel):
     max_depth: Optional[int] = 3
     algorithm: Optional[str] = community_algorithm
 
+
 class EntityData(BaseModel):
     id: str
     name: str
     type: str
     description: Optional[str] = ""
     properties: Optional[Dict[str, Any]] = {}
+
 
 class EntityUpdateData(BaseModel):
     id: str
@@ -92,10 +108,12 @@ class EntityUpdateData(BaseModel):
     description: Optional[str] = None
     properties: Optional[Dict[str, Any]] = None
 
+
 class EntitySearchFilter(BaseModel):
     term: Optional[str] = None
     type: Optional[str] = None
     limit: Optional[int] = 100
+
 
 class RelationData(BaseModel):
     source: str
@@ -104,6 +122,7 @@ class RelationData(BaseModel):
     description: Optional[str] = ""
     weight: Optional[float] = 0.5
     properties: Optional[Dict[str, Any]] = {}
+
 
 class RelationUpdateData(BaseModel):
     source: str
@@ -114,14 +133,17 @@ class RelationUpdateData(BaseModel):
     weight: Optional[float] = None
     properties: Optional[Dict[str, Any]] = None
 
+
 class RelationSearchFilter(BaseModel):
     source: Optional[str] = None
     target: Optional[str] = None
     type: Optional[str] = None
     limit: Optional[int] = 100
 
+
 class EntityDeleteData(BaseModel):
     id: str
+
 
 class RelationDeleteData(BaseModel):
     source: str
@@ -132,6 +154,7 @@ class RelationDeleteData(BaseModel):
 # ============================================================================
 # 统一响应模型 (Unified Response Model)
 # ============================================================================
+
 
 class BaseResponse(BaseModel, Generic[T]):
     """
@@ -144,6 +167,7 @@ class BaseResponse(BaseModel, Generic[T]):
         # 错误响应
         BaseResponse[None](code=5001, msg="LLM service unavailable", data=None)
     """
+
     code: int = 200
     msg: str = "success"
     data: Optional[T] = None
@@ -163,6 +187,7 @@ class ErrorCode:
         - 53xx: 缓存相关错误
         - 54xx: 文件系统相关错误
     """
+
     # 成功类
     SUCCESS = 200
     EMPTY_RESULT = 204  # 查询成功但无结果
@@ -211,8 +236,10 @@ class ErrorCode:
 # 实体抽取响应模型 (Entity Extraction Result)
 # ============================================================================
 
+
 class EntityItem(BaseModel):
     """实体项"""
+
     name: str
     type: str
     description: Optional[str] = ""
@@ -220,6 +247,7 @@ class EntityItem(BaseModel):
 
 class RelationItem(BaseModel):
     """关系项"""
+
     source: str
     target: str
     type: str
@@ -235,6 +263,7 @@ class ExtractionResult(BaseModel):
     - 替代旧的字符串格式（_build_compatible_result）
     - 统一 entity_extractor.py 和 build_graph.py 的数据交换格式
     """
+
     entities: List[EntityItem] = []
     relations: List[RelationItem] = []
     chunk_id: Optional[str] = None  # 对应的chunk ID
@@ -245,6 +274,7 @@ class ExtractionResult(BaseModel):
 
 class ExtractionStats(BaseModel):
     """实体抽取统计信息"""
+
     total_chunks: int = 0
     success_count: int = 0
     failed_count: int = 0

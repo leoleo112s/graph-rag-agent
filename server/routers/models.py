@@ -4,11 +4,13 @@
 提供LLM和Embedding模型的注册、切换、管理功能。
 """
 
-from fastapi import APIRouter, HTTPException, UploadFile, File
-from typing import Optional, Dict, Any, List
-from pydantic import BaseModel
-from graphrag_agent.models.model_manager import get_model_manager, ModelConfig
 import logging
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, File, HTTPException, UploadFile
+from pydantic import BaseModel
+
+from graphrag_agent.models.model_manager import ModelConfig, get_model_manager
 
 router = APIRouter(prefix="/admin/models", tags=["models"])
 logger = logging.getLogger(__name__)
@@ -16,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 class RegisterModelRequest(BaseModel):
     """注册模型请求"""
+
     name: str
     model_type: str  # llm | embedding
     provider: str  # openai | local | custom
@@ -27,14 +30,19 @@ class RegisterModelRequest(BaseModel):
 
 class ActivateModelRequest(BaseModel):
     """激活模型请求"""
+
     model_id: str
+
+
+class UpdateConfigRequest(BaseModel):
+    """更新模型配置请求"""
+
+    config: Dict[str, Any]
 
 
 @router.get("/")
 async def list_models(
-    model_type: Optional[str] = None,
-    provider: Optional[str] = None,
-    active_only: bool = False
+    model_type: Optional[str] = None, provider: Optional[str] = None, active_only: bool = False
 ) -> Dict[str, Any]:
     """
     获取模型列表
@@ -49,16 +57,9 @@ async def list_models(
     """
     try:
         manager = get_model_manager()
-        models = manager.list_models(
-            model_type=model_type,
-            provider=provider,
-            active_only=active_only
-        )
+        models = manager.list_models(model_type=model_type, provider=provider, active_only=active_only)
 
-        return {
-            "models": [m.model_dump() for m in models],
-            "total": len(models)
-        }
+        return {"models": [m.model_dump() for m in models], "total": len(models)}
 
     except Exception as e:
         logger.error(f"Failed to list models: {e}")
@@ -83,9 +84,7 @@ async def get_model(model_id: str) -> Dict[str, Any]:
         if not model:
             raise HTTPException(status_code=404, detail="Model not found")
 
-        return {
-            "model": model.model_dump()
-        }
+        return {"model": model.model_dump()}
 
     except HTTPException:
         raise
@@ -110,24 +109,15 @@ async def register_model(request: RegisterModelRequest) -> Dict[str, Any]:
 
         # 验证模型类型
         if request.model_type not in ["llm", "embedding"]:
-            raise HTTPException(
-                status_code=400,
-                detail="model_type must be 'llm' or 'embedding'"
-            )
+            raise HTTPException(status_code=400, detail="model_type must be 'llm' or 'embedding'")
 
         # 验证提供商
         if request.provider not in ["openai", "local", "custom"]:
-            raise HTTPException(
-                status_code=400,
-                detail="provider must be 'openai', 'local', or 'custom'"
-            )
+            raise HTTPException(status_code=400, detail="provider must be 'openai', 'local', or 'custom'")
 
         # 验证配置
         if not request.config.get("model"):
-            raise HTTPException(
-                status_code=400,
-                detail="config must contain 'model' field"
-            )
+            raise HTTPException(status_code=400, detail="config must contain 'model' field")
 
         # 注册模型
         model_id = manager.register_model(
@@ -137,16 +127,12 @@ async def register_model(request: RegisterModelRequest) -> Dict[str, Any]:
             config=request.config,
             description=request.description,
             tags=request.tags or [],
-            set_active=request.set_active
+            set_active=request.set_active,
         )
 
         model = manager.get_model(model_id)
 
-        return {
-            "status": "success",
-            "model_id": model_id,
-            "model": model.model_dump() if model else None
-        }
+        return {"status": "success", "model_id": model_id, "model": model.model_dump() if model else None}
 
     except HTTPException:
         raise
@@ -186,13 +172,58 @@ async def activate_model(request: ActivateModelRequest) -> Dict[str, Any]:
         return {
             "status": "success",
             "message": f"Model '{model.name}' activated successfully",
-            "model_id": request.model_id
+            "model_id": request.model_id,
         }
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Failed to activate model: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{model_id}/update_config")
+async def update_model_config(model_id: str, request: UpdateConfigRequest) -> Dict[str, Any]:
+    """
+    更新模型配置（参数调整）
+
+    Args:
+        model_id: 模型ID
+        request: 更新请求
+
+    Returns:
+        更新结果
+    """
+    try:
+        manager = get_model_manager()
+
+        # 验证模型是否存在
+        model = manager.get_model(model_id)
+        if not model:
+            raise HTTPException(status_code=404, detail="Model not found")
+
+        # 更新配置
+        success = manager.update_model_config(model_id, request.config)
+
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to update model config")
+
+        # 重新加载模型实例
+        manager.reload_models()
+
+        # 获取更新后的模型
+        updated_model = manager.get_model(model_id)
+
+        return {
+            "status": "success",
+            "message": f"Model '{model.name}' config updated successfully",
+            "model": updated_model.model_dump() if updated_model else None,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update model config: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -221,10 +252,7 @@ async def delete_model(model_id: str) -> Dict[str, Any]:
         if not success:
             raise HTTPException(status_code=500, detail="Failed to delete model")
 
-        return {
-            "status": "success",
-            "message": f"Model '{model.name}' deleted successfully"
-        }
+        return {"status": "success", "message": f"Model '{model.name}' deleted successfully"}
 
     except HTTPException:
         raise
@@ -248,10 +276,7 @@ async def reload_models() -> Dict[str, Any]:
         manager = get_model_manager()
         manager.reload_models()
 
-        return {
-            "status": "success",
-            "message": "Models reloaded successfully"
-        }
+        return {"status": "success", "message": "Models reloaded successfully"}
 
     except Exception as e:
         logger.error(f"Failed to reload models: {e}")
@@ -273,9 +298,7 @@ async def get_active_llm_info() -> Dict[str, Any]:
         if not active_llms:
             raise HTTPException(status_code=404, detail="No active LLM model found")
 
-        return {
-            "model": active_llms[0].model_dump()
-        }
+        return {"model": active_llms[0].model_dump()}
 
     except HTTPException:
         raise
@@ -299,9 +322,7 @@ async def get_active_embedding_info() -> Dict[str, Any]:
         if not active_embeddings:
             raise HTTPException(status_code=404, detail="No active embedding model found")
 
-        return {
-            "model": active_embeddings[0].model_dump()
-        }
+        return {"model": active_embeddings[0].model_dump()}
 
     except HTTPException:
         raise
@@ -321,9 +342,7 @@ async def list_providers() -> Dict[str, Any]:
     providers = [
         {"value": "openai", "label": "OpenAI", "description": "OpenAI API compatible models"},
         {"value": "local", "label": "Local", "description": "Local models (.gguf, adapters)"},
-        {"value": "custom", "label": "Custom", "description": "Custom model configurations"}
+        {"value": "custom", "label": "Custom", "description": "Custom model configurations"},
     ]
 
-    return {
-        "providers": providers
-    }
+    return {"providers": providers}

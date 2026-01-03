@@ -5,18 +5,20 @@
 包含完整的审核工作流：提交 → 待审核 → 批准/拒绝 → 应用。
 """
 
-import sqlite3
 import json
+import sqlite3
 import uuid
 from datetime import datetime
-from pathlib import Path
-from typing import Optional, List, Dict, Any
 from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field
 
 
 class FeedbackType(str, Enum):
     """反馈类型枚举"""
+
     ANSWER_RATING = "answer_rating"  # 回答评分（原有的点赞/点踩）
     ENTITY_MERGE = "entity_merge"  # 实体合并建议
     RELATION_CORRECTION = "relation_correction"  # 关系纠错
@@ -28,6 +30,7 @@ class FeedbackType(str, Enum):
 
 class FeedbackStatus(str, Enum):
     """反馈状态枚举"""
+
     PENDING = "pending"  # 待审核
     APPROVED = "approved"  # 已批准
     REJECTED = "rejected"  # 已拒绝
@@ -36,6 +39,7 @@ class FeedbackStatus(str, Enum):
 
 class DetailedFeedbackRequest(BaseModel):
     """详细反馈请求模型"""
+
     type: FeedbackType
     target_id: Optional[str] = None  # MessageID 或 EntityID 或 RelationKey
     content: Dict[str, Any] = Field(default_factory=dict)  # 类型相关的内容
@@ -47,6 +51,7 @@ class DetailedFeedbackRequest(BaseModel):
 
 class FeedbackReviewRequest(BaseModel):
     """反馈审核请求模型"""
+
     action: str  # "approve" 或 "reject"
     note: Optional[str] = None  # 审核备注
     reviewer_id: str = "admin"
@@ -54,6 +59,7 @@ class FeedbackReviewRequest(BaseModel):
 
 class FeedbackRecord(BaseModel):
     """反馈记录模型"""
+
     id: str
     type: FeedbackType
     target_id: Optional[str] = None
@@ -87,7 +93,8 @@ class FeedbackDB:
     def _init_db(self):
         """初始化数据库表"""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS feedback_records (
                     id TEXT PRIMARY KEY,
                     type TEXT NOT NULL,
@@ -104,20 +111,27 @@ class FeedbackDB:
                     review_note TEXT,
                     applied_at TIMESTAMP
                 )
-            """)
+            """
+            )
             # 创建索引以加速查询
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_status
                 ON feedback_records(status)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_type
                 ON feedback_records(type)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_created_at
                 ON feedback_records(created_at DESC)
-            """)
+            """
+            )
             conn.commit()
 
     def create_record(
@@ -128,7 +142,7 @@ class FeedbackDB:
         user_id: str = "anonymous",
         target_id: Optional[str] = None,
         thread_id: Optional[str] = None,
-        agent_type: Optional[str] = None
+        agent_type: Optional[str] = None,
     ) -> str:
         """
         创建新的反馈记录
@@ -166,8 +180,8 @@ class FeedbackDB:
                     user_id,
                     thread_id,
                     agent_type,
-                    created_at
-                )
+                    created_at,
+                ),
             )
             conn.commit()
 
@@ -178,7 +192,7 @@ class FeedbackDB:
         record_id: str,
         status: FeedbackStatus,
         reviewer_id: Optional[str] = None,
-        review_note: Optional[str] = None
+        review_note: Optional[str] = None,
     ):
         """
         更新反馈状态
@@ -231,10 +245,7 @@ class FeedbackDB:
         """
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
-            cursor = conn.execute(
-                "SELECT * FROM feedback_records WHERE id = ?",
-                (record_id,)
-            )
+            cursor = conn.execute("SELECT * FROM feedback_records WHERE id = ?", (record_id,))
             row = cursor.fetchone()
 
             if not row:
@@ -248,7 +259,7 @@ class FeedbackDB:
         offset: int = 0,
         status: Optional[FeedbackStatus] = None,
         feedback_type: Optional[FeedbackType] = None,
-        user_id: Optional[str] = None
+        user_id: Optional[str] = None,
     ) -> List[FeedbackRecord]:
         """
         列出反馈记录
@@ -301,30 +312,24 @@ class FeedbackDB:
 
             # 各状态统计
             pending = conn.execute(
-                "SELECT COUNT(*) FROM feedback_records WHERE status = ?",
-                (FeedbackStatus.PENDING.value,)
+                "SELECT COUNT(*) FROM feedback_records WHERE status = ?", (FeedbackStatus.PENDING.value,)
             ).fetchone()[0]
 
             approved = conn.execute(
-                "SELECT COUNT(*) FROM feedback_records WHERE status = ?",
-                (FeedbackStatus.APPROVED.value,)
+                "SELECT COUNT(*) FROM feedback_records WHERE status = ?", (FeedbackStatus.APPROVED.value,)
             ).fetchone()[0]
 
             rejected = conn.execute(
-                "SELECT COUNT(*) FROM feedback_records WHERE status = ?",
-                (FeedbackStatus.REJECTED.value,)
+                "SELECT COUNT(*) FROM feedback_records WHERE status = ?", (FeedbackStatus.REJECTED.value,)
             ).fetchone()[0]
 
             applied = conn.execute(
-                "SELECT COUNT(*) FROM feedback_records WHERE status = ?",
-                (FeedbackStatus.APPLIED.value,)
+                "SELECT COUNT(*) FROM feedback_records WHERE status = ?", (FeedbackStatus.APPLIED.value,)
             ).fetchone()[0]
 
             # 各类型统计
             type_stats = {}
-            cursor = conn.execute(
-                "SELECT type, COUNT(*) as count FROM feedback_records GROUP BY type"
-            )
+            cursor = conn.execute("SELECT type, COUNT(*) as count FROM feedback_records GROUP BY type")
             for row in cursor:
                 type_stats[row[0]] = row[1]
 
@@ -335,7 +340,7 @@ class FeedbackDB:
                 "rejected_feedbacks": rejected,
                 "applied_feedbacks": applied,
                 "approval_rate": round(approved / total * 100, 2) if total > 0 else 0,
-                "type_distribution": type_stats
+                "type_distribution": type_stats,
             }
 
     def count_by_status(self, status: FeedbackStatus) -> int:
@@ -349,10 +354,9 @@ class FeedbackDB:
             数量
         """
         with sqlite3.connect(self.db_path) as conn:
-            count = conn.execute(
-                "SELECT COUNT(*) FROM feedback_records WHERE status = ?",
-                (status.value,)
-            ).fetchone()[0]
+            count = conn.execute("SELECT COUNT(*) FROM feedback_records WHERE status = ?", (status.value,)).fetchone()[
+                0
+            ]
             return count
 
     def _row_to_record(self, row: sqlite3.Row) -> FeedbackRecord:
@@ -379,7 +383,7 @@ class FeedbackDB:
             reviewed_at=row["reviewed_at"],
             reviewer_id=row["reviewer_id"],
             review_note=row["review_note"],
-            applied_at=row["applied_at"]
+            applied_at=row["applied_at"],
         )
 
 

@@ -1,17 +1,19 @@
-import numpy as np
-from abc import ABC, abstractmethod
-from typing import List, Union
+import os
+
 # from sentence_transformers import SentenceTransformer
 import threading
+from abc import ABC, abstractmethod
 from pathlib import Path
-import os
+from typing import List, Union
+
+import numpy as np
 
 ENABLE_SENTENCE_TRANSFORMERS = os.getenv("ENABLE_SENTENCE_TRANSFORMERS", "0") == "1"
 
 from graphrag_agent.config.settings import (
-    MODEL_CACHE_DIR,
     CACHE_EMBEDDING_PROVIDER,
     CACHE_SENTENCE_TRANSFORMER_MODEL,
+    MODEL_CACHE_DIR,
 )
 
 
@@ -44,12 +46,13 @@ class OpenAIEmbeddingProvider(EmbeddingProvider):
             return cls._instance
 
     def __init__(self):
-        if hasattr(self, '_initialized') and self._initialized:
+        if hasattr(self, "_initialized") and self._initialized:
             return
 
         # 导入并复用现有的embedding模型
         try:
             from graphrag_agent.models.get_models import get_embeddings_model
+
             self.model = get_embeddings_model()
             self._dimension = None
             self._initialized = True
@@ -86,7 +89,7 @@ class SentenceTransformerEmbedding(EmbeddingProvider):
     _instances = {}
     _lock = threading.Lock()
 
-    def __new__(cls, model_name: str = 'all-MiniLM-L6-v2', cache_dir: str = None):
+    def __new__(cls, model_name: str = "all-MiniLM-L6-v2", cache_dir: str = None):
         """单例模式，避免重复加载模型"""
         with cls._lock:
             if model_name not in cls._instances:
@@ -94,8 +97,8 @@ class SentenceTransformerEmbedding(EmbeddingProvider):
                 cls._instances[model_name]._initialized = False
             return cls._instances[model_name]
 
-    def __init__(self, model_name: str = 'all-MiniLM-L6-v2', cache_dir: str = None):
-        if hasattr(self, '_initialized') and self._initialized:
+    def __init__(self, model_name: str = "all-MiniLM-L6-v2", cache_dir: str = None):
+        if hasattr(self, "_initialized") and self._initialized:
             return
 
         self.model_name = model_name
@@ -164,7 +167,4 @@ def get_cache_embedding_provider() -> EmbeddingProvider:
         model_name = CACHE_SENTENCE_TRANSFORMER_MODEL
         return SentenceTransformerEmbedding(model_name=model_name, cache_dir=MODEL_CACHE_DIR)
 
-    raise ValueError(
-        f"不支持的 CACHE_EMBEDDING_PROVIDER={provider_type}，可选：openai / sentence_transformer"
-    )
-
+    raise ValueError(f"不支持的 CACHE_EMBEDDING_PROVIDER={provider_type}，可选：openai / sentence_transformer")

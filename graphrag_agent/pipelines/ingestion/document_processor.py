@@ -1,13 +1,18 @@
-import os
 import logging
-from typing import List, Dict, Optional, Any, Literal
+import os
 from dataclasses import dataclass, field
+from typing import Any, Dict, List, Literal, Optional
 
+from graphrag_agent.config.settings import CHUNK_SIZE, FILES_DIR, OVERLAP
+from graphrag_agent.pipelines.ingestion.adaptive_chunker import AdaptiveChunker, create_adaptive_chunker
 from graphrag_agent.pipelines.ingestion.file_reader import FileReader
+from graphrag_agent.pipelines.ingestion.specialized_chunkers import (
+    GraphChunker,
+    RAGChunker,
+    create_graph_chunker,
+    create_rag_chunker,
+)
 from graphrag_agent.pipelines.ingestion.text_chunker import ChineseTextChunker
-from graphrag_agent.pipelines.ingestion.specialized_chunkers import GraphChunker, RAGChunker, create_graph_chunker, create_rag_chunker
-from graphrag_agent.pipelines.ingestion.adaptive_chunker import create_adaptive_chunker, AdaptiveChunker
-from graphrag_agent.config.settings import FILES_DIR, CHUNK_SIZE, OVERLAP
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -16,6 +21,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ProcessingSummary:
     """文档处理摘要统计"""
+
     total_files: int = 0
     success_count: int = 0
     failed_count: int = 0
@@ -49,10 +55,10 @@ class DocumentProcessor:
         directory_path: str,
         chunk_size: int = CHUNK_SIZE,
         overlap: int = OVERLAP,
-        chunker_mode: Literal['default', 'graph', 'rag', 'adaptive'] = 'default',
+        chunker_mode: Literal["default", "graph", "rag", "adaptive"] = "default",
         enable_adaptive_chunking: bool = False,
         enable_structure_detection: bool = True,
-        enable_language_detection: bool = True
+        enable_language_detection: bool = True,
     ):
         """
         初始化文档处理器
@@ -81,33 +87,34 @@ class DocumentProcessor:
         self.use_adaptive = False
 
         # 优先使用自适应分块器
-        if enable_adaptive_chunking or chunker_mode == 'adaptive':
+        if enable_adaptive_chunking or chunker_mode == "adaptive":
             # 根据模式选择自适应分块器的基础模式
-            base_mode = 'graph' if chunker_mode in ['adaptive', 'graph'] else 'rag' if chunker_mode == 'rag' else 'default'
+            base_mode = (
+                "graph" if chunker_mode in ["adaptive", "graph"] else "rag" if chunker_mode == "rag" else "default"
+            )
             self.chunker = create_adaptive_chunker(
                 mode=base_mode,
                 enable_structure_detection=enable_structure_detection,
-                enable_language_detection=enable_language_detection
+                enable_language_detection=enable_language_detection,
             )
             self.use_adaptive = True
-            logger.info(f"🎯 使用 AdaptiveChunker: mode={base_mode}, structure={enable_structure_detection}, language={enable_language_detection}")
-        elif chunker_mode == 'graph':
+            logger.info(
+                f"🎯 使用 AdaptiveChunker: mode={base_mode}, structure={enable_structure_detection}, language={enable_language_detection}"
+            )
+        elif chunker_mode == "graph":
             self.chunker = create_graph_chunker()  # 生产级配置 (900, 50)
             logger.info(f"📊 使用 GraphChunker: chunk_size=900, overlap=50 (生产级验证配置)")
-        elif chunker_mode == 'rag':
-            self.chunker = create_rag_chunker()    # 小 chunk (400, 80)
+        elif chunker_mode == "rag":
+            self.chunker = create_rag_chunker()  # 小 chunk (400, 80)
             logger.info(f"🔍 使用 RAGChunker: chunk_size=400, overlap=80")
         else:
             # 默认模式：使用旧 Chunker（兼容性）
             self.chunker = ChineseTextChunker(chunk_size, overlap)
             logger.info(f"⚠️  使用默认 Chunker: chunk_size={chunk_size}, overlap={overlap}")
             logger.info(f"   推荐使用 chunker_mode='adaptive' 以获得更好的性能")
-        
+
     def process_directory(
-        self,
-        file_extensions: Optional[List[str]] = None,
-        recursive: bool = True,
-        return_summary: bool = True
+        self, file_extensions: Optional[List[str]] = None, recursive: bool = True, return_summary: bool = True
     ) -> Tuple[List[Dict[str, Any]], Optional[ProcessingSummary]]:
         """
         处理目录中的所有支持文件（带统计信息）
@@ -145,7 +152,7 @@ class DocumentProcessor:
                 "extension": file_ext,
                 "content": content,
                 "content_length": len(content),
-                "chunks": None
+                "chunks": None,
             }
 
             # 对文本内容进行分块
@@ -158,9 +165,9 @@ class DocumentProcessor:
                     file_result["chunk_stats"] = chunk_stats
 
                     # 更新摘要统计
-                    summary.total_chunks += chunk_stats['chunk_count']
-                    language = chunk_stats.get('language', 'unknown')
-                    structure = chunk_stats.get('structure_type', 'plain')
+                    summary.total_chunks += chunk_stats["chunk_count"]
+                    language = chunk_stats.get("language", "unknown")
+                    structure = chunk_stats.get("structure_type", "plain")
                     summary.language_distribution[language] = summary.language_distribution.get(language, 0) + 1
                     summary.structure_distribution[structure] = summary.structure_distribution.get(structure, 0) + 1
 
@@ -182,7 +189,7 @@ class DocumentProcessor:
 
                     # 计算每个块的长度
                     if chunks:
-                        chunk_lengths = [len(''.join(chunk)) for chunk in chunks]
+                        chunk_lengths = [len("".join(chunk)) for chunk in chunks]
                         all_chunk_sizes.extend(chunk_lengths)
                         file_result["chunk_lengths"] = chunk_lengths
                         file_result["average_chunk_length"] = sum(chunk_lengths) / len(chunk_lengths)
@@ -241,112 +248,112 @@ class DocumentProcessor:
             return results, summary
         else:
             return results, None
-        
+
     def get_file_stats(self, file_extensions: Optional[List[str]] = None, recursive: bool = True) -> Dict[str, Any]:
         """
         获取目录中文件的统计信息
-        
+
         Args:
             file_extensions: 指定要统计的文件扩展名，如不指定则处理所有支持的类型
             recursive: 是否递归统计子目录，默认为True
-            
+
         Returns:
             Dict: 文件统计信息
         """
         # 读取文件
         file_contents = self.file_reader.read_files(file_extensions, recursive=recursive)
-        
+
         # 统计每种扩展名的文件数量
         extension_counts = {}
         total_content_length = 0
-        
+
         # 统计子目录数量
         directories = set()
-        
+
         for filepath, content in file_contents:
             ext = os.path.splitext(filepath)[1].lower()
             extension_counts[ext] = extension_counts.get(ext, 0) + 1
-            
+
             # 记录文件所在的子目录
             dirpath = os.path.dirname(filepath)
             if dirpath:  # 非空表示在子目录中
                 directories.add(dirpath)
-                
+
             if content is not None:
                 total_content_length += len(content)
             else:
                 print(f"警告: 文件 {filepath} 的内容为None")
-            
+
         return {
             "total_files": len(file_contents),
             "extension_counts": extension_counts,
             "total_content_length": total_content_length,
             "average_file_length": total_content_length / len(file_contents) if file_contents else 0,
             "directories": list(directories),
-            "directory_count": len(directories)
+            "directory_count": len(directories),
         }
-        
+
     def get_extension_type(self, extension: str) -> str:
         """
         获取文件扩展名对应的文档类型
-        
+
         Args:
             extension: 文件扩展名（包括'.'，如'.pdf'）
-            
+
         Returns:
             str: 文档类型描述
         """
         extension_types = {
-            '.txt': '文本文件',
-            '.pdf': 'PDF文档',
-            '.md': 'Markdown文档',
-            '.doc': 'Word文档',
-            '.docx': 'Word文档',
-            '.csv': 'CSV数据文件',
-            '.json': 'JSON数据文件',
-            '.yaml': 'YAML配置文件',
-            '.yml': 'YAML配置文件',
+            ".txt": "文本文件",
+            ".pdf": "PDF文档",
+            ".md": "Markdown文档",
+            ".doc": "Word文档",
+            ".docx": "Word文档",
+            ".csv": "CSV数据文件",
+            ".json": "JSON数据文件",
+            ".yaml": "YAML配置文件",
+            ".yml": "YAML配置文件",
         }
-        
-        return extension_types.get(extension.lower(), '未知类型')
-        
-        
+
+        return extension_types.get(extension.lower(), "未知类型")
+
+
 if __name__ == "__main__":
     # 创建文档处理器
     processor = DocumentProcessor(FILES_DIR)
-    
+
     # 列出目录中的所有文件
     print(f"目录 {FILES_DIR} 及其子目录中的所有文件:")
     all_files = processor.file_reader.list_all_files(recursive=True)
     for filepath in all_files:
         print(f"  {filepath}")
-    
+
     # 获取文件统计信息
     stats = processor.get_file_stats(recursive=True)
     print("目录文件统计:")
     print(f"总文件数: {stats['total_files']}")
     print(f"子目录数: {stats['directory_count']}")
-    if stats['directory_count'] > 0:
+    if stats["directory_count"] > 0:
         print("子目录列表:")
-        for directory in stats['directories']:
+        for directory in stats["directories"]:
             print(f"  {directory}")
-    
+
     print("文件类型分布:")
     for ext, count in stats["extension_counts"].items():
         print(f"  {ext} ({processor.get_extension_type(ext)}): {count}文件")
     print(f"总文本长度: {stats['total_content_length']}字符")
     print(f"平均文件长度: {stats['average_file_length']:.2f}字符")
-    
+
     # 处理所有文件
     print("\n开始处理所有文件...")
     results = processor.process_directory(recursive=True)
-    
+
     # 打印处理结果摘要
     for result in results:
         print(f"\n文件: {result['filepath']}")
         print(f"类型: {processor.get_extension_type(result['extension'])}")
         print(f"内容长度: {result['content_length']}字符")
-        
+
         if result.get("chunks"):
             print(f"分块数量: {result['chunk_count']}")
             print(f"平均分块长度: {result['average_chunk_length']:.2f}字符")

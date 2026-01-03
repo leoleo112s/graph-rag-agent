@@ -4,13 +4,15 @@
 提供图谱模板的浏览、下载、评分、发布等功能。
 """
 
-from fastapi import APIRouter, HTTPException, Query
-from typing import Optional, Dict, Any, List
-from pydantic import BaseModel
-from server.models.graph_template import get_template_db, GraphTemplate, TemplateRating
-from graphrag_agent.config.graph_config_storage import GraphConfigStorage
-from graphrag_agent.config.graph_config_model import GraphConfig
 import logging
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel
+
+from graphrag_agent.config.graph_config_model import GraphConfig
+from graphrag_agent.config.graph_config_storage import GraphConfigStorage
+from server.models.graph_template import GraphTemplate, TemplateRating, get_template_db
 
 router = APIRouter(prefix="/admin/templates", tags=["templates"])
 logger = logging.getLogger(__name__)
@@ -18,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 class PublishTemplateRequest(BaseModel):
     """发布模板请求"""
+
     name: str
     domain: str
     description: str
@@ -29,6 +32,7 @@ class PublishTemplateRequest(BaseModel):
 
 class RateTemplateRequest(BaseModel):
     """评分请求"""
+
     rating: int  # 1-5
     comment: Optional[str] = None
     user_id: str = "anonymous"
@@ -36,6 +40,7 @@ class RateTemplateRequest(BaseModel):
 
 class ApplyTemplateRequest(BaseModel):
     """应用模板请求"""
+
     template_id: str
 
 
@@ -46,7 +51,7 @@ async def list_templates(
     is_official: Optional[bool] = None,
     sort_by: str = Query("rating", description="Sort by: rating, downloads, created_at"),
     limit: int = 50,
-    offset: int = 0
+    offset: int = 0,
 ) -> Dict[str, Any]:
     """
     获取模板列表
@@ -66,19 +71,14 @@ async def list_templates(
         db = get_template_db()
 
         templates = db.list_templates(
-            domain=domain,
-            author_id=author_id,
-            is_official=is_official,
-            sort_by=sort_by,
-            limit=limit,
-            offset=offset
+            domain=domain, author_id=author_id, is_official=is_official, sort_by=sort_by, limit=limit, offset=offset
         )
 
         return {
             "templates": [t.model_dump() for t in templates],
             "total": len(templates),
             "limit": limit,
-            "offset": offset
+            "offset": offset,
         }
 
     except Exception as e:
@@ -107,10 +107,7 @@ async def get_template(template_id: str) -> Dict[str, Any]:
         # 同时获取评分
         ratings = db.get_template_ratings(template_id, limit=10)
 
-        return {
-            "template": template.model_dump(),
-            "ratings": [r.model_dump() for r in ratings]
-        }
+        return {"template": template.model_dump(), "ratings": [r.model_dump() for r in ratings]}
 
     except HTTPException:
         raise
@@ -141,7 +138,7 @@ async def publish_template(request: PublishTemplateRequest) -> Dict[str, Any]:
             raise HTTPException(status_code=400, detail="No configuration found. Please create a configuration first.")
 
         # 转换为JSON
-        config_json = config.model_dump(mode='json')
+        config_json = config.model_dump(mode="json")
 
         # 创建模板
         db = get_template_db()
@@ -154,7 +151,7 @@ async def publish_template(request: PublishTemplateRequest) -> Dict[str, Any]:
             author_name=request.author_name,
             tags=request.tags or [],
             is_official=False,  # 用户发布的模板默认非官方
-            is_public=request.is_public
+            is_public=request.is_public,
         )
 
         template = db.get_template(template_id)
@@ -162,7 +159,7 @@ async def publish_template(request: PublishTemplateRequest) -> Dict[str, Any]:
         return {
             "status": "success",
             "template_id": template_id,
-            "template": template.model_dump() if template else None
+            "template": template.model_dump() if template else None,
         }
 
     except HTTPException:
@@ -198,10 +195,7 @@ async def rate_template(template_id: str, request: RateTemplateRequest) -> Dict[
 
         # 提交评分
         rating_id = db.rate_template(
-            template_id=template_id,
-            user_id=request.user_id,
-            rating=request.rating,
-            comment=request.comment
+            template_id=template_id, user_id=request.user_id, rating=request.rating, comment=request.comment
         )
 
         # 获取更新后的模板信息
@@ -210,7 +204,7 @@ async def rate_template(template_id: str, request: RateTemplateRequest) -> Dict[
         return {
             "status": "success",
             "rating_id": rating_id,
-            "template": updated_template.model_dump() if updated_template else None
+            "template": updated_template.model_dump() if updated_template else None,
         }
 
     except HTTPException:
@@ -243,11 +237,7 @@ async def download_template(template_id: str) -> Dict[str, Any]:
         db.increment_downloads(template_id)
 
         # 返回配置
-        return {
-            "status": "success",
-            "template_id": template_id,
-            "config": template.config_json
-        }
+        return {"status": "success", "template_id": template_id, "config": template.config_json}
 
     except HTTPException:
         raise
@@ -293,7 +283,7 @@ async def apply_template(request: ApplyTemplateRequest) -> Dict[str, Any]:
         return {
             "status": "success",
             "message": f"Template '{template.name}' applied successfully",
-            "template_id": request.template_id
+            "template_id": request.template_id,
         }
 
     except HTTPException:
@@ -330,10 +320,7 @@ async def delete_template(template_id: str) -> Dict[str, Any]:
         if not success:
             raise HTTPException(status_code=500, detail="Failed to delete template")
 
-        return {
-            "status": "success",
-            "message": f"Template '{template.name}' deleted successfully"
-        }
+        return {"status": "success", "message": f"Template '{template.name}' deleted successfully"}
 
     except HTTPException:
         raise
@@ -352,9 +339,7 @@ async def list_domains() -> Dict[str, Any]:
     """
     from server.models.graph_template import TemplateDomain
 
-    domains = [
-        {"value": d.value, "label": d.name} for d in TemplateDomain
-    ]
+    domains = [{"value": d.value, "label": d.name} for d in TemplateDomain]
 
     # 添加中文标签
     domain_labels = {
@@ -365,12 +350,10 @@ async def list_domains() -> Dict[str, Any]:
         "finance": "金融",
         "government": "政府",
         "manufacturing": "制造业",
-        "custom": "自定义"
+        "custom": "自定义",
     }
 
     for domain in domains:
         domain["label_zh"] = domain_labels.get(domain["value"], domain["value"])
 
-    return {
-        "domains": domains
-    }
+    return {"domains": domains}

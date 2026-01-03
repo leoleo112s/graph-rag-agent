@@ -3,42 +3,43 @@ Planner编排基类
 
 整合Clarifier、TaskDecomposer、PlanReviewer，输出结构化的PlanSpec
 """
-from typing import Optional, List, Set
-from datetime import datetime
+
 import logging
 import uuid
+from datetime import datetime
+from typing import List, Optional, Set
 
-from pydantic import BaseModel, Field
 from langchain_core.language_models.chat_models import BaseChatModel
+from pydantic import BaseModel, Field
 
-from graphrag_agent.agents.multi_agent.core.state import (
-    PlanExecuteState,
-    PlanContext,
-)
 from graphrag_agent.agents.multi_agent.core.plan_spec import (
-    PlanSpec,
     PlanExecutionSignal,
+    PlanSpec,
     TaskNode,
 )
-from graphrag_agent.agents.multi_agent.planner.clarifier import (
-    Clarifier,
-    ClarificationResult,
+from graphrag_agent.agents.multi_agent.core.state import (
+    PlanContext,
+    PlanExecuteState,
 )
-from graphrag_agent.agents.multi_agent.planner.task_decomposer import (
-    TaskDecomposer,
-    TaskDecompositionResult,
+from graphrag_agent.agents.multi_agent.planner.clarifier import (
+    ClarificationResult,
+    Clarifier,
 )
 from graphrag_agent.agents.multi_agent.planner.plan_reviewer import (
     PlanReviewer,
     PlanReviewOutcome,
 )
-from graphrag_agent.models.get_models import get_llm_model
+from graphrag_agent.agents.multi_agent.planner.task_decomposer import (
+    TaskDecomposer,
+    TaskDecompositionResult,
+)
 from graphrag_agent.config.settings import (
-    MULTI_AGENT_PLANNER_MAX_TASKS,
     MULTI_AGENT_ALLOW_UNCLARIFIED_PLAN,
     MULTI_AGENT_DEFAULT_DOMAIN,
+    MULTI_AGENT_PLANNER_MAX_TASKS,
     MULTI_AGENT_REFLECTION_ALLOW_RETRY,
 )
+from graphrag_agent.models.get_models import get_llm_model
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -47,6 +48,7 @@ class PlannerConfig(BaseModel):
     """
     Planner配置
     """
+
     max_tasks: int = Field(default=6, description="单次任务分解允许的最大任务数")
     allow_unclarified_plan: bool = Field(
         default=True,
@@ -59,6 +61,7 @@ class PlannerResult(BaseModel):
     """
     Planner综合输出
     """
+
     plan_spec: Optional[PlanSpec] = Field(default=None, description="最终生成的PlanSpec")
     clarification: ClarificationResult = Field(description="澄清结果")
     task_decomposition: Optional[TaskDecompositionResult] = Field(
@@ -69,10 +72,7 @@ class PlannerResult(BaseModel):
         default=None,
         description="计划审校产出详情",
     )
-    executor_signal: Optional[PlanExecutionSignal] = Field(
-        default=None,
-        description="传递给Executor的计划信号"
-    )
+    executor_signal: Optional[PlanExecutionSignal] = Field(default=None, description="传递给Executor的计划信号")
 
     def needs_clarification(self) -> bool:
         """是否仍需澄清"""
@@ -91,6 +91,7 @@ class PlannerResult(BaseModel):
             return None
         # Pydantic v1/v2 兼容性处理
         import json
+
         return json.dumps(self.executor_signal.model_dump(mode="json"), ensure_ascii=False, indent=2)
 
 

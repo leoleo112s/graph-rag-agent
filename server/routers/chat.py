@@ -1,9 +1,10 @@
+import json
+
 from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
-import json
 from models.schemas import ChatRequest, ChatResponse, ClearRequest, ClearResponse
-from services.chat_service import process_chat, process_chat_stream
 from services.agent_service import agent_manager, format_execution_log
+from services.chat_service import process_chat, process_chat_stream
 from utils.performance import measure_performance
 
 # 创建路由器
@@ -15,10 +16,10 @@ router = APIRouter()
 async def chat(request: ChatRequest):
     """
     处理聊天请求
-    
+
     Args:
         request: 聊天请求
-        
+
     Returns:
         ChatResponse: 聊天响应
     """
@@ -28,14 +29,15 @@ async def chat(request: ChatRequest):
         debug=request.debug,
         agent_type=request.agent_type,
         use_deeper_tool=request.use_deeper_tool,
-        show_thinking=request.show_thinking
+        show_thinking=request.show_thinking,
     )
-    
+
     if request.debug and "execution_log" in result:
         # 格式化执行日志
         result["execution_log"] = format_execution_log(result["execution_log"])
-    
+
     return ChatResponse(**result)
+
 
 def serialize_log_entry(log_entry):
     """将日志条目转换为可序列化的格式"""
@@ -77,6 +79,7 @@ def serialize_log_entry(log_entry):
         return result
     return str(log_entry)
 
+
 @router.post("/chat/stream")
 async def chat_stream(request: Request):
     """流式响应聊天请求"""
@@ -88,23 +91,23 @@ async def chat_stream(request: Request):
     agent_type = data.get("agent_type", "hybrid_agent")
     use_deeper_tool = data.get("use_deeper_tool", True)
     show_thinking = data.get("show_thinking", False)
-    
+
     # 设置流式响应
     async def event_generator():
         try:
             # 确保明确设置格式为SSE，并且使用已导入的 json 模块
             yield "data: " + json.dumps({"status": "start"}) + "\n\n"
-            
+
             # 处理消息流
             execution_log = []
-            
+
             async for chunk in process_chat_stream(
                 message=message,
                 session_id=session_id,
                 debug=debug,
                 agent_type=agent_type,
                 use_deeper_tool=use_deeper_tool,
-                show_thinking=show_thinking
+                show_thinking=show_thinking,
             ):
                 # 检查是否是字典格式
                 if isinstance(chunk, dict):
@@ -115,88 +118,68 @@ async def chat_stream(request: Request):
                         # 序列化日志条目，避免非JSON可序列化对象
                         serialized_log = serialize_log_entry(log_entry)
                         try:
-                            yield "data: " + json.dumps({
-                                "status": "execution_log",
-                                "content": serialized_log
-                            }) + "\n\n"
+                            yield "data: " + json.dumps({"status": "execution_log", "content": serialized_log}) + "\n\n"
                         except Exception as json_error:
                             print(f"执行日志序列化错误: {json_error}")
                             # 尝试一个更简单的方法
-                            yield "data: " + json.dumps({
-                                "status": "execution_log",
-                                "content": {"simplified": str(log_entry)}
-                            }) + "\n\n"
+                            yield "data: " + json.dumps(
+                                {"status": "execution_log", "content": {"simplified": str(log_entry)}}
+                            ) + "\n\n"
                     # 继续正常流程
                     elif "status" in chunk:
                         try:
                             yield "data: " + json.dumps(chunk) + "\n\n"
                         except Exception as json_error:
                             print(f"状态序列化错误: {json_error}")
-                            yield "data: " + json.dumps({
-                                "status": "error", 
-                                "message": "状态序列化错误"
-                            }) + "\n\n"
+                            yield "data: " + json.dumps({"status": "error", "message": "状态序列化错误"}) + "\n\n"
                     else:
                         # 转换为文本块
                         try:
-                            yield "data: " + json.dumps({
-                                "status": "token", 
-                                "content": str(chunk)
-                            }) + "\n\n"
+                            yield "data: " + json.dumps({"status": "token", "content": str(chunk)}) + "\n\n"
                         except Exception as json_error:
                             print(f"令牌序列化错误: {json_error}")
                 else:
                     # 普通文本块
                     try:
-                        yield "data: " + json.dumps({
-                            "status": "token", 
-                            "content": chunk
-                        }) + "\n\n"
+                        yield "data: " + json.dumps({"status": "token", "content": chunk}) + "\n\n"
                     except Exception as json_error:
                         print(f"普通文本序列化错误: {json_error}")
-                
+
             # 最后发送完整的执行日志
             if debug and execution_log:
                 try:
                     # 序列化执行日志
                     serialized_logs = [serialize_log_entry(log) for log in execution_log]
-                    yield "data: " + json.dumps({
-                        "status": "execution_logs",
-                        "content": serialized_logs
-                    }) + "\n\n"
+                    yield "data: " + json.dumps({"status": "execution_logs", "content": serialized_logs}) + "\n\n"
                 except Exception as json_error:
                     print(f"执行日志组序列化错误: {json_error}")
-                    yield "data: " + json.dumps({
-                        "status": "execution_logs",
-                        "content": [{"simplified": "日志序列化失败"}]
-                    }) + "\n\n"
-                
+                    yield "data: " + json.dumps(
+                        {"status": "execution_logs", "content": [{"simplified": "日志序列化失败"}]}
+                    ) + "\n\n"
+
             # 发送完成事件
             yield "data: " + json.dumps({"status": "done"}) + "\n\n"
         except Exception as e:
             # 发送错误事件
             print(f"事件生成器错误: {e}")
             yield "data: " + json.dumps({"status": "error", "message": str(e)}) + "\n\n"
-    
+
     # 返回流式响应
     return StreamingResponse(
         event_generator(),
         media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no"  # 阻止Nginx缓冲
-        }
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},  # 阻止Nginx缓冲
     )
+
 
 @router.post("/clear", response_model=ClearResponse)
 async def clear_chat(request: ClearRequest):
     """
     清除聊天历史
-    
+
     Args:
         request: 清除请求
-        
+
     Returns:
         ClearResponse: 清除响应
     """

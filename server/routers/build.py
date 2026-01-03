@@ -11,18 +11,19 @@
 - ✅ 使用统一的分布式锁（支持多进程部署）
 - ✅ 替换内存锁为 Redis 锁（解决锁隔离问题）
 """
+
 import asyncio
 import logging
-from typing import Optional, Dict, Any
 from pathlib import Path
+from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-
+from utils.build_lock import get_build_lock_manager  # ✅ 使用统一的锁管理器
 from utils.progress_broadcaster import get_broadcaster
 from utils.progress_manager import get_progress_manager
-from utils.build_lock import get_build_lock_manager  # ✅ 使用统一的锁管理器
+
 from graphrag_agent.config.settings import FILES_DIR
 
 _LOGGER = logging.getLogger(__name__)
@@ -156,11 +157,7 @@ async def sse_progress_stream():
     return StreamingResponse(
         sse_event_generator(),
         media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no"  # 禁用 Nginx 缓冲
-        }
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},  # 禁用 Nginx 缓冲
     )
 
 
@@ -185,26 +182,13 @@ async def get_sse_current_status() -> Dict[str, Any]:
 class BuildRequest(BaseModel):
     """构建请求参数"""
 
-    mode: str = Field(
-        default="incremental",
-        description="构建模式：incremental（增量）| full（全量）"
-    )
+    mode: str = Field(default="incremental", description="构建模式：incremental（增量）| full（全量）")
     file_paths: Optional[list[str]] = Field(
-        default=None,
-        description="指定要处理的文件路径列表（None 表示处理所有变更文件）"
+        default=None, description="指定要处理的文件路径列表（None 表示处理所有变更文件）"
     )
-    force: bool = Field(
-        default=False,
-        description="是否强制重新构建（即使文件未变更）"
-    )
-    skip_l0: bool = Field(
-        default=False,
-        description="是否跳过 L0 快速索引（仅运行 L1 深度索引）"
-    )
-    skip_l1: bool = Field(
-        default=False,
-        description="是否跳过 L1 深度索引（仅运行 L0 快速索引）"
-    )
+    force: bool = Field(default=False, description="是否强制重新构建（即使文件未变更）")
+    skip_l0: bool = Field(default=False, description="是否跳过 L0 快速索引（仅运行 L1 深度索引）")
+    skip_l1: bool = Field(default=False, description="是否跳过 L1 深度索引（仅运行 L0 快速索引）")
 
 
 class BuildResponse(BaseModel):
@@ -237,25 +221,15 @@ async def _run_build_task(request: BuildRequest):
 
     try:
         # 动态导入，避免循环依赖和模块加载时的 Neo4j 连接
-        from graphrag_agent.integrations.build.incremental_update_v2 import (
-            IncrementalUpdateManagerV2
-        )
+        from graphrag_agent.integrations.build.incremental_update_v2 import IncrementalUpdateManagerV2
 
         # 初始化状态
         await broadcaster.emit_status("started", "图谱构建任务已启动")
         await broadcaster.emit_log("初始化构建管理器...", "INFO")
-        await progress_mgr.update(
-            percent=0,
-            stage="init",
-            details="初始化构建管理器...",
-            log="图谱构建任务已启动"
-        )
+        await progress_mgr.update(percent=0, stage="init", details="初始化构建管理器...", log="图谱构建任务已启动")
 
         # 创建管理器实例（传入广播器）
-        manager = IncrementalUpdateManagerV2(
-            files_dir=FILES_DIR,
-            broadcaster=broadcaster  # 注入广播器
-        )
+        manager = IncrementalUpdateManagerV2(files_dir=FILES_DIR, broadcaster=broadcaster)  # 注入广播器
 
         # 执行构建
         if request.mode == "incremental":
@@ -263,114 +237,85 @@ async def _run_build_task(request: BuildRequest):
             if not request.skip_l0:
                 await broadcaster.emit_log("开始执行 L0 快速索引...", "INFO")
                 await progress_mgr.update(
-                    percent=10,
-                    stage="l0_ingestion",
-                    details="开始执行 L0 快速索引...",
-                    log="开始 L0 快速索引"
+                    percent=10, stage="l0_ingestion", details="开始执行 L0 快速索引...", log="开始 L0 快速索引"
                 )
 
                 # 直接 await，因为 manager 方法已经是 async 的了
-                l0_result = await manager.run_fast_ingestion(
-                    file_paths=request.file_paths
-                )
+                l0_result = await manager.run_fast_ingestion(file_paths=request.file_paths)
 
-                l0_files = l0_result.get('processed_count', 0)
+                l0_files = l0_result.get("processed_count", 0)
                 await broadcaster.emit_log(f"L0 完成：{l0_files} 个文件", "INFO")
                 await progress_mgr.update(
                     percent=50,
                     stage="l0_completed",
                     details=f"L0 完成：{l0_files} 个文件",
                     log=f"L0 快速索引完成，处理 {l0_files} 个文件",
-                    stats={"l0_files": l0_files}
+                    stats={"l0_files": l0_files},
                 )
 
             if not request.skip_l1:
                 await broadcaster.emit_log("开始执行 L1 深度索引...", "INFO")
                 await progress_mgr.update(
-                    percent=60,
-                    stage="l1_indexing",
-                    details="开始执行 L1 深度索引...",
-                    log="开始 L1 深度索引"
+                    percent=60, stage="l1_indexing", details="开始执行 L1 深度索引...", log="开始 L1 深度索引"
                 )
 
                 # 直接 await，因为 manager 方法已经是 async 的了
-                l1_result = await manager.run_deep_indexing(
-                    file_paths=request.file_paths
-                )
+                l1_result = await manager.run_deep_indexing(file_paths=request.file_paths)
 
-                l1_tasks = l1_result.get('submitted_count', 0)
+                l1_tasks = l1_result.get("submitted_count", 0)
                 await broadcaster.emit_log(f"L1 完成：{l1_tasks} 个任务已提交", "INFO")
                 await progress_mgr.update(
                     percent=100,
                     stage="l1_completed",
                     details=f"L1 完成：{l1_tasks} 个任务已提交",
                     log=f"L1 深度索引完成，提交 {l1_tasks} 个任务",
-                    stats={"l1_tasks": l1_tasks}
+                    stats={"l1_tasks": l1_tasks},
                 )
 
         elif request.mode == "full":
             # 全量构建
             await broadcaster.emit_log("执行全量构建（将清理所有现有数据）...", "WARNING")
             await progress_mgr.update(
-                percent=10,
-                stage="full_build",
-                details="执行全量构建...",
-                log="开始全量构建（先清理数据，再重建）"
+                percent=10, stage="full_build", details="执行全量构建...", log="开始全量构建（先清理数据，再重建）"
             )
 
             # ✅ 执行真正的全量构建：clean=True
             full_result = await manager.run_full_pipeline(
-                file_paths=None,  # None 表示处理所有文件
-                clean=True  # 清理现有数据
+                file_paths=None, clean=True  # None 表示处理所有文件  # 清理现有数据
             )
 
             # 提取结果统计
-            clean_result = full_result.get('clean', {})
-            l0_result = full_result.get('l0', {})
-            l1_result = full_result.get('l1', {})
+            clean_result = full_result.get("clean", {})
+            l0_result = full_result.get("l0", {})
+            l1_result = full_result.get("l1", {})
 
             # 记录清理结果
-            if clean_result.get('status') == 'success':
-                neo4j_cleared = clean_result.get('results', {}).get('neo4j', {})
-                nodes_cleared = neo4j_cleared.get('cleared_nodes', 0)
-                rels_cleared = neo4j_cleared.get('cleared_relationships', 0)
-                await broadcaster.emit_log(
-                    f"数据清理完成：删除 {nodes_cleared} 个节点，{rels_cleared} 个关系",
-                    "INFO"
-                )
+            if clean_result.get("status") == "success":
+                neo4j_cleared = clean_result.get("results", {}).get("neo4j", {})
+                nodes_cleared = neo4j_cleared.get("cleared_nodes", 0)
+                rels_cleared = neo4j_cleared.get("cleared_relationships", 0)
+                await broadcaster.emit_log(f"数据清理完成：删除 {nodes_cleared} 个节点，{rels_cleared} 个关系", "INFO")
 
-            l0_files = l0_result.get('processed_count', 0)
-            l1_tasks = l1_result.get('submitted_count', 0)
+            l0_files = l0_result.get("processed_count", 0)
+            l1_tasks = l1_result.get("submitted_count", 0)
 
-            await broadcaster.emit_log(
-                f"全量构建完成：处理 {l0_files} 个文件，提交 {l1_tasks} 个图谱任务",
-                "INFO"
-            )
+            await broadcaster.emit_log(f"全量构建完成：处理 {l0_files} 个文件，提交 {l1_tasks} 个图谱任务", "INFO")
             await progress_mgr.update(
                 percent=100,
                 stage="full_build_completed",
                 details=f"全量构建完成：{l0_files} 个文件",
                 log=f"✅ 全量构建完成",
-                stats={"l0_files": l0_files, "l1_tasks": l1_tasks}
+                stats={"l0_files": l0_files, "l1_tasks": l1_tasks},
             )
 
         await broadcaster.emit_status("completed", "图谱构建任务完成")
-        await progress_mgr.update(
-            percent=100,
-            stage="completed",
-            details="图谱构建任务完成",
-            log="✅ 所有任务完成"
-        )
+        await progress_mgr.update(percent=100, stage="completed", details="图谱构建任务完成", log="✅ 所有任务完成")
 
     except Exception as exc:
         _LOGGER.exception(f"构建任务执行失败: {exc}")
         await broadcaster.emit_error(f"构建失败: {exc}")
         await broadcaster.emit_status("failed", str(exc))
-        await progress_mgr.update(
-            stage="error",
-            details=f"构建失败: {exc}",
-            log=f"❌ 错误: {exc}"
-        )
+        await progress_mgr.update(stage="error", details=f"构建失败: {exc}", log=f"❌ 错误: {exc}")
 
     finally:
         # ✅ 释放分布式锁
@@ -378,10 +323,7 @@ async def _run_build_task(request: BuildRequest):
 
 
 @router.post("/run", response_model=BuildResponse)
-async def run_build(
-    request: BuildRequest,
-    background_tasks: BackgroundTasks
-):
+async def run_build(request: BuildRequest, background_tasks: BackgroundTasks):
     """
     触发图谱构建任务
 
@@ -420,7 +362,7 @@ async def run_build(
         return BuildResponse(
             status="already_running",
             message="已有构建任务正在运行，请等待其完成（来自 build.py 或 admin.py）",
-            task_id=None
+            task_id=None,
         )
 
     # 在后台启动构建任务（锁会在任务完成后释放）
@@ -429,7 +371,7 @@ async def run_build(
     return BuildResponse(
         status="started",
         message="构建任务已在后台启动，请通过 WebSocket 监听进度",
-        task_id="build_001"  # 可以生成唯一 ID
+        task_id="build_001",  # 可以生成唯一 ID
     )
 
 

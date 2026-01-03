@@ -1,16 +1,15 @@
 import os
 from typing import Optional
 
-from langchain_openai import ChatOpenAI
-from langchain_openai import OpenAIEmbeddings
-from langchain.callbacks.streaming_aiter import AsyncIteratorCallbackHandler
 from langchain.callbacks.manager import AsyncCallbackManager
+from langchain.callbacks.streaming_aiter import AsyncIteratorCallbackHandler
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
 from graphrag_agent.config.settings import (
-    TIKTOKEN_CACHE_DIR,
+    EMBEDDING_DIM,
     OPENAI_EMBEDDING_CONFIG,
     OPENAI_LLM_CONFIG,
-    EMBEDDING_DIM,
+    TIKTOKEN_CACHE_DIR,
 )
 
 
@@ -55,29 +54,31 @@ def count_tokens(text):
     """简单通用的token计数"""
     if not text:
         return 0
-    
+
     model_name = (OPENAI_LLM_CONFIG.get("model") or "").lower()
-    
+
     # 如果是deepseek，使用transformers
-    if 'deepseek' in model_name:
+    if "deepseek" in model_name:
         try:
             from transformers import AutoTokenizer
+
             tokenizer = AutoTokenizer.from_pretrained("deepseek-ai/DeepSeek-V3")
             return len(tokenizer.encode(text))
         except:
             pass
-    
+
     # 如果是gpt，使用tiktoken
-    if 'gpt' in model_name:
+    if "gpt" in model_name:
         try:
             import tiktoken
+
             encoding = tiktoken.get_encoding("cl100k_base")
             return len(encoding.encode(text))
         except:
             pass
-    
+
     # 备用方案：简单计算
-    chinese = len([c for c in text if '\u4e00' <= c <= '\u9fff'])
+    chinese = len([c for c in text if "\u4e00" <= c <= "\u9fff"])
     english = len(text) - chinese
     return chinese + english // 4
 
@@ -110,7 +111,7 @@ def _validate_embedding_dimension(model_name: Optional[str]) -> None:
         )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # 测试llm
     llm = get_llm_model()
     print(llm.invoke("你好"))

@@ -27,13 +27,13 @@
         return {"error": "已有构建任务正在运行"}
 """
 
-import os
 import asyncio
-from typing import Optional
+import os
 from datetime import datetime, timedelta
+from typing import Optional
 
 # 全局锁管理器实例
-_lock_manager: Optional['BuildLockManager'] = None
+_lock_manager: Optional["BuildLockManager"] = None
 
 
 class BuildLockManager:
@@ -60,6 +60,7 @@ class BuildLockManager:
         if use_redis:
             try:
                 from server.utils.redis_state import get_redis_state_manager
+
                 self.redis_mgr = get_redis_state_manager()
                 self.redis_client = self.redis_mgr.redis_client
                 print("✅ BuildLockManager 使用 Redis 分布式锁")
@@ -85,6 +86,7 @@ class BuildLockManager:
             # Redis 分布式锁
             try:
                 from server.utils.redis_state import get_redis_state_manager
+
                 redis_mgr = get_redis_state_manager()
                 return redis_mgr.acquire_build_lock(resource, ttl)
             except Exception as e:
@@ -130,6 +132,7 @@ class BuildLockManager:
             # Redis 分布式锁
             try:
                 from server.utils.redis_state import get_redis_state_manager
+
                 redis_mgr = get_redis_state_manager()
                 return redis_mgr.release_build_lock(resource)
             except Exception as e:

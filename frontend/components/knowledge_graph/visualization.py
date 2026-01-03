@@ -1,23 +1,26 @@
-import tempfile
 import os
+import tempfile
+
 import streamlit as st
-from pyvis.network import Network
 import streamlit.components.v1 as components
 from frontend_config.settings import KG_COLOR_PALETTE, NODE_TYPE_COLORS
+from pyvis.network import Network
+
 
 def visualize_knowledge_graph(kg_data):
     """使用pyvis可视化知识图谱 - 动态节点类型和颜色，支持Neo4j式交互"""
     if not kg_data or "nodes" not in kg_data or "links" not in kg_data:
         st.warning("无法获取知识图谱数据")
         return
-    
+
     if len(kg_data["nodes"]) == 0:
         st.info("没有找到相关的实体和关系")
         return
-    
+
     # 添加图表设置控制 - 增加交互说明
     with st.expander("图谱显示设置与交互说明", expanded=False):
-        st.markdown("""
+        st.markdown(
+            """
         ### 交互说明
         - **双击节点**: 聚焦查看该节点及其直接相连的节点和关系
         - **右键节点**: 打开上下文菜单，提供更多操作
@@ -25,53 +28,70 @@ def visualize_knowledge_graph(kg_data):
         - **使用控制面板**: 右上角的控制面板提供重置和返回上一步功能
         
         ### 显示设置
-        """)
-        
+        """
+        )
+
         # 为每个checkbox添加唯一的key参数
         # 通过使用随机生成或基于kg_data一部分内容的哈希值创建唯一键
         import hashlib
-        
+
         # 基于kg_data的节点数量和时间戳创建哈希值的一部分
         import time
+
         timestamp = str(time.time())
         node_count = str(len(kg_data["nodes"]))
         base_key = hashlib.md5((node_count + timestamp).encode()).hexdigest()[:8]
-        
+
         col1, col2 = st.columns(2)
         with col1:
-            physics_enabled = st.checkbox("启用物理引擎", 
-                                       value=st.session_state.kg_display_settings["physics_enabled"],
-                                       key=f"physics_enabled_{base_key}",
-                                       help="控制节点是否可以动态移动")
-            node_size = st.slider("节点大小", 10, 50, 
-                                st.session_state.kg_display_settings["node_size"],
-                                key=f"node_size_{base_key}",
-                                help="调整节点的大小")
-        
+            physics_enabled = st.checkbox(
+                "启用物理引擎",
+                value=st.session_state.kg_display_settings["physics_enabled"],
+                key=f"physics_enabled_{base_key}",
+                help="控制节点是否可以动态移动",
+            )
+            node_size = st.slider(
+                "节点大小",
+                10,
+                50,
+                st.session_state.kg_display_settings["node_size"],
+                key=f"node_size_{base_key}",
+                help="调整节点的大小",
+            )
+
         with col2:
-            edge_width = st.slider("连接线宽度", 1, 10, 
-                                 st.session_state.kg_display_settings["edge_width"],
-                                 key=f"edge_width_{base_key}", 
-                                 help="调整连接线的宽度")
-            spring_length = st.slider("弹簧长度", 50, 300, 
-                                    st.session_state.kg_display_settings["spring_length"],
-                                    key=f"spring_length_{base_key}", 
-                                    help="调整节点之间的距离")
-        
+            edge_width = st.slider(
+                "连接线宽度",
+                1,
+                10,
+                st.session_state.kg_display_settings["edge_width"],
+                key=f"edge_width_{base_key}",
+                help="调整连接线的宽度",
+            )
+            spring_length = st.slider(
+                "弹簧长度",
+                50,
+                300,
+                st.session_state.kg_display_settings["spring_length"],
+                key=f"spring_length_{base_key}",
+                help="调整节点之间的距离",
+            )
+
         # 更新设置
         st.session_state.kg_display_settings = {
             "physics_enabled": physics_enabled,
             "node_size": node_size,
             "edge_width": edge_width,
             "spring_length": spring_length,
-            "gravity": st.session_state.kg_display_settings["gravity"]
+            "gravity": st.session_state.kg_display_settings["gravity"],
         }
-    
+
     # 创建网络图 - 修改背景为白色
     net = Network(height="600px", width="100%", bgcolor="#FFFFFF", font_color="#333333", directed=True)
-    
+
     # 增强配置 - 为Neo4j式交互添加配置
-    net.set_options("""
+    net.set_options(
+        """
     {
       "physics": {
         "enabled": %s,
@@ -109,23 +129,25 @@ def visualize_knowledge_graph(kg_data):
         }
       }
     }
-    """ % (str(physics_enabled).lower(), st.session_state.kg_display_settings["gravity"], spring_length))
-    
+    """
+        % (str(physics_enabled).lower(), st.session_state.kg_display_settings["gravity"], spring_length)
+    )
+
     # 提取所有唯一组类型
     group_types = set()
     for node in kg_data["nodes"]:
         group = node.get("group", "Unknown")
         if group:
             group_types.add(group)
-    
+
     # 为每个组分配颜色
     group_colors = {}
-    
+
     # 首先分配预定义颜色
     for group in group_types:
         if group in NODE_TYPE_COLORS:
             group_colors[group] = NODE_TYPE_COLORS[group]
-    
+
     # 然后为剩余组分配颜色
     palette_index = 0
     for group in sorted(group_types):
@@ -139,7 +161,7 @@ def visualize_knowledge_graph(kg_data):
                         comm_id = 0
                     else:
                         comm_id = int(comm_id_str)
-                    
+
                     # 确保使用一致的社区颜色映射
                     color_index = (comm_id - 1) % len(KG_COLOR_PALETTE) if comm_id > 0 else 0
                     group_colors[group] = KG_COLOR_PALETTE[color_index]
@@ -151,104 +173,96 @@ def visualize_knowledge_graph(kg_data):
                 # 普通类型按序分配颜色
                 group_colors[group] = KG_COLOR_PALETTE[palette_index % len(KG_COLOR_PALETTE)]
                 palette_index += 1
-    
+
     # 添加节点，使用更现代的样式并增强交互体验
     for node in kg_data["nodes"]:
         node_id = node["id"]
         label = node.get("label", node_id)
         group = node.get("group", "Unknown")
         description = node.get("description", "")
-        
+
         # 根据节点组类型设置颜色
         color = group_colors.get(group, KG_COLOR_PALETTE[0])  # 默认使用第一个颜色
-        
+
         # 添加节点信息提示，改进格式
         title = f"{label}" + (f": {description}" if description else "")
-        
+
         # 添加带有阴影和边框的节点 - 增加hover和select效果
         net.add_node(
-            node_id, 
-            label=label, 
-            title=title, 
+            node_id,
+            label=label,
+            title=title,
             color={
-                "background": color, 
-                "border": "#ffffff", 
-                "highlight": {
-                    "background": color, 
-                    "border": "#000000"
-                },
-                "hover": {
-                    "background": color, 
-                    "border": "#000000"
-                }
-            }, 
-            size=node_size, 
+                "background": color,
+                "border": "#ffffff",
+                "highlight": {"background": color, "border": "#000000"},
+                "hover": {"background": color, "border": "#000000"},
+            },
+            size=node_size,
             font={"color": "#ffffff", "size": 14, "face": "Arial"},
             shadow={"enabled": True, "color": "rgba(0,0,0,0.2)", "size": 3},
             borderWidth=2,
             # 添加自定义数据用于交互
             group=group,
-            description=description
+            description=description,
         )
-    
+
     # 添加边，使用更现代的样式并增强交互体验
     for link in kg_data["links"]:
         source = link["source"]
         target = link["target"]
         label = link.get("label", "")
         weight = link.get("weight", 1)
-        
+
         # 根据权重设置线的粗细和不透明度
         width = edge_width * min(1 + (weight * 0.2), 3)
-        
+
         # 使用弯曲的箭头和平滑的线条
         smooth = {"enabled": True, "type": "dynamic", "roundness": 0.5}
-        
+
         title = label
-        
+
         # 添加带有阴影的边 - 增加hover和select效果
         net.add_edge(
-            source, 
-            target, 
-            title=title, 
-            label=label, 
-            width=width, 
+            source,
+            target,
+            title=title,
+            label=label,
+            width=width,
             smooth=smooth,
-            color={
-                "color": "#999999", 
-                "highlight": "#666666",
-                "hover": "#666666"
-            },
+            color={"color": "#999999", "highlight": "#666666", "hover": "#666666"},
             shadow={"enabled": True, "color": "rgba(0,0,0,0.1)"},
             selectionWidth=2,
             # 添加自定义数据用于交互
             weight=weight,
-            arrowStrikethrough=False
+            arrowStrikethrough=False,
         )
-    
+
     # 使用临时文件保存并显示网络图
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.html') as tmp:
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as tmp:
         net.save_graph(tmp.name)
-        with open(tmp.name, 'r', encoding='utf-8') as f:
+        with open(tmp.name, "r", encoding="utf-8") as f:
             html_content = f.read()
-            
+
             # 添加自定义样式和交互脚本
             # 导入样式
             from .kg_styles import KG_STYLES
-            html_content = html_content.replace('</head>', KG_STYLES + '</head>')
-            
+
+            html_content = html_content.replace("</head>", KG_STYLES + "</head>")
+
             # 导入交互脚本
             from .interaction import KG_INTERACTION_SCRIPT
-            html_content = html_content.replace('</body>', KG_INTERACTION_SCRIPT + '</body>')
-            
+
+            html_content = html_content.replace("</body>", KG_INTERACTION_SCRIPT + "</body>")
+
             components.html(html_content, height=600)
-        
+
         # 清理临时文件
         try:
             os.unlink(tmp.name)
         except:
             pass
-    
+
     # 显示图例，使用更现代的样式
     st.write("### 图例")
 
@@ -294,11 +308,11 @@ def visualize_knowledge_graph(kg_data):
                     group_display_name = "目标节点"
                 elif group == "Common":
                     group_display_name = "共同邻居"
-                    
+
                 st.markdown(
                     f'<div style="display:flex;align-items:center;margin-bottom:12px">'
                     f'<div style="width:20px;height:20px;border-radius:50%;background-color:{color};margin-right:10px;box-shadow:0 2px 4px rgba(0,0,0,0.1);"></div>'
                     f'<span style="font-family:sans-serif;color:#333;">{group_display_name}</span>'
-                    f'</div>',
-                    unsafe_allow_html=True
+                    f"</div>",
+                    unsafe_allow_html=True,
                 )

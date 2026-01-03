@@ -5,7 +5,7 @@ Reporter层Prompt模板集合
 """
 
 # 功能: 根据PlanSpec和ExecutionRecord生成报告纲要
-OUTLINE_PROMPT = '''你是一个报告规划助手。你需要根据用户查询、执行计划和收集的证据，生成一份结构清晰的报告纲要。
+OUTLINE_PROMPT = """你是一个报告规划助手。你需要根据用户查询、执行计划和收集的证据，生成一份结构清晰的报告纲要。
 
 **用户查询**: {query}
 
@@ -116,11 +116,11 @@ OUTLINE_PROMPT = '''你是一个报告规划助手。你需要根据用户查询
 
 **报告纲要**:
 ```json
-'''
+"""
 
 
 # 功能: 逐章节写作，生成带引用的段落内容
-SECTION_WRITE_PROMPT = '''你是一个专业的技术写作助手。你需要根据纲要和证据，撰写报告的一个章节。
+SECTION_WRITE_PROMPT = """你是一个专业的技术写作助手。你需要根据纲要和证据，撰写报告的一个章节。
 
 **报告整体纲要**:
 {outline}
@@ -159,11 +159,11 @@ SECTION_WRITE_PROMPT = '''你是一个专业的技术写作助手。你需要根
 ---
 
 现在请根据以上信息撰写当前章节，使用Markdown格式输出：
-'''
+"""
 
 
 # 功能: 校验报告的事实一致性、引用准确性和逻辑连贯性
-CONSISTENCY_CHECK_PROMPT = '''你是一个质量校验助手。你需要检查报告内容的一致性、准确性和完整性。
+CONSISTENCY_CHECK_PROMPT = """你是一个质量校验助手。你需要检查报告内容的一致性、准确性和完整性。
 
 **报告内容**:
 {report_content}
@@ -247,11 +247,11 @@ CONSISTENCY_CHECK_PROMPT = '''你是一个质量校验助手。你需要检查�
 
 **一致性检查结果**:
 ```json
-'''
+"""
 
 
 # 功能: 生成规范化的引用列表
-CITATION_FORMAT_PROMPT = '''你是一个引用格式化助手。你需要将检索结果转换为规范的参考文献列表。
+CITATION_FORMAT_PROMPT = """你是一个引用格式化助手。你需要将检索结果转换为规范的参考文献列表。
 
 **检索结果**（每项均为`RetrievalResult`的序列化结果）:
 {retrieval_results}
@@ -287,7 +287,7 @@ CITATION_FORMAT_PROMPT = '''你是一个引用格式化助手。你需要将检�
 ```
 
 现在请生成引用列表，使用Markdown格式输出：
-'''
+"""
 
 
 # Map-Reduce 辅助模板

@@ -1,30 +1,35 @@
-import time
 import concurrent.futures
-from typing import List, Dict
+import time
+from typing import Dict, List
+
 from langchain_core.documents import Document
 
-from graphrag_agent.graph.core import connection_manager, generate_hash
 from graphrag_agent.config.settings import BATCH_SIZE as DEFAULT_BATCH_SIZE
 from graphrag_agent.config.settings import MAX_WORKERS as DEFAULT_MAX_WORKERS
+from graphrag_agent.graph.core import connection_manager, generate_hash
+from graphrag_agent.utils.logging_config import get_logger
+
+logger = get_logger(__name__)
+
 
 class GraphStructureBuilder:
     """
     图结构构建器，负责创建和管理Neo4j中的文档和块节点结构。
     处理文档节点、Chunk节点的创建，以及它们之间关系的建立。
     """
-    
+
     def __init__(self, batch_size=100):
         """
         初始化图结构构建器
-        
+
         Args:
             batch_size: 批处理大小
         """
         self.graph = connection_manager.get_connection()
         self.graph.refresh_schema()
-        
+
         self.batch_size = batch_size or DEFAULT_BATCH_SIZE
-            
+
     def clear_database(self):
         """清空数据库"""
         clear_query = """
@@ -32,17 +37,17 @@ class GraphStructureBuilder:
             DETACH DELETE n
             """
         self.graph.query(clear_query)
-        
+
     def create_document(self, type: str, uri: str, file_name: str, domain: str) -> Dict:
         """
         创建Document节点
-        
+
         Args:
             type: 文档类型
             uri: 文档URI
             file_name: 文件名
             domain: 文档域
-            
+
         Returns:
             Dict: 创建的文档节点信息
         """
@@ -51,53 +56,50 @@ class GraphStructureBuilder:
         SET d.type=$type, d.uri=$uri, d.domain=$domain
         RETURN d;
         """
-        doc = self.graph.query(
-            query,
-            {"file_name": file_name, "type": type, "uri": uri, "domain": domain}
-        )
+        doc = self.graph.query(query, {"file_name": file_name, "type": type, "uri": uri, "domain": domain})
         return doc
-        
+
     def create_relation_between_chunks(self, file_name: str, chunks: List) -> List[Dict]:
         """
         创建Chunk节点并建立关系 - 批处理优化版本
-        
+
         Args:
             file_name: 文件名
             chunks: 文本块列表
-            
+
         Returns:
             List[Dict]: 带有ID和文档的块列表
         """
         t0 = time.time()
-        
+
         current_chunk_id = ""
         lst_chunks_including_hash = []
         batch_data = []
         relationships = []
         offset = 0
-        
+
         # 处理每个chunk
         for i, chunk in enumerate(chunks):
-            page_content = ''.join(chunk)
+            page_content = "".join(chunk)
             current_chunk_id = generate_hash(page_content)
             position = i + 1
-            previous_chunk_id = current_chunk_id if i == 0 else lst_chunks_including_hash[-1]['chunk_id']
-            
+            previous_chunk_id = current_chunk_id if i == 0 else lst_chunks_including_hash[-1]["chunk_id"]
+
             if i > 0:
-                last_page_content = ''.join(chunks[i-1])
+                last_page_content = "".join(chunks[i - 1])
                 offset += len(last_page_content)
-                
-            firstChunk = (i == 0)
-            
+
+            firstChunk = i == 0
+
             # 创建metadata和Document对象
             metadata = {
                 "position": position,
                 "length": len(page_content),
                 "content_offset": offset,
-                "tokens": len(chunk)
+                "tokens": len(chunk),
             }
             chunk_document = Document(page_content=page_content, metadata=metadata)
-            
+
             # 准备batch数据
             chunk_data = {
                 "id": current_chunk_id,
@@ -107,44 +109,39 @@ class GraphStructureBuilder:
                 "f_name": file_name,
                 "previous_id": previous_chunk_id,
                 "content_offset": offset,
-                "tokens": len(chunk)
+                "tokens": len(chunk),
             }
             batch_data.append(chunk_data)
-            
-            lst_chunks_including_hash.append({
-                'chunk_id': current_chunk_id,
-                'chunk_doc': chunk_document
-            })
-            
+
+            lst_chunks_including_hash.append({"chunk_id": current_chunk_id, "chunk_doc": chunk_document})
+
             # 创建关系数据
             if firstChunk:
                 relationships.append({"type": "FIRST_CHUNK", "chunk_id": current_chunk_id})
             else:
-                relationships.append({
-                    "type": "NEXT_CHUNK",
-                    "previous_chunk_id": previous_chunk_id,
-                    "current_chunk_id": current_chunk_id
-                })
-            
+                relationships.append(
+                    {"type": "NEXT_CHUNK", "previous_chunk_id": previous_chunk_id, "current_chunk_id": current_chunk_id}
+                )
+
             # 当累积了一定量的数据时，进行批处理
             if len(batch_data) >= self.batch_size:
                 self._process_batch(file_name, batch_data, relationships)
                 batch_data = []
                 relationships = []
-        
+
         # 处理剩余的数据
         if batch_data:
             self._process_batch(file_name, batch_data, relationships)
-        
+
         t1 = time.time()
-        print(f"创建关系耗时: {t1-t0:.2f}秒")
-        
+        logger.info(f"创建关系耗时: {t1-t0:.2f}秒")
+
         return lst_chunks_including_hash
-    
+
     def _process_batch(self, file_name: str, batch_data: List[Dict], relationships: List[Dict]):
         """
         批量处理一组chunks和关系
-        
+
         Args:
             file_name: 文件名
             batch_data: 批处理数据
@@ -152,19 +149,20 @@ class GraphStructureBuilder:
         """
         if not batch_data:
             return
-            
+
         # 分离FIRST_CHUNK和NEXT_CHUNK关系
         first_relationships = [r for r in relationships if r.get("type") == "FIRST_CHUNK"]
         next_relationships = [r for r in relationships if r.get("type") == "NEXT_CHUNK"]
-        
+
         # 使用优化的数据库操作
         self._create_chunks_and_relationships_optimized(file_name, batch_data, first_relationships, next_relationships)
-    
-    def _create_chunks_and_relationships_optimized(self, file_name: str, batch_data: List[Dict], 
-                                                  first_relationships: List[Dict], next_relationships: List[Dict]):
+
+    def _create_chunks_and_relationships_optimized(
+        self, file_name: str, batch_data: List[Dict], first_relationships: List[Dict], next_relationships: List[Dict]
+    ):
         """
         优化的创建chunks和关系的查询 - 减少数据库往返
-        
+
         Args:
             file_name: 文件名
             batch_data: 批处理数据
@@ -186,7 +184,7 @@ class GraphStructureBuilder:
         MERGE (c)-[:PART_OF]->(d)
         """
         self.graph.query(query_chunks_and_part_of, params={"batch_data": batch_data})
-        
+
         # 处理FIRST_CHUNK关系
         if first_relationships:
             query_first_chunk = """
@@ -195,11 +193,8 @@ class GraphStructureBuilder:
             MATCH (c:`__Chunk__` {id: relationship.chunk_id})
             MERGE (d)-[:FIRST_CHUNK]->(c)
             """
-            self.graph.query(query_first_chunk, params={
-                "f_name": file_name,
-                "relationships": first_relationships
-            })
-        
+            self.graph.query(query_first_chunk, params={"f_name": file_name, "relationships": first_relationships})
+
         # 处理NEXT_CHUNK关系
         if next_relationships:
             query_next_chunk = """
@@ -209,7 +204,7 @@ class GraphStructureBuilder:
             MERGE (pc)-[:NEXT_CHUNK]->(c)
             """
             self.graph.query(query_next_chunk, params={"relationships": next_relationships})
-    
+
     def parallel_process_chunks(self, file_name: str, chunks: List, max_workers=None) -> List[Dict]:
         """
         [优化版] 并行处理chunks
@@ -238,7 +233,7 @@ class GraphStructureBuilder:
         current_offset = 0
         for chunk in chunks:
             global_offsets.append(current_offset)
-            current_offset += len(''.join(chunk))
+            current_offset += len("".join(chunk))
 
         # 2. 准备批次
         chunk_batches = []
@@ -246,14 +241,10 @@ class GraphStructureBuilder:
 
         for i in range(0, len(chunks), batch_size):
             end_idx = min(i + batch_size, len(chunks))
-            batch_data = {
-                "chunks": chunks[i:end_idx],
-                "offsets": global_offsets[i:end_idx],
-                "start_global_index": i
-            }
+            batch_data = {"chunks": chunks[i:end_idx], "offsets": global_offsets[i:end_idx], "start_global_index": i}
             chunk_batches.append(batch_data)
 
-        print(f"并行处理 {len(chunks)} 个块，每批次 {batch_size} 个，共 {len(chunk_batches)} 批次")
+        logger.info(f"并行处理 {len(chunks)} 个块，每批次 {batch_size} 个，共 {len(chunk_batches)} 批次")
 
         # 定义处理函数（纯函数，不依赖外部列表状态）
         def process_chunk_batch(data):
@@ -272,7 +263,7 @@ class GraphStructureBuilder:
             previous_chunk_id = None
 
             for i, chunk in enumerate(batch_chunks):
-                page_content = ''.join(chunk)
+                page_content = "".join(chunk)
                 current_chunk_id = generate_hash(page_content)
 
                 # 记录首尾ID
@@ -288,7 +279,7 @@ class GraphStructureBuilder:
                     "position": position,
                     "length": len(page_content),
                     "content_offset": batch_offsets[i],
-                    "tokens": len(chunk)
+                    "tokens": len(chunk),
                 }
                 chunk_document = Document(page_content=page_content, metadata=metadata)
 
@@ -299,14 +290,11 @@ class GraphStructureBuilder:
                     "length": chunk_document.metadata["length"],
                     "f_name": file_name,
                     "content_offset": batch_offsets[i],
-                    "tokens": len(chunk)
+                    "tokens": len(chunk),
                 }
                 local_nodes.append(node_data)
 
-                results.append({
-                    'chunk_id': current_chunk_id,
-                    'chunk_doc': chunk_document
-                })
+                results.append({"chunk_id": current_chunk_id, "chunk_doc": chunk_document})
 
                 # 构建内部关系 (只构建 batch 内部的 NEXT_CHUNK)
                 if i == 0:
@@ -315,11 +303,13 @@ class GraphStructureBuilder:
                         local_rels.append({"type": "FIRST_CHUNK", "chunk_id": current_chunk_id})
                 else:
                     # 内部前后连接
-                    local_rels.append({
-                        "type": "NEXT_CHUNK",
-                        "previous_chunk_id": previous_chunk_id,
-                        "current_chunk_id": current_chunk_id
-                    })
+                    local_rels.append(
+                        {
+                            "type": "NEXT_CHUNK",
+                            "previous_chunk_id": previous_chunk_id,
+                            "current_chunk_id": current_chunk_id,
+                        }
+                    )
 
                 previous_chunk_id = current_chunk_id
 
@@ -329,7 +319,7 @@ class GraphStructureBuilder:
                 "results": results,
                 "batch_index": start_index // batch_size,
                 "first_id": first_id,
-                "last_id": last_id
+                "last_id": last_id,
             }
 
         # 3. 并行执行
@@ -349,7 +339,7 @@ class GraphStructureBuilder:
                     all_results.extend(res["results"])
                     batch_link_info.append((res["batch_index"], res["first_id"], res["last_id"]))
                 except Exception as e:
-                    print(f"[ERROR] 批次处理失败: {e}")
+                    logger.error(f"批次处理失败: {e}", exc_info=True)
                     # 生产环境建议在这里抛出异常或记录严重错误，否则会导致数据丢失
 
         # 4. 缝合批次 (Stitch Batches)
@@ -358,18 +348,18 @@ class GraphStructureBuilder:
 
         for i in range(len(batch_link_info) - 1):
             curr_batch = batch_link_info[i]
-            next_batch = batch_link_info[i+1]
+            next_batch = batch_link_info[i + 1]
 
             # 建立跨批次连接: Current Last -> Next First
             stitch_rel = {
                 "type": "NEXT_CHUNK",
                 "previous_chunk_id": curr_batch[2],  # last_id of current
-                "current_chunk_id": next_batch[1]    # first_id of next
+                "current_chunk_id": next_batch[1],  # first_id of next
             }
             all_rels.append(stitch_rel)
 
         # 5. 批量写入数据库 (优化过滤性能 + 重试机制)
-        print(f"并行处理完成，开始写入 {len(all_nodes)} 个节点和 {len(all_rels)} 条关系")
+        logger.info(f"并行处理完成，开始写入 {len(all_nodes)} 个节点和 {len(all_rels)} 条关系")
         self._batch_write_to_db(file_name, all_nodes, all_rels)
 
         return all_results
@@ -388,11 +378,11 @@ class GraphStructureBuilder:
 
         # Step 1: 写入所有节点 (带重试)
         for i in range(0, len(nodes), batch_size):
-            node_batch = nodes[i:i+batch_size]
+            node_batch = nodes[i : i + batch_size]
             self._retry_query(
                 self._create_chunks_only,  # 拆分出的只建节点的函数
                 params={"batch_data": node_batch, "file_name": file_name},
-                desc=f"写入节点批次 {i//batch_size + 1}/{total_batches}"
+                desc=f"写入节点批次 {i//batch_size + 1}/{total_batches}",
             )
 
         # Step 2: 写入所有关系 (带重试)
@@ -401,7 +391,7 @@ class GraphStructureBuilder:
         total_rel_batches = (len(rels) + rel_batch_size - 1) // rel_batch_size
 
         for i in range(0, len(rels), rel_batch_size):
-            rel_batch = rels[i:i+rel_batch_size]
+            rel_batch = rels[i : i + rel_batch_size]
             # 简单分类
             first_rels = [r for r in rel_batch if r["type"] == "FIRST_CHUNK"]
             next_rels = [r for r in rel_batch if r["type"] == "NEXT_CHUNK"]
@@ -410,13 +400,13 @@ class GraphStructureBuilder:
                 self._retry_query(
                     self._create_first_rels,
                     params={"relationships": first_rels, "file_name": file_name},
-                    desc=f"写入关系(FIRST) 批次 {i//rel_batch_size + 1}/{total_rel_batches}"
+                    desc=f"写入关系(FIRST) 批次 {i//rel_batch_size + 1}/{total_rel_batches}",
                 )
             if next_rels:
                 self._retry_query(
                     self._create_next_rels,
                     params={"relationships": next_rels},
-                    desc=f"写入关系(NEXT) 批次 {i//rel_batch_size + 1}/{total_rel_batches}"
+                    desc=f"写入关系(NEXT) 批次 {i//rel_batch_size + 1}/{total_rel_batches}",
                 )
 
     def _retry_query(self, func, params, desc, max_retries=3):
@@ -435,9 +425,9 @@ class GraphStructureBuilder:
                 return
             except Exception as e:
                 if attempt == max_retries - 1:
-                    print(f"[CRITICAL] {desc} 失败，已重试 {max_retries} 次: {e}")
+                    logger.error(f"{desc} 失败，已重试 {max_retries} 次: {e}", exc_info=True)
                     raise e
-                print(f"[WARN] {desc} 失败，正在重试 ({attempt+1}/{max_retries}): {e}")
+                logger.warning(f"{desc} 失败，正在重试 ({attempt+1}/{max_retries}): {e}")
                 time.sleep(1 * (attempt + 1))
 
     # --- 拆分出的原子查询函数 ---
@@ -499,7 +489,7 @@ class GraphStructureBuilder:
     def _create_chunks_and_relationships(self, file_name: str, batch_data: List[Dict], relationships: List[Dict]):
         """
         执行创建chunks和关系的查询
-        
+
         Args:
             file_name: 文件名
             batch_data: 批处理数据
@@ -520,7 +510,7 @@ class GraphStructureBuilder:
             MERGE (c)-[:PART_OF]->(d)
         """
         self.graph.query(query_chunk_part_of, params={"batch_data": batch_data})
-        
+
         # 创建FIRST_CHUNK关系
         query_first_chunk = """
             UNWIND $relationships AS relationship
@@ -529,11 +519,8 @@ class GraphStructureBuilder:
             FOREACH(r IN CASE WHEN relationship.type = 'FIRST_CHUNK' THEN [1] ELSE [] END |
                     MERGE (d)-[:FIRST_CHUNK]->(c))
         """
-        self.graph.query(query_first_chunk, params={
-            "f_name": file_name,
-            "relationships": relationships
-        })
-        
+        self.graph.query(query_first_chunk, params={"f_name": file_name, "relationships": relationships})
+
         # 创建NEXT_CHUNK关系
         query_next_chunk = """
             UNWIND $relationships AS relationship

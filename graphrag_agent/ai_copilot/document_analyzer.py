@@ -3,16 +3,16 @@ AI Copilot - 文档分析器
 分析用户文档，提取关键概念、模式和领域特征
 """
 
-import os
-from typing import List, Dict, Any, Optional
-from pathlib import Path
-from collections import Counter
 import json
+import os
+from collections import Counter
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
-from langchain.prompts import ChatPromptTemplate
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.cluster import KMeans
 import numpy as np
+from langchain.prompts import ChatPromptTemplate
+from sklearn.cluster import KMeans
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 
 class DocumentAnalyzer:
@@ -29,8 +29,7 @@ class DocumentAnalyzer:
         self.llm = llm
         self.embeddings = embeddings
 
-    def analyze_documents(self, documents: List[Dict[str, Any]],
-                         num_clusters: Optional[int] = None) -> Dict[str, Any]:
+    def analyze_documents(self, documents: List[Dict[str, Any]], num_clusters: Optional[int] = None) -> Dict[str, Any]:
         """
         分析文档集合
 
@@ -42,12 +41,7 @@ class DocumentAnalyzer:
             分析结果字典
         """
         if not documents:
-            return {
-                "total_documents": 0,
-                "clusters": [],
-                "key_concepts": [],
-                "statistics": {}
-            }
+            return {"total_documents": 0, "clusters": [], "key_concepts": [], "statistics": {}}
 
         # 提取文本内容
         texts = [doc.get("content", "") for doc in documents]
@@ -64,18 +58,19 @@ class DocumentAnalyzer:
             "total_documents": len(documents),
             "total_characters": sum(len(text) for text in texts),
             "avg_doc_length": int(np.mean([len(text) for text in texts])),
-            "num_clusters": len(clusters)
+            "num_clusters": len(clusters),
         }
 
         return {
             "total_documents": len(documents),
             "clusters": clusters,
             "key_concepts": key_concepts,
-            "statistics": statistics
+            "statistics": statistics,
         }
 
-    def _cluster_documents(self, texts: List[str], filenames: List[str],
-                          num_clusters: Optional[int] = None) -> List[Dict]:
+    def _cluster_documents(
+        self, texts: List[str], filenames: List[str], num_clusters: Optional[int] = None
+    ) -> List[Dict]:
         """
         使用 TF-IDF 和 K-Means 对文档进行聚类
 
@@ -88,13 +83,15 @@ class DocumentAnalyzer:
             聚类结果列表
         """
         if len(texts) < 2:
-            return [{
-                "cluster_id": 0,
-                "document_count": len(texts),
-                "documents": filenames,
-                "representative_terms": [],
-                "summary": "单文档集合"
-            }]
+            return [
+                {
+                    "cluster_id": 0,
+                    "document_count": len(texts),
+                    "documents": filenames,
+                    "representative_terms": [],
+                    "summary": "单文档集合",
+                }
+            ]
 
         # 自动确定聚类数量
         if num_clusters is None:
@@ -105,11 +102,7 @@ class DocumentAnalyzer:
 
         try:
             # TF-IDF 向量化
-            vectorizer = TfidfVectorizer(
-                max_features=100,
-                stop_words=None,  # 中文不使用英文停用词
-                ngram_range=(1, 2)
-            )
+            vectorizer = TfidfVectorizer(max_features=100, stop_words=None, ngram_range=(1, 2))  # 中文不使用英文停用词
             tfidf_matrix = vectorizer.fit_transform(texts)
 
             # K-Means 聚类
@@ -130,26 +123,30 @@ class DocumentAnalyzer:
                 top_indices = cluster_center.argsort()[-10:][::-1]
                 representative_terms = [feature_names[i] for i in top_indices]
 
-                clusters.append({
-                    "cluster_id": cluster_id,
-                    "document_count": len(cluster_filenames),
-                    "documents": cluster_filenames,
-                    "representative_terms": representative_terms,
-                    "summary": f"聚类 {cluster_id + 1}"
-                })
+                clusters.append(
+                    {
+                        "cluster_id": cluster_id,
+                        "document_count": len(cluster_filenames),
+                        "documents": cluster_filenames,
+                        "representative_terms": representative_terms,
+                        "summary": f"聚类 {cluster_id + 1}",
+                    }
+                )
 
             return clusters
 
         except Exception as e:
             print(f"聚类失败: {e}")
             # 回退：所有文档归为一个聚类
-            return [{
-                "cluster_id": 0,
-                "document_count": len(texts),
-                "documents": filenames,
-                "representative_terms": [],
-                "summary": "未聚类集合"
-            }]
+            return [
+                {
+                    "cluster_id": 0,
+                    "document_count": len(texts),
+                    "documents": filenames,
+                    "representative_terms": [],
+                    "summary": "未聚类集合",
+                }
+            ]
 
     def _extract_key_concepts(self, texts: List[str], top_n: int = 20) -> List[Dict]:
         """
@@ -164,11 +161,7 @@ class DocumentAnalyzer:
         """
         try:
             # 使用 TF-IDF 提取关键词
-            vectorizer = TfidfVectorizer(
-                max_features=top_n,
-                stop_words=None,
-                ngram_range=(1, 3)  # 支持1-3个词的短语
-            )
+            vectorizer = TfidfVectorizer(max_features=top_n, stop_words=None, ngram_range=(1, 3))  # 支持1-3个词的短语
             tfidf_matrix = vectorizer.fit_transform(texts)
 
             # 计算每个词的平均 TF-IDF 分数
@@ -180,11 +173,7 @@ class DocumentAnalyzer:
             concept_scores.sort(key=lambda x: x[1], reverse=True)
 
             return [
-                {
-                    "concept": concept,
-                    "score": float(score),
-                    "type": "keyword"  # 后续可以扩展为实体类型
-                }
+                {"concept": concept, "score": float(score), "type": "keyword"}  # 后续可以扩展为实体类型
                 for concept, score in concept_scores[:top_n]
             ]
 
@@ -192,8 +181,9 @@ class DocumentAnalyzer:
             print(f"关键概念提取失败: {e}")
             return []
 
-    def recommend_domains_and_bridges(self, analysis_result: Dict[str, Any],
-                                     industry_hint: Optional[str] = None) -> Dict[str, Any]:
+    def recommend_domains_and_bridges(
+        self, analysis_result: Dict[str, Any], industry_hint: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         基于文档分析结果，使用 LLM 推荐领域和桥接点
 
@@ -229,21 +219,12 @@ class DocumentAnalyzer:
         except json.JSONDecodeError as e:
             print(f"JSON 解析失败: {e}, 内容: {content}")
             # 返回默认结构
-            return {
-                "recommended_bridges": [],
-                "recommended_domains": [],
-                "reasoning": "LLM 响应解析失败"
-            }
+            return {"recommended_bridges": [], "recommended_domains": [], "reasoning": "LLM 响应解析失败"}
         except Exception as e:
             print(f"推荐生成失败: {e}")
-            return {
-                "recommended_bridges": [],
-                "recommended_domains": [],
-                "reasoning": f"推荐失败: {str(e)}"
-            }
+            return {"recommended_bridges": [], "recommended_domains": [], "reasoning": f"推荐失败: {str(e)}"}
 
-    def _build_recommendation_prompt(self, analysis_result: Dict[str, Any],
-                                    industry_hint: Optional[str] = None) -> str:
+    def _build_recommendation_prompt(self, analysis_result: Dict[str, Any], industry_hint: Optional[str] = None) -> str:
         """构建推荐提示词"""
         clusters = analysis_result.get("clusters", [])
         key_concepts = analysis_result.get("key_concepts", [])
@@ -332,8 +313,7 @@ class DocumentAnalyzer:
 
         return prompt
 
-    def refine_recommendations(self, current_config: Dict[str, Any],
-                             user_feedback: str) -> Dict[str, Any]:
+    def refine_recommendations(self, current_config: Dict[str, Any], user_feedback: str) -> Dict[str, Any]:
         """
         基于用户反馈优化推荐
 
@@ -394,5 +374,5 @@ class DocumentAnalyzer:
             return {
                 "bridge_definitions": current_config.get("bridge_definitions", []),
                 "domain_definitions": current_config.get("domain_definitions", []),
-                "changes_summary": f"优化失败: {str(e)}"
+                "changes_summary": f"优化失败: {str(e)}",
             }

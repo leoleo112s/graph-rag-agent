@@ -30,17 +30,18 @@
        ws://localhost:8000/api/v1/build_celery/ws/{task_id}
 """
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
-from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
-from utils.redis_state import get_state_manager
-from utils.logger import get_logger
-from utils.exceptions import ResourceNotFoundError, BusinessException
-from models.schemas import BaseResponse, ErrorCode
 import asyncio
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
+from models.schemas import BaseResponse, ErrorCode
+from pydantic import BaseModel
 
 # 导入 Celery 任务
 from tasks.build_tasks import build_graph_task, incremental_build_task
+from utils.exceptions import BusinessException, ResourceNotFoundError
+from utils.logger import get_logger
+from utils.redis_state import get_state_manager
 
 logger = get_logger(__name__)
 state_mgr = get_state_manager()
@@ -52,8 +53,10 @@ router = APIRouter(prefix="/build_celery", tags=["图谱构建（Celery 版）"]
 # 请求/响应模型
 # ============================================================================
 
+
 class BuildRequest(BaseModel):
     """构建请求"""
+
     mode: str = "full"  # full, l0, l1, incremental
     files: Optional[List[str]] = None
     config: Optional[Dict[str, Any]] = None
@@ -61,6 +64,7 @@ class BuildRequest(BaseModel):
 
 class BuildResponse(BaseModel):
     """构建响应"""
+
     task_id: str
     status: str
     message: str
@@ -68,6 +72,7 @@ class BuildResponse(BaseModel):
 
 class TaskStatusResponse(BaseModel):
     """任务状态响应"""
+
     task_id: str
     status: str  # pending, running, success, failed
     progress: Optional[Dict[str, Any]] = None
@@ -78,6 +83,7 @@ class TaskStatusResponse(BaseModel):
 # ============================================================================
 # API Endpoints
 # ============================================================================
+
 
 @router.post("/run", response_model=BuildResponse, summary="提交构建任务")
 async def submit_build_task(request: BuildRequest):
@@ -105,24 +111,13 @@ async def submit_build_task(request: BuildRequest):
 
     # 提交任务到 Celery
     if request.mode == "incremental":
-        task = incremental_build_task.delay(
-            files=request.files,
-            config=request.config
-        )
+        task = incremental_build_task.delay(files=request.files, config=request.config)
     else:
-        task = build_graph_task.delay(
-            mode=request.mode,
-            files=request.files,
-            config=request.config
-        )
+        task = build_graph_task.delay(mode=request.mode, files=request.files, config=request.config)
 
     logger.info("任务已提交", task_id=task.id, mode=request.mode)
 
-    return BuildResponse(
-        task_id=task.id,
-        status="submitted",
-        message=f"构建任务已提交到队列，任务 ID: {task.id}"
-    )
+    return BuildResponse(task_id=task.id, status="submitted", message=f"构建任务已提交到队列，任务 ID: {task.id}")
 
 
 @router.get("/status/{task_id}", response_model=TaskStatusResponse, summary="查询任务状态")
@@ -147,6 +142,7 @@ async def get_task_status(task_id: str):
     if not task_status:
         # 如果 Redis 中没有状态，尝试从 Celery 获取
         from celery.result import AsyncResult
+
         celery_result = AsyncResult(task_id)
 
         if celery_result.state == "PENDING":
@@ -163,7 +159,7 @@ async def get_task_status(task_id: str):
         task_status = {
             "status": status,
             "result": celery_result.result if celery_result.successful() else None,
-            "error": str(celery_result.result) if celery_result.failed() else None
+            "error": str(celery_result.result) if celery_result.failed() else None,
         }
 
     return TaskStatusResponse(
@@ -171,7 +167,7 @@ async def get_task_status(task_id: str):
         status=task_status["status"],
         progress=progress,
         result=task_status.get("result"),
-        error=task_status.get("error")
+        error=task_status.get("error"),
     )
 
 
@@ -237,16 +233,13 @@ async def cancel_build_task(task_id: str):
     state_mgr.delete_build_progress(task_id)
     state_mgr.set_task_status(task_id, "cancelled")
 
-    return {
-        "status": "success",
-        "message": f"任务 {task_id} 已取消"
-    }
+    return {"status": "success", "message": f"任务 {task_id} 已取消"}
 
 
 @router.get("/list", summary="列出所有任务")
 async def list_tasks(
     status: Optional[str] = Query(None, description="任务状态过滤（running, success, failed）"),
-    limit: int = Query(100, description="返回数量限制", ge=1, le=1000)
+    limit: int = Query(100, description="返回数量限制", ge=1, le=1000),
 ):
     """
     列出构建任务（需要 Redis 支持）
@@ -258,7 +251,4 @@ async def list_tasks(
     # ZADD build:tasks:index <timestamp> <task_id>
 
     # 这里仅作为示例，实际需要实现
-    return {
-        "tasks": [],
-        "message": "Task listing requires Redis sorted set implementation"
-    }
+    return {"tasks": [], "message": "Task listing requires Redis sorted set implementation"}

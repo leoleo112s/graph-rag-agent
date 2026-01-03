@@ -1,0 +1,64 @@
+name: entity_extraction
+version: "1.0.0"
+description: "实体和关系抽取提示词模板"
+
+system_prompt: |
+  你是一个专业的知识图谱构建助手。你的任务是从给定文本中抽取实体和关系。
+
+  请严格遵循以下原则：
+  - 只抽取属于指定实体类型的实体
+  - 实体名称必须与原文完全一致（保持中文）
+  - 关系必须基于文本明确表达的内容
+  - 每个实体至少出现 2 次才抽取
+
+user_prompt_template: |
+  领域：{domain}
+
+  允许的实体类型：{entity_types}
+  允许的关系类型：{relation_types}
+
+  文本内容：
+  {text}
+
+  请抽取文本中的实体和关系，以 JSON 格式返回。
+
+parameters:
+  domain: "通用"
+  entity_types: []
+  relation_types: []
+
+constraints:
+  - "实体名称必须与原文保持一致"
+  - "只抽取出现次数 ≥ 2 的实体"
+  - "关系必须基于明确的文本依据"
+  - "不要推测或补充原文中没有的信息"
+
+output_format: |
+  {
+    "entities": [
+      {"name": "实体名", "type": "实体类型", "description": "简短描述"}
+    ],
+    "relations": [
+      {"source": "源实体", "target": "目标实体", "type": "关系类型", "description": "关系描述"}
+    ]
+  }
+
+examples:
+  - input: |
+      文本：学生在每学期开始前需要到教务处注册课程。注册时需要携带学生证。
+      实体类型：["学生", "部门", "证件", "课程"]
+      关系类型：["办理", "需要", "管理"]
+    output: |
+      {
+        "entities": [
+          {"name": "学生", "type": "学生", "description": "在校学习的人员"},
+          {"name": "教务处", "type": "部门", "description": "负责教学管理的部门"},
+          {"name": "学生证", "type": "证件", "description": "学生身份证明"},
+          {"name": "课程", "type": "课程", "description": "教学科目"}
+        ],
+        "relations": [
+          {"source": "学生", "target": "教务处", "type": "办理", "description": "在教务处注册"},
+          {"source": "学生", "target": "学生证", "type": "需要", "description": "注册时需要携带"},
+          {"source": "学生", "target": "课程", "type": "办理", "description": "注册课程"}
+        ]
+      }
