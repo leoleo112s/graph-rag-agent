@@ -16,6 +16,7 @@ from rich.console import Console
 
 from graphrag_agent.pipelines.ingestion.document_processor import DocumentProcessor
 from graphrag_agent.graph.indexing.embedding_manager import EmbeddingManager
+from graphrag_agent.graph.structure.struct_builder import GraphStructureBuilder
 from graphrag_agent.config.settings import FILES_DIR, BATCH_SIZE, MAX_WORKERS
 
 
@@ -46,6 +47,7 @@ class FastIngestionPipeline:
 
         # 初始化组件
         self.doc_processor = DocumentProcessor(directory_path=files_dir)
+        self.struct_builder = GraphStructureBuilder(batch_size=BATCH_SIZE)
         self.embedding_manager = EmbeddingManager(
             batch_size=BATCH_SIZE,
             max_workers=MAX_WORKERS
@@ -160,60 +162,77 @@ class FastIngestionPipeline:
 
     def _extract_and_chunk(self, file_path: str) -> List[Dict]:
         """
-        提取文本并分块
+        提取文本并分块，然后写入 Neo4j
 
         Args:
             file_path: 文件路径
 
         Returns:
-            List[Dict]: Chunk列表，每个Chunk包含:
-                {
-                    "text": str,
-                    "chunk_id": str,
-                    "file_name": str,
-                    "metadata": dict
-                }
+            List[Dict]: Chunk列表（已写入 Neo4j），包含 chunk_id 和 chunk_doc
         """
-        # 使用文档处理器提取文本
-        # 注意：DocumentProcessor 需要支持单文件处理
-        # 如果当前实现是批量处理，需要调整
+        import os
 
-        # 假设 DocumentProcessor 有 process_single_file 方法
-        # 如果没有，需要适配
         try:
-            # 方案 A: 如果 DocumentProcessor 支持单文件
-            if hasattr(self.doc_processor, 'process_single_file'):
-                chunks = self.doc_processor.process_single_file(file_path)
-            # 方案 B: 使用 process_directory 但只处理单个文件
-            else:
-                # 获取文件名和扩展名
-                import os
-                file_name = os.path.basename(file_path)
-                file_ext = os.path.splitext(file_path)[1]  # 例如 '.pdf'
+            file_name = os.path.basename(file_path)
+            file_ext = os.path.splitext(file_path)[1]  # 例如 '.pdf'
 
-                # 调用处理器（只传递扩展名，不传递路径）
-                # 注意：process_directory() 第一个参数是 file_extensions，不是路径
-                result = self.doc_processor.process_directory(
-                    file_extensions=[file_ext] if file_ext else None,
-                    recursive=False  # 不递归，提高性能
-                )
+            # 步骤 1: 调用 DocumentProcessor 提取文本并分块
+            results, summary = self.doc_processor.process_directory(
+                file_extensions=[file_ext] if file_ext else None,
+                recursive=False  # 不递归，提高性能
+            )
 
-                # 解包元组
-                if isinstance(result, tuple):
-                    all_chunks, summary = result
+            # 步骤 2: 找到当前文件的结果
+            file_result = None
+            for result in results:
+                if result.get("filename") == file_name or result.get("filepath") == file_name:
+                    file_result = result
+                    break
+
+            if not file_result:
+                self.console.print(f"[yellow]未找到文件 {file_name} 的处理结果[/yellow]")
+                return []
+
+            chunks_text = file_result.get("chunks", [])
+            if not chunks_text:
+                self.console.print(f"[yellow]文件 {file_name} 没有生成任何 chunks[/yellow]")
+                return []
+
+            # 步骤 3: 确保 chunks 格式正确
+            # GraphStructureBuilder 期望 List[List[str]] 格式
+            # 但 chunks_text 可能是 List[str] 或 List[List[str]]
+            formatted_chunks = []
+            for chunk in chunks_text:
+                if isinstance(chunk, str):
+                    # 如果是字符串，转换为 [text] 格式
+                    formatted_chunks.append([chunk])
+                elif isinstance(chunk, list):
+                    # 如果已经是列表，保持原样
+                    formatted_chunks.append(chunk)
                 else:
-                    all_chunks = result
+                    # 其他类型，转换为字符串
+                    formatted_chunks.append([str(chunk)])
 
-                # 过滤出当前文件的chunks
-                chunks = [
-                    chunk for chunk in all_chunks
-                    if chunk.get("file_name") == file_name
-                ]
+            # 步骤 4: 创建 Document 节点
+            self.struct_builder.create_document(
+                type=file_ext[1:] if file_ext else "unknown",  # 移除 '.'
+                uri=file_path,
+                file_name=file_name,
+                domain="default"
+            )
 
-            return chunks
+            # 步骤 5: 创建 Chunk 节点并写入 Neo4j
+            chunks_with_ids = self.struct_builder.create_relation_between_chunks(
+                file_name=file_name,
+                chunks=formatted_chunks
+            )
+
+            return chunks_with_ids
 
         except Exception as e:
             self.console.print(f"[red]文本提取失败: {e}[/red]")
+            import traceback
+            traceback.print_exc()
             raise
 
     def _vectorize_and_store(self, chunks: List[Dict], file_path: str) -> int:
