@@ -16,6 +16,8 @@ from rich.console import Console
 from graphrag_agent.graph.extraction.entity_extractor import EntityRelationExtractor
 from graphrag_agent.graph.indexing.embedding_manager import EmbeddingManager
 from graphrag_agent.integrations.build.pipeline.task_queue import Task, TaskStatus
+from graphrag_agent.models.get_models import get_llm_model
+from graphrag_agent.config.prompts import system_template_build_graph, human_template_build_graph
 from graphrag_agent.config.settings import (
     BATCH_SIZE,
     MAX_WORKERS,
@@ -48,8 +50,14 @@ class SlowGraphPipeline:
         """
         self.console = Console()
 
+        # 初始化 LLM
+        self.llm = get_llm_model()
+
         # 初始化实体提取器
         self.entity_extractor = EntityRelationExtractor(
+            self.llm,
+            system_template_build_graph,
+            human_template_build_graph,
             entity_types=entity_types,
             relationship_types=relationship_types,
             # user_examples=user_examples  # TODO: 需要在 EntityRelationExtractor 中实现
