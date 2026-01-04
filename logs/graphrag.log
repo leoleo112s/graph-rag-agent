@@ -90,3 +90,635 @@
 2026-01-04 11:33:39 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
 2026-01-04 11:33:39 [graphrag-server] [INFO] routers.admin:372 - 查询构建统计信息
 2026-01-04 11:33:39 [graphrag-server] [INFO] routers.admin:344 - 查询构建历史: limit=50, offset=0
+2026-01-04 14:38:06 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 14:38:06 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 14:38:06 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 14:38:06 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 14:38:37 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 14:38:37 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 14:38:37 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 14:38:37 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 14:38:37 [graphrag-server] [INFO] routers.admin:390 - 收到图谱统计请求
+2026-01-04 14:38:37 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 14:38:37 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 14:38:37 [graphrag-server] [INFO] routers.admin:372 - 查询构建统计信息
+2026-01-04 14:38:37 [graphrag-server] [INFO] routers.admin:344 - 查询构建历史: limit=50, offset=0
+2026-01-04 14:45:10 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 14:45:10 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 14:45:10 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 14:45:10 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 14:45:14 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 14:45:14 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 14:45:14 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 14:45:14 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 14:45:14 [graphrag-server] [INFO] routers.admin:390 - 收到图谱统计请求
+2026-01-04 14:45:14 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 14:45:14 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 14:45:14 [graphrag-server] [INFO] routers.admin:372 - 查询构建统计信息
+2026-01-04 14:45:14 [graphrag-server] [INFO] routers.admin:344 - 查询构建历史: limit=50, offset=0
+2026-01-04 15:01:41 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 15:01:41 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 15:01:41 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 15:01:42 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 15:46:00 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 15:46:00 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 15:46:00 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 15:46:00 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 15:46:01 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 15:46:01 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 15:46:01 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 15:46:01 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 15:46:01 [graphrag-server] [INFO] routers.admin:390 - 收到图谱统计请求
+2026-01-04 15:46:01 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:46:01 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:46:01 [graphrag-server] [INFO] routers.admin:372 - 查询构建统计信息
+2026-01-04 15:46:01 [graphrag-server] [INFO] routers.admin:344 - 查询构建历史: limit=50, offset=0
+2026-01-04 15:46:06 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 15:46:06 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 15:46:06 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 15:46:06 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 15:46:06 [graphrag-server] [INFO] routers.admin:390 - 收到图谱统计请求
+2026-01-04 15:46:06 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:46:06 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:46:06 [graphrag-server] [INFO] routers.admin:372 - 查询构建统计信息
+2026-01-04 15:46:06 [graphrag-server] [INFO] routers.admin:344 - 查询构建历史: limit=50, offset=0
+2026-01-04 15:46:11 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 15:46:11 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 15:46:11 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 15:46:11 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 15:46:11 [graphrag-server] [INFO] routers.admin:219 - 收到完整构建请求
+2026-01-04 15:46:11 [graphrag-server] [INFO] routers.admin:110 - 创建构建历史记录: 92253c35-cd12-47a4-8dd4-1dafa1ed1933
+2026-01-04 15:46:11 [graphrag-server] [ERROR] routers.admin:141 - 全量构建发生异常: [Errno 21] Is a directory: '/Users/towns/Documents/duoyuanmaodun/graph-rag-agent/file_registry.json'
+Traceback (most recent call last):
+  File "/Users/towns/Documents/duoyuanmaodun/graph-rag-agent/server/routers/admin.py", line 117, in _run_full_build_task
+    manager = IncrementalUpdateManagerV2(config=pipeline_config)
+  File "/Users/towns/Documents/duoyuanmaodun/graph-rag-agent/graphrag_agent/integrations/build/incremental_update_v2.py", line 85, in __init__
+    self.updater = IncrementalGraphUpdater(files_dir)
+  File "/Users/towns/Documents/duoyuanmaodun/graph-rag-agent/graphrag_agent/integrations/build/incremental_graph_builder.py", line 49, in __init__
+    self.file_manager = FileChangeManager(files_dir, registry_path)
+  File "/Users/towns/Documents/duoyuanmaodun/graph-rag-agent/graphrag_agent/integrations/build/incremental/file_change_manager.py", line 34, in __init__
+    self.registry = self._load_registry()
+  File "/Users/towns/Documents/duoyuanmaodun/graph-rag-agent/graphrag_agent/integrations/build/incremental/file_change_manager.py", line 47, in _load_registry
+    with open(self.registry_path, 'r', encoding='utf-8') as f:
+IsADirectoryError: [Errno 21] Is a directory: '/Users/towns/Documents/duoyuanmaodun/graph-rag-agent/file_registry.json'
+2026-01-04 15:46:13 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 15:46:13 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 15:46:13 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 15:46:13 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 15:46:13 [graphrag-server] [INFO] routers.admin:390 - 收到图谱统计请求
+2026-01-04 15:46:13 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:46:13 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:46:13 [graphrag-server] [INFO] routers.admin:372 - 查询构建统计信息
+2026-01-04 15:46:13 [graphrag-server] [INFO] routers.admin:344 - 查询构建历史: limit=50, offset=0
+2026-01-04 15:47:25 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 15:47:25 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 15:47:25 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 15:47:25 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 15:47:25 [graphrag-server] [INFO] routers.admin:390 - 收到图谱统计请求
+2026-01-04 15:47:25 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:47:25 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:47:25 [graphrag-server] [INFO] routers.admin:372 - 查询构建统计信息
+2026-01-04 15:47:25 [graphrag-server] [INFO] routers.admin:344 - 查询构建历史: limit=50, offset=0
+2026-01-04 15:47:36 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 15:47:36 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 15:47:36 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 15:47:36 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 15:47:37 [graphrag-server] [INFO] routers.admin:390 - 收到图谱统计请求
+2026-01-04 15:47:37 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:47:37 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:47:37 [graphrag-server] [INFO] routers.admin:372 - 查询构建统计信息
+2026-01-04 15:47:37 [graphrag-server] [INFO] routers.admin:344 - 查询构建历史: limit=50, offset=0
+2026-01-04 15:47:42 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 15:47:42 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 15:47:42 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 15:47:42 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 15:47:48 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 15:47:48 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 15:47:48 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 15:47:48 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 15:47:58 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 15:47:58 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 15:47:58 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 15:47:58 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 15:47:58 [graphrag-server] [INFO] routers.admin:390 - 收到图谱统计请求
+2026-01-04 15:47:58 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:47:58 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:47:58 [graphrag-server] [INFO] routers.admin:372 - 查询构建统计信息
+2026-01-04 15:47:58 [graphrag-server] [INFO] routers.admin:344 - 查询构建历史: limit=50, offset=0
+2026-01-04 15:48:07 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 15:48:07 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 15:48:07 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 15:48:07 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 15:48:07 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 15:48:07 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 15:48:07 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 15:48:07 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 15:48:07 [graphrag-server] [INFO] routers.admin:390 - 收到图谱统计请求
+2026-01-04 15:48:07 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:48:07 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:48:07 [graphrag-server] [INFO] routers.admin:372 - 查询构建统计信息
+2026-01-04 15:48:07 [graphrag-server] [INFO] routers.admin:344 - 查询构建历史: limit=50, offset=0
+2026-01-04 15:48:08 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 15:48:08 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 15:48:08 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 15:48:08 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 15:48:08 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 15:48:08 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 15:48:08 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 15:48:08 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 15:48:08 [graphrag-server] [INFO] routers.admin:390 - 收到图谱统计请求
+2026-01-04 15:48:08 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:48:08 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:48:08 [graphrag-server] [INFO] routers.admin:372 - 查询构建统计信息
+2026-01-04 15:48:08 [graphrag-server] [INFO] routers.admin:344 - 查询构建历史: limit=50, offset=0
+2026-01-04 15:48:12 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 15:48:12 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 15:48:12 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 15:48:12 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 15:48:12 [graphrag-server] [INFO] routers.admin:390 - 收到图谱统计请求
+2026-01-04 15:48:12 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:48:12 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:48:12 [graphrag-server] [INFO] routers.admin:372 - 查询构建统计信息
+2026-01-04 15:48:12 [graphrag-server] [INFO] routers.admin:344 - 查询构建历史: limit=50, offset=0
+2026-01-04 15:48:15 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 15:48:15 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 15:48:15 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 15:48:15 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 15:48:15 [graphrag-server] [INFO] routers.admin:219 - 收到完整构建请求
+2026-01-04 15:48:15 [graphrag-server] [WARNING] main:166 - HTTP异常: 已有构建任务正在运行，请等待其完成（来自 admin.py 或 build.py）
+2026-01-04 15:48:15 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 15:48:15 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 15:48:15 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 15:48:15 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 15:48:15 [graphrag-server] [INFO] routers.admin:390 - 收到图谱统计请求
+2026-01-04 15:48:15 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:48:15 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:48:15 [graphrag-server] [INFO] routers.admin:372 - 查询构建统计信息
+2026-01-04 15:48:15 [graphrag-server] [INFO] routers.admin:344 - 查询构建历史: limit=50, offset=0
+2026-01-04 15:48:21 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 15:48:21 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 15:48:21 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 15:48:21 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 15:48:21 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 15:48:21 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 15:48:21 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 15:48:21 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 15:48:21 [graphrag-server] [INFO] routers.admin:390 - 收到图谱统计请求
+2026-01-04 15:48:21 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:48:21 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:48:21 [graphrag-server] [INFO] routers.admin:372 - 查询构建统计信息
+2026-01-04 15:48:21 [graphrag-server] [INFO] routers.admin:344 - 查询构建历史: limit=50, offset=0
+2026-01-04 15:48:22 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 15:48:22 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 15:48:22 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 15:48:22 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 15:48:22 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 15:48:22 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 15:48:22 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 15:48:22 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 15:48:22 [graphrag-server] [INFO] routers.admin:390 - 收到图谱统计请求
+2026-01-04 15:48:22 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:48:22 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:48:22 [graphrag-server] [INFO] routers.admin:372 - 查询构建统计信息
+2026-01-04 15:48:22 [graphrag-server] [INFO] routers.admin:344 - 查询构建历史: limit=50, offset=0
+2026-01-04 15:48:27 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 15:48:27 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 15:48:27 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 15:48:27 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 15:48:27 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 15:48:27 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 15:48:27 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 15:48:27 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 15:48:27 [graphrag-server] [INFO] routers.admin:390 - 收到图谱统计请求
+2026-01-04 15:48:27 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:48:27 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:48:27 [graphrag-server] [INFO] routers.admin:372 - 查询构建统计信息
+2026-01-04 15:48:27 [graphrag-server] [INFO] routers.admin:344 - 查询构建历史: limit=50, offset=0
+2026-01-04 15:55:07 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 15:55:07 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 15:55:07 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 15:55:07 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 15:55:07 [graphrag-server] [INFO] routers.admin:390 - 收到图谱统计请求
+2026-01-04 15:55:07 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:55:07 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:55:07 [graphrag-server] [INFO] routers.admin:372 - 查询构建统计信息
+2026-01-04 15:55:07 [graphrag-server] [INFO] routers.admin:344 - 查询构建历史: limit=50, offset=0
+2026-01-04 15:55:11 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 15:55:11 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 15:55:11 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 15:55:11 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 15:55:11 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 15:55:11 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 15:55:11 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 15:55:11 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 15:55:11 [graphrag-server] [INFO] routers.admin:390 - 收到图谱统计请求
+2026-01-04 15:55:11 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:55:11 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:55:11 [graphrag-server] [INFO] routers.admin:372 - 查询构建统计信息
+2026-01-04 15:55:11 [graphrag-server] [INFO] routers.admin:344 - 查询构建历史: limit=50, offset=0
+2026-01-04 15:55:16 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 15:55:16 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 15:55:16 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 15:55:16 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 15:55:16 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 15:55:16 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 15:55:16 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 15:55:16 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 15:55:16 [graphrag-server] [INFO] routers.admin:390 - 收到图谱统计请求
+2026-01-04 15:55:16 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:55:16 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:55:16 [graphrag-server] [INFO] routers.admin:372 - 查询构建统计信息
+2026-01-04 15:55:16 [graphrag-server] [INFO] routers.admin:344 - 查询构建历史: limit=50, offset=0
+2026-01-04 15:57:12 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 15:57:12 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 15:57:12 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 15:57:12 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 15:57:46 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 15:57:46 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 15:57:46 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 15:57:46 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 15:57:46 [graphrag-server] [INFO] routers.admin:390 - 收到图谱统计请求
+2026-01-04 15:57:46 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:57:46 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:57:46 [graphrag-server] [INFO] routers.admin:372 - 查询构建统计信息
+2026-01-04 15:57:46 [graphrag-server] [INFO] routers.admin:344 - 查询构建历史: limit=50, offset=0
+2026-01-04 15:58:03 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 15:58:03 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 15:58:03 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 15:58:03 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 15:58:03 [graphrag-server] [INFO] routers.admin:390 - 收到图谱统计请求
+2026-01-04 15:58:03 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:58:03 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:58:03 [graphrag-server] [INFO] routers.admin:372 - 查询构建统计信息
+2026-01-04 15:58:03 [graphrag-server] [INFO] routers.admin:344 - 查询构建历史: limit=50, offset=0
+2026-01-04 15:58:05 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 15:58:05 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 15:58:05 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 15:58:05 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 15:58:05 [graphrag-server] [INFO] routers.admin:219 - 收到完整构建请求
+2026-01-04 15:58:05 [graphrag-server] [WARNING] main:166 - HTTP异常: 已有构建任务正在运行，请等待其完成（来自 admin.py 或 build.py）
+2026-01-04 15:58:05 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 15:58:05 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 15:58:05 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 15:58:05 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 15:58:05 [graphrag-server] [INFO] routers.admin:390 - 收到图谱统计请求
+2026-01-04 15:58:05 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:58:05 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 15:58:05 [graphrag-server] [INFO] routers.admin:372 - 查询构建统计信息
+2026-01-04 15:58:05 [graphrag-server] [INFO] routers.admin:344 - 查询构建历史: limit=50, offset=0
+2026-01-04 16:20:57 [graphrag-server] [INFO] main:166 - 已关闭所有 Agent 资源
+2026-01-04 16:20:57 [graphrag-server] [INFO] main:166 - 已关闭 Neo4j 连接
+2026-01-04 16:20:57 [graphrag-server] [INFO] graphrag_agent.graph.core.graph_connection:214 - Graph connection closed successfully
+2026-01-04 16:20:57 [graphrag-server] [INFO] graphrag_agent.graph.core.graph_connection:223 - Driver connection closed successfully
+2026-01-04 16:21:02 [graphrag-server] [INFO] graphrag_agent.utils.logging_config:95 - 日志系统初始化完成: level=INFO, format=text, file=logs/graphrag.log
+2026-01-04 16:21:02 [graphrag-server] [INFO] graphrag_agent.utils.logging_config:95 - 日志系统初始化完成: level=INFO, format=text, file=logs/graphrag.log
+2026-01-04 16:21:02 [graphrag-server] [INFO] main:166 - 知识图谱问答系统启动
+2026-01-04 16:21:15 [graphrag-server] [INFO] routers.admin:614 - 收到获取图谱配置请求
+2026-01-04 16:21:15 [graphrag-server] [INFO] routers.admin:625 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T16:21:15.402597', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 16:21:15 [graphrag-server] [INFO] routers.admin:684 - 收到列出模板请求
+2026-01-04 16:21:15 [graphrag-server] [INFO] routers.admin:690 - 返回 3 个模板
+2026-01-04 16:21:15 [graphrag-server] [INFO] routers.admin:393 - 收到图谱统计请求
+2026-01-04 16:21:15 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:21:15 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:21:15 [graphrag-server] [INFO] routers.admin:375 - 查询构建统计信息
+2026-01-04 16:21:15 [graphrag-server] [INFO] routers.admin:347 - 查询构建历史: limit=50, offset=0
+2026-01-04 16:21:18 [graphrag-server] [INFO] routers.admin:614 - 收到获取图谱配置请求
+2026-01-04 16:21:18 [graphrag-server] [INFO] routers.admin:625 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T16:21:15.402597', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 16:21:18 [graphrag-server] [INFO] routers.admin:684 - 收到列出模板请求
+2026-01-04 16:21:18 [graphrag-server] [INFO] routers.admin:690 - 返回 3 个模板
+2026-01-04 16:21:18 [graphrag-server] [INFO] routers.admin:393 - 收到图谱统计请求
+2026-01-04 16:21:18 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:21:18 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:21:18 [graphrag-server] [INFO] routers.admin:375 - 查询构建统计信息
+2026-01-04 16:21:18 [graphrag-server] [INFO] routers.admin:347 - 查询构建历史: limit=50, offset=0
+2026-01-04 16:21:19 [graphrag-server] [INFO] routers.admin:614 - 收到获取图谱配置请求
+2026-01-04 16:21:20 [graphrag-server] [INFO] routers.admin:625 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T16:21:15.402597', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 16:21:20 [graphrag-server] [INFO] routers.admin:684 - 收到列出模板请求
+2026-01-04 16:21:20 [graphrag-server] [INFO] routers.admin:690 - 返回 3 个模板
+2026-01-04 16:21:20 [graphrag-server] [INFO] routers.admin:222 - 收到完整构建请求
+2026-01-04 16:21:20 [graphrag-server] [INFO] routers.admin:111 - 创建构建历史记录: 8fec5cb0-a2c4-441e-833a-dbe7be543b64
+2026-01-04 16:21:20 [graphrag-server] [ERROR] routers.admin:141 - 全量构建发生异常: [Errno 21] Is a directory: '/Users/towns/Documents/duoyuanmaodun/graph-rag-agent/file_registry.json'
+Traceback (most recent call last):
+  File "/Users/towns/Documents/duoyuanmaodun/graph-rag-agent/server/routers/admin.py", line 118, in _run_full_build_task
+    manager = IncrementalUpdateManagerV2(config=pipeline_config)
+  File "/Users/towns/Documents/duoyuanmaodun/graph-rag-agent/graphrag_agent/integrations/build/incremental_update_v2.py", line 85, in __init__
+    self.updater = IncrementalGraphUpdater(files_dir)
+  File "/Users/towns/Documents/duoyuanmaodun/graph-rag-agent/graphrag_agent/integrations/build/incremental_graph_builder.py", line 49, in __init__
+    self.file_manager = FileChangeManager(files_dir, registry_path)
+  File "/Users/towns/Documents/duoyuanmaodun/graph-rag-agent/graphrag_agent/integrations/build/incremental/file_change_manager.py", line 34, in __init__
+    self.registry = self._load_registry()
+  File "/Users/towns/Documents/duoyuanmaodun/graph-rag-agent/graphrag_agent/integrations/build/incremental/file_change_manager.py", line 47, in _load_registry
+    with open(self.registry_path, 'r', encoding='utf-8') as f:
+IsADirectoryError: [Errno 21] Is a directory: '/Users/towns/Documents/duoyuanmaodun/graph-rag-agent/file_registry.json'
+2026-01-04 16:21:22 [graphrag-server] [INFO] routers.admin:614 - 收到获取图谱配置请求
+2026-01-04 16:21:22 [graphrag-server] [INFO] routers.admin:625 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T16:21:15.402597', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 16:21:22 [graphrag-server] [INFO] routers.admin:684 - 收到列出模板请求
+2026-01-04 16:21:22 [graphrag-server] [INFO] routers.admin:690 - 返回 3 个模板
+2026-01-04 16:21:22 [graphrag-server] [INFO] routers.admin:393 - 收到图谱统计请求
+2026-01-04 16:21:22 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:21:22 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:21:22 [graphrag-server] [INFO] routers.admin:375 - 查询构建统计信息
+2026-01-04 16:21:22 [graphrag-server] [INFO] routers.admin:347 - 查询构建历史: limit=50, offset=0
+2026-01-04 16:21:41 [graphrag-server] [INFO] routers.admin:614 - 收到获取图谱配置请求
+2026-01-04 16:21:41 [graphrag-server] [INFO] routers.admin:625 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T16:21:15.402597', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 16:21:41 [graphrag-server] [INFO] routers.admin:684 - 收到列出模板请求
+2026-01-04 16:21:41 [graphrag-server] [INFO] routers.admin:690 - 返回 3 个模板
+2026-01-04 16:21:41 [graphrag-server] [INFO] routers.admin:614 - 收到获取图谱配置请求
+2026-01-04 16:21:41 [graphrag-server] [INFO] routers.admin:625 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T16:21:15.402597', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 16:21:41 [graphrag-server] [INFO] routers.admin:684 - 收到列出模板请求
+2026-01-04 16:21:41 [graphrag-server] [INFO] routers.admin:690 - 返回 3 个模板
+2026-01-04 16:21:41 [graphrag-server] [INFO] routers.admin:393 - 收到图谱统计请求
+2026-01-04 16:21:41 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:21:41 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:21:41 [graphrag-server] [INFO] routers.admin:375 - 查询构建统计信息
+2026-01-04 16:21:41 [graphrag-server] [INFO] routers.admin:347 - 查询构建历史: limit=50, offset=0
+2026-01-04 16:21:42 [graphrag-server] [INFO] routers.admin:614 - 收到获取图谱配置请求
+2026-01-04 16:21:42 [graphrag-server] [INFO] routers.admin:625 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T16:21:15.402597', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 16:21:42 [graphrag-server] [INFO] routers.admin:684 - 收到列出模板请求
+2026-01-04 16:21:42 [graphrag-server] [INFO] routers.admin:690 - 返回 3 个模板
+2026-01-04 16:21:42 [graphrag-server] [INFO] routers.admin:614 - 收到获取图谱配置请求
+2026-01-04 16:21:42 [graphrag-server] [INFO] routers.admin:625 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T16:21:15.402597', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 16:21:42 [graphrag-server] [INFO] routers.admin:684 - 收到列出模板请求
+2026-01-04 16:21:42 [graphrag-server] [INFO] routers.admin:690 - 返回 3 个模板
+2026-01-04 16:21:42 [graphrag-server] [INFO] routers.admin:393 - 收到图谱统计请求
+2026-01-04 16:21:42 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:21:42 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:21:42 [graphrag-server] [INFO] routers.admin:375 - 查询构建统计信息
+2026-01-04 16:21:42 [graphrag-server] [INFO] routers.admin:347 - 查询构建历史: limit=50, offset=0
+2026-01-04 16:22:00 [graphrag-server] [INFO] routers.admin:614 - 收到获取图谱配置请求
+2026-01-04 16:22:00 [graphrag-server] [INFO] routers.admin:625 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T16:21:15.402597', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 16:22:00 [graphrag-server] [INFO] routers.admin:684 - 收到列出模板请求
+2026-01-04 16:22:00 [graphrag-server] [INFO] routers.admin:690 - 返回 3 个模板
+2026-01-04 16:22:00 [graphrag-server] [INFO] routers.admin:393 - 收到图谱统计请求
+2026-01-04 16:22:00 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:22:00 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:22:00 [graphrag-server] [INFO] routers.admin:375 - 查询构建统计信息
+2026-01-04 16:22:00 [graphrag-server] [INFO] routers.admin:347 - 查询构建历史: limit=50, offset=0
+2026-01-04 16:25:05 [graphrag-server] [INFO] routers.admin:614 - 收到获取图谱配置请求
+2026-01-04 16:25:05 [graphrag-server] [INFO] routers.admin:625 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T16:21:15.402597', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 16:25:05 [graphrag-server] [INFO] routers.admin:684 - 收到列出模板请求
+2026-01-04 16:25:05 [graphrag-server] [INFO] routers.admin:690 - 返回 3 个模板
+2026-01-04 16:26:09 [graphrag-server] [INFO] routers.admin:614 - 收到获取图谱配置请求
+2026-01-04 16:26:09 [graphrag-server] [INFO] routers.admin:625 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T16:21:15.402597', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 16:26:09 [graphrag-server] [INFO] routers.admin:684 - 收到列出模板请求
+2026-01-04 16:26:09 [graphrag-server] [INFO] routers.admin:690 - 返回 3 个模板
+2026-01-04 16:26:09 [graphrag-server] [INFO] routers.admin:393 - 收到图谱统计请求
+2026-01-04 16:26:09 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:26:09 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:26:09 [graphrag-server] [INFO] routers.admin:375 - 查询构建统计信息
+2026-01-04 16:26:09 [graphrag-server] [INFO] routers.admin:347 - 查询构建历史: limit=50, offset=0
+2026-01-04 16:26:13 [graphrag-server] [INFO] routers.admin:614 - 收到获取图谱配置请求
+2026-01-04 16:26:13 [graphrag-server] [INFO] routers.admin:625 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T16:21:15.402597', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 16:26:13 [graphrag-server] [INFO] routers.admin:684 - 收到列出模板请求
+2026-01-04 16:26:13 [graphrag-server] [INFO] routers.admin:690 - 返回 3 个模板
+2026-01-04 16:26:13 [graphrag-server] [INFO] routers.admin:393 - 收到图谱统计请求
+2026-01-04 16:26:13 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:26:13 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:26:13 [graphrag-server] [INFO] routers.admin:375 - 查询构建统计信息
+2026-01-04 16:26:13 [graphrag-server] [INFO] routers.admin:347 - 查询构建历史: limit=50, offset=0
+2026-01-04 16:26:15 [graphrag-server] [INFO] routers.admin:614 - 收到获取图谱配置请求
+2026-01-04 16:26:15 [graphrag-server] [INFO] routers.admin:625 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T16:21:15.402597', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 16:26:15 [graphrag-server] [INFO] routers.admin:684 - 收到列出模板请求
+2026-01-04 16:26:15 [graphrag-server] [INFO] routers.admin:690 - 返回 3 个模板
+2026-01-04 16:26:15 [graphrag-server] [INFO] routers.admin:222 - 收到完整构建请求
+2026-01-04 16:26:15 [graphrag-server] [INFO] routers.admin:111 - 创建构建历史记录: 5d88027d-5de9-4bc2-a516-46a5a843430d
+2026-01-04 16:26:15 [graphrag-server] [INFO] graphrag_agent.pipelines.ingestion.document_processor:113 - ⚠️  使用默认 Chunker: chunk_size=500, overlap=100
+2026-01-04 16:26:15 [graphrag-server] [INFO] graphrag_agent.pipelines.ingestion.document_processor:114 -    推荐使用 chunker_mode='adaptive' 以获得更好的性能
+2026-01-04 16:26:15 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:411 - 创建缓存目录（版本隔离）: ./cache/graph/deepseek-chat/911fb00c
+2026-01-04 16:26:15 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:421 - 🔥 生产级实体提取器已初始化
+2026-01-04 16:26:15 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:422 -    - Model: deepseek-chat
+2026-01-04 16:26:15 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:423 -    - Prompt Version: 911fb00c
+2026-01-04 16:26:15 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:424 -    - Cache Dir: ./cache/graph/deepseek-chat/911fb00c
+2026-01-04 16:26:15 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:425 -    - Max Workers: 4
+2026-01-04 16:26:15 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:426 -    - 实体类型白名单：{'法条', '当事人', '规章制度', '流程', '文档', '机构', '部门', '政策', '条件', '地点', '条款', '概念'}
+2026-01-04 16:26:15 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:427 -    - 关系类型白名单：{'负责', '提交给', '关联', '有步骤', '适用于', '需要', '有条件', '依据', '包含', '发布', '属于'}
+2026-01-04 16:26:15 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:428 -    - 最小实体频率：1
+2026-01-04 16:26:15 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:429 -    - 名称相似度阈值：0.85
+2026-01-04 16:26:15 [graphrag-server] [ERROR] routers.admin:141 - 全量构建发生异常: DocumentProcessor.__init__() missing 1 required positional argument: 'directory_path'
+Traceback (most recent call last):
+  File "/Users/towns/Documents/duoyuanmaodun/graph-rag-agent/server/routers/admin.py", line 118, in _run_full_build_task
+    manager = IncrementalUpdateManagerV2(config=pipeline_config)
+  File "/Users/towns/Documents/duoyuanmaodun/graph-rag-agent/graphrag_agent/integrations/build/incremental_update_v2.py", line 90, in __init__
+    self.fast_pipeline = FastIngestionPipeline(files_dir)
+  File "/Users/towns/Documents/duoyuanmaodun/graph-rag-agent/graphrag_agent/integrations/build/pipeline/fast_ingestion_pipeline.py", line 48, in __init__
+    self.doc_processor = DocumentProcessor()
+TypeError: DocumentProcessor.__init__() missing 1 required positional argument: 'directory_path'
+2026-01-04 16:26:17 [graphrag-server] [INFO] routers.admin:614 - 收到获取图谱配置请求
+2026-01-04 16:26:17 [graphrag-server] [INFO] routers.admin:625 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T16:21:15.402597', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 16:26:17 [graphrag-server] [INFO] routers.admin:684 - 收到列出模板请求
+2026-01-04 16:26:17 [graphrag-server] [INFO] routers.admin:690 - 返回 3 个模板
+2026-01-04 16:26:17 [graphrag-server] [INFO] routers.admin:393 - 收到图谱统计请求
+2026-01-04 16:26:17 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:26:17 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:26:17 [graphrag-server] [INFO] routers.admin:375 - 查询构建统计信息
+2026-01-04 16:26:17 [graphrag-server] [INFO] routers.admin:347 - 查询构建历史: limit=50, offset=0
+2026-01-04 16:34:40 [graphrag-server] [INFO] routers.admin:614 - 收到获取图谱配置请求
+2026-01-04 16:34:40 [graphrag-server] [INFO] routers.admin:625 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T16:21:15.402597', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 16:34:40 [graphrag-server] [INFO] routers.admin:684 - 收到列出模板请求
+2026-01-04 16:34:40 [graphrag-server] [INFO] routers.admin:690 - 返回 3 个模板
+2026-01-04 16:34:40 [graphrag-server] [INFO] routers.admin:393 - 收到图谱统计请求
+2026-01-04 16:34:40 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:34:40 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:34:40 [graphrag-server] [INFO] routers.admin:375 - 查询构建统计信息
+2026-01-04 16:34:40 [graphrag-server] [INFO] routers.admin:347 - 查询构建历史: limit=50, offset=0
+2026-01-04 16:34:47 [graphrag-server] [INFO] routers.admin:614 - 收到获取图谱配置请求
+2026-01-04 16:34:47 [graphrag-server] [INFO] routers.admin:625 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T16:21:15.402597', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 16:34:47 [graphrag-server] [INFO] routers.admin:684 - 收到列出模板请求
+2026-01-04 16:34:47 [graphrag-server] [INFO] routers.admin:690 - 返回 3 个模板
+2026-01-04 16:34:47 [graphrag-server] [INFO] routers.admin:393 - 收到图谱统计请求
+2026-01-04 16:34:47 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:34:47 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:34:47 [graphrag-server] [INFO] routers.admin:375 - 查询构建统计信息
+2026-01-04 16:34:47 [graphrag-server] [INFO] routers.admin:347 - 查询构建历史: limit=50, offset=0
+2026-01-04 16:34:49 [graphrag-server] [INFO] routers.admin:614 - 收到获取图谱配置请求
+2026-01-04 16:34:49 [graphrag-server] [INFO] routers.admin:625 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T16:21:15.402597', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 16:34:49 [graphrag-server] [INFO] routers.admin:684 - 收到列出模板请求
+2026-01-04 16:34:49 [graphrag-server] [INFO] routers.admin:690 - 返回 3 个模板
+2026-01-04 16:34:49 [graphrag-server] [INFO] routers.admin:222 - 收到完整构建请求
+2026-01-04 16:34:49 [graphrag-server] [INFO] routers.admin:111 - 创建构建历史记录: d8af3d0a-fe56-40f9-b470-b232fde6fe61
+2026-01-04 16:34:49 [graphrag-server] [INFO] graphrag_agent.pipelines.ingestion.document_processor:113 - ⚠️  使用默认 Chunker: chunk_size=500, overlap=100
+2026-01-04 16:34:49 [graphrag-server] [INFO] graphrag_agent.pipelines.ingestion.document_processor:114 -    推荐使用 chunker_mode='adaptive' 以获得更好的性能
+2026-01-04 16:34:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:421 - 🔥 生产级实体提取器已初始化
+2026-01-04 16:34:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:422 -    - Model: deepseek-chat
+2026-01-04 16:34:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:423 -    - Prompt Version: 911fb00c
+2026-01-04 16:34:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:424 -    - Cache Dir: ./cache/graph/deepseek-chat/911fb00c
+2026-01-04 16:34:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:425 -    - Max Workers: 4
+2026-01-04 16:34:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:426 -    - 实体类型白名单：{'法条', '当事人', '规章制度', '流程', '文档', '机构', '部门', '政策', '条件', '地点', '条款', '概念'}
+2026-01-04 16:34:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:427 -    - 关系类型白名单：{'负责', '提交给', '关联', '有步骤', '适用于', '需要', '有条件', '依据', '包含', '发布', '属于'}
+2026-01-04 16:34:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:428 -    - 最小实体频率：1
+2026-01-04 16:34:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:429 -    - 名称相似度阈值：0.85
+2026-01-04 16:34:49 [graphrag-server] [ERROR] routers.admin:141 - 全量构建发生异常: DocumentProcessor.__init__() missing 1 required positional argument: 'directory_path'
+Traceback (most recent call last):
+  File "/Users/towns/Documents/duoyuanmaodun/graph-rag-agent/server/routers/admin.py", line 118, in _run_full_build_task
+    manager = IncrementalUpdateManagerV2(config=pipeline_config)
+  File "/Users/towns/Documents/duoyuanmaodun/graph-rag-agent/graphrag_agent/integrations/build/incremental_update_v2.py", line 90, in __init__
+    self.fast_pipeline = FastIngestionPipeline(files_dir)
+  File "/Users/towns/Documents/duoyuanmaodun/graph-rag-agent/graphrag_agent/integrations/build/pipeline/fast_ingestion_pipeline.py", line 48, in __init__
+    self.doc_processor = DocumentProcessor(files_dir)
+TypeError: DocumentProcessor.__init__() missing 1 required positional argument: 'directory_path'
+2026-01-04 16:34:51 [graphrag-server] [INFO] routers.admin:614 - 收到获取图谱配置请求
+2026-01-04 16:34:51 [graphrag-server] [INFO] routers.admin:625 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T16:21:15.402597', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 16:34:51 [graphrag-server] [INFO] routers.admin:684 - 收到列出模板请求
+2026-01-04 16:34:51 [graphrag-server] [INFO] routers.admin:690 - 返回 3 个模板
+2026-01-04 16:34:51 [graphrag-server] [INFO] routers.admin:393 - 收到图谱统计请求
+2026-01-04 16:34:51 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:34:51 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:34:51 [graphrag-server] [INFO] routers.admin:375 - 查询构建统计信息
+2026-01-04 16:34:51 [graphrag-server] [INFO] routers.admin:347 - 查询构建历史: limit=50, offset=0
+2026-01-04 16:35:26 [graphrag-server] [INFO] routers.admin:614 - 收到获取图谱配置请求
+2026-01-04 16:35:26 [graphrag-server] [INFO] routers.admin:625 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T16:21:15.402597', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 16:35:26 [graphrag-server] [INFO] routers.admin:684 - 收到列出模板请求
+2026-01-04 16:35:26 [graphrag-server] [INFO] routers.admin:690 - 返回 3 个模板
+2026-01-04 16:35:26 [graphrag-server] [INFO] routers.admin:393 - 收到图谱统计请求
+2026-01-04 16:35:26 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:35:26 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:35:26 [graphrag-server] [INFO] routers.admin:375 - 查询构建统计信息
+2026-01-04 16:35:26 [graphrag-server] [INFO] routers.admin:347 - 查询构建历史: limit=50, offset=0
+2026-01-04 16:40:11 [graphrag-server] [INFO] routers.admin:614 - 收到获取图谱配置请求
+2026-01-04 16:40:11 [graphrag-server] [INFO] routers.admin:625 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T16:21:15.402597', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 16:40:11 [graphrag-server] [INFO] routers.admin:684 - 收到列出模板请求
+2026-01-04 16:40:11 [graphrag-server] [INFO] routers.admin:690 - 返回 3 个模板
+2026-01-04 16:40:11 [graphrag-server] [INFO] routers.admin:393 - 收到图谱统计请求
+2026-01-04 16:40:11 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:40:11 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:40:11 [graphrag-server] [INFO] routers.admin:375 - 查询构建统计信息
+2026-01-04 16:40:11 [graphrag-server] [INFO] routers.admin:347 - 查询构建历史: limit=50, offset=0
+2026-01-04 16:40:18 [graphrag-server] [INFO] routers.admin:614 - 收到获取图谱配置请求
+2026-01-04 16:40:18 [graphrag-server] [INFO] routers.admin:625 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T16:21:15.402597', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 16:40:18 [graphrag-server] [INFO] routers.admin:684 - 收到列出模板请求
+2026-01-04 16:40:18 [graphrag-server] [INFO] routers.admin:690 - 返回 3 个模板
+2026-01-04 16:40:18 [graphrag-server] [INFO] routers.admin:246 - 收到增量构建请求
+2026-01-04 16:40:18 [graphrag-server] [INFO] routers.admin:167 - 创建构建历史记录: f6d53bd5-a9e3-4b9b-81cb-be199ccc52af
+2026-01-04 16:40:18 [graphrag-server] [INFO] graphrag_agent.pipelines.ingestion.document_processor:113 - ⚠️  使用默认 Chunker: chunk_size=500, overlap=100
+2026-01-04 16:40:18 [graphrag-server] [INFO] graphrag_agent.pipelines.ingestion.document_processor:114 -    推荐使用 chunker_mode='adaptive' 以获得更好的性能
+2026-01-04 16:40:18 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:421 - 🔥 生产级实体提取器已初始化
+2026-01-04 16:40:18 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:422 -    - Model: deepseek-chat
+2026-01-04 16:40:18 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:423 -    - Prompt Version: 911fb00c
+2026-01-04 16:40:18 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:424 -    - Cache Dir: ./cache/graph/deepseek-chat/911fb00c
+2026-01-04 16:40:18 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:425 -    - Max Workers: 4
+2026-01-04 16:40:18 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:426 -    - 实体类型白名单：{'法条', '当事人', '规章制度', '流程', '文档', '机构', '部门', '政策', '条件', '地点', '条款', '概念'}
+2026-01-04 16:40:18 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:427 -    - 关系类型白名单：{'负责', '提交给', '关联', '有步骤', '适用于', '需要', '有条件', '依据', '包含', '发布', '属于'}
+2026-01-04 16:40:18 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:428 -    - 最小实体频率：1
+2026-01-04 16:40:18 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:429 -    - 名称相似度阈值：0.85
+2026-01-04 16:40:18 [graphrag-server] [ERROR] routers.admin:197 - 增量构建发生异常: DocumentProcessor.__init__() missing 1 required positional argument: 'directory_path'
+Traceback (most recent call last):
+  File "/Users/towns/Documents/duoyuanmaodun/graph-rag-agent/server/routers/admin.py", line 174, in _run_incremental_build_task
+    manager = IncrementalUpdateManagerV2(config=pipeline_config)
+  File "/Users/towns/Documents/duoyuanmaodun/graph-rag-agent/graphrag_agent/integrations/build/incremental_update_v2.py", line 90, in __init__
+    self.fast_pipeline = FastIngestionPipeline(files_dir)
+  File "/Users/towns/Documents/duoyuanmaodun/graph-rag-agent/graphrag_agent/integrations/build/pipeline/fast_ingestion_pipeline.py", line 48, in __init__
+    self.doc_processor = DocumentProcessor(
+TypeError: DocumentProcessor.__init__() missing 1 required positional argument: 'directory_path'
+2026-01-04 16:40:20 [graphrag-server] [INFO] routers.admin:393 - 收到图谱统计请求
+2026-01-04 16:40:20 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:40:20 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:40:20 [graphrag-server] [INFO] routers.admin:375 - 查询构建统计信息
+2026-01-04 16:40:20 [graphrag-server] [INFO] routers.admin:347 - 查询构建历史: limit=50, offset=0
+2026-01-04 16:51:49 [graphrag-server] [INFO] main:166 - 已关闭所有 Agent 资源
+2026-01-04 16:51:49 [graphrag-server] [INFO] main:166 - 已关闭 Neo4j 连接
+2026-01-04 16:51:49 [graphrag-server] [INFO] graphrag_agent.graph.core.graph_connection:214 - Graph connection closed successfully
+2026-01-04 16:51:49 [graphrag-server] [INFO] graphrag_agent.graph.core.graph_connection:223 - Driver connection closed successfully
+2026-01-04 16:51:55 [graphrag-server] [INFO] graphrag_agent.utils.logging_config:95 - 日志系统初始化完成: level=INFO, format=text, file=logs/graphrag.log
+2026-01-04 16:51:55 [graphrag-server] [INFO] graphrag_agent.utils.logging_config:95 - 日志系统初始化完成: level=INFO, format=text, file=logs/graphrag.log
+2026-01-04 16:51:55 [graphrag-server] [INFO] main:166 - 知识图谱问答系统启动
+2026-01-04 16:52:06 [graphrag-server] [INFO] routers.admin:614 - 收到获取图谱配置请求
+2026-01-04 16:52:06 [graphrag-server] [INFO] routers.admin:625 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T16:52:06.404166', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 16:52:06 [graphrag-server] [INFO] routers.admin:684 - 收到列出模板请求
+2026-01-04 16:52:06 [graphrag-server] [INFO] routers.admin:690 - 返回 3 个模板
+2026-01-04 16:52:06 [graphrag-server] [INFO] routers.admin:393 - 收到图谱统计请求
+2026-01-04 16:52:06 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:52:06 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:52:06 [graphrag-server] [INFO] routers.admin:375 - 查询构建统计信息
+2026-01-04 16:52:06 [graphrag-server] [INFO] routers.admin:347 - 查询构建历史: limit=50, offset=0
+2026-01-04 16:52:12 [graphrag-server] [INFO] routers.admin:614 - 收到获取图谱配置请求
+2026-01-04 16:52:12 [graphrag-server] [INFO] routers.admin:625 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T16:52:06.404166', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 16:52:12 [graphrag-server] [INFO] routers.admin:684 - 收到列出模板请求
+2026-01-04 16:52:12 [graphrag-server] [INFO] routers.admin:690 - 返回 3 个模板
+2026-01-04 16:52:12 [graphrag-server] [INFO] routers.admin:246 - 收到增量构建请求
+2026-01-04 16:52:12 [graphrag-server] [INFO] routers.admin:167 - 创建构建历史记录: ebdfba4b-d61d-46b8-adcd-778983e17e79
+2026-01-04 16:52:12 [graphrag-server] [INFO] graphrag_agent.pipelines.ingestion.document_processor:113 - ⚠️  使用默认 Chunker: chunk_size=500, overlap=100
+2026-01-04 16:52:12 [graphrag-server] [INFO] graphrag_agent.pipelines.ingestion.document_processor:114 -    推荐使用 chunker_mode='adaptive' 以获得更好的性能
+2026-01-04 16:52:13 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:421 - 🔥 生产级实体提取器已初始化
+2026-01-04 16:52:13 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:422 -    - Model: deepseek-chat
+2026-01-04 16:52:13 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:423 -    - Prompt Version: 911fb00c
+2026-01-04 16:52:13 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:424 -    - Cache Dir: ./cache/graph/deepseek-chat/911fb00c
+2026-01-04 16:52:13 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:425 -    - Max Workers: 4
+2026-01-04 16:52:13 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:426 -    - 实体类型白名单：{'条款', '机构', '地点', '部门', '文档', '条件', '概念', '法条', '规章制度', '政策', '当事人', '流程'}
+2026-01-04 16:52:13 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:427 -    - 关系类型白名单：{'有条件', '属于', '依据', '发布', '负责', '适用于', '关联', '有步骤', '包含', '需要', '提交给'}
+2026-01-04 16:52:13 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:428 -    - 最小实体频率：1
+2026-01-04 16:52:13 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:429 -    - 名称相似度阈值：0.85
+2026-01-04 16:52:13 [graphrag-server] [INFO] graphrag_agent.pipelines.ingestion.document_processor:113 - ⚠️  使用默认 Chunker: chunk_size=500, overlap=100
+2026-01-04 16:52:13 [graphrag-server] [INFO] graphrag_agent.pipelines.ingestion.document_processor:114 -    推荐使用 chunker_mode='adaptive' 以获得更好的性能
+2026-01-04 16:52:13 [graphrag-server] [ERROR] routers.admin:197 - 增量构建发生异常: EntityRelationExtractor.__init__() missing 3 required positional arguments: 'llm', 'system_template', and 'human_template'
+Traceback (most recent call last):
+  File "/Users/towns/Documents/duoyuanmaodun/graph-rag-agent/server/routers/admin.py", line 174, in _run_incremental_build_task
+    manager = IncrementalUpdateManagerV2(config=pipeline_config)
+  File "/Users/towns/Documents/duoyuanmaodun/graph-rag-agent/graphrag_agent/integrations/build/incremental_update_v2.py", line 91, in __init__
+    self.slow_pipeline = SlowGraphPipeline()
+  File "/Users/towns/Documents/duoyuanmaodun/graph-rag-agent/graphrag_agent/integrations/build/pipeline/slow_graph_pipeline.py", line 52, in __init__
+    self.entity_extractor = EntityRelationExtractor(
+TypeError: EntityRelationExtractor.__init__() missing 3 required positional arguments: 'llm', 'system_template', and 'human_template'
+2026-01-04 16:52:14 [graphrag-server] [INFO] routers.admin:393 - 收到图谱统计请求
+2026-01-04 16:52:14 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:52:14 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:52:14 [graphrag-server] [INFO] routers.admin:375 - 查询构建统计信息
+2026-01-04 16:52:14 [graphrag-server] [INFO] routers.admin:347 - 查询构建历史: limit=50, offset=0
+2026-01-04 16:52:27 [graphrag-server] [INFO] routers.admin:614 - 收到获取图谱配置请求
+2026-01-04 16:52:27 [graphrag-server] [INFO] routers.admin:625 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T16:52:06.404166', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 16:52:27 [graphrag-server] [INFO] routers.admin:684 - 收到列出模板请求
+2026-01-04 16:52:27 [graphrag-server] [INFO] routers.admin:690 - 返回 3 个模板
+2026-01-04 16:52:27 [graphrag-server] [INFO] routers.admin:393 - 收到图谱统计请求
+2026-01-04 16:52:27 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:52:27 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:52:27 [graphrag-server] [INFO] routers.admin:375 - 查询构建统计信息
+2026-01-04 16:52:27 [graphrag-server] [INFO] routers.admin:347 - 查询构建历史: limit=50, offset=0
+2026-01-04 16:52:47 [graphrag-server] [INFO] routers.admin:614 - 收到获取图谱配置请求
+2026-01-04 16:52:47 [graphrag-server] [INFO] routers.admin:625 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T16:52:06.404166', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 16:52:47 [graphrag-server] [INFO] routers.admin:684 - 收到列出模板请求
+2026-01-04 16:52:47 [graphrag-server] [INFO] routers.admin:690 - 返回 3 个模板
+2026-01-04 16:52:47 [graphrag-server] [INFO] routers.admin:393 - 收到图谱统计请求
+2026-01-04 16:52:47 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:52:47 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:52:47 [graphrag-server] [INFO] routers.admin:375 - 查询构建统计信息
+2026-01-04 16:52:47 [graphrag-server] [INFO] routers.admin:347 - 查询构建历史: limit=50, offset=0
+2026-01-04 16:52:49 [graphrag-server] [INFO] routers.admin:614 - 收到获取图谱配置请求
+2026-01-04 16:52:49 [graphrag-server] [INFO] routers.admin:625 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T16:52:06.404166', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 16:52:49 [graphrag-server] [INFO] routers.admin:684 - 收到列出模板请求
+2026-01-04 16:52:49 [graphrag-server] [INFO] routers.admin:690 - 返回 3 个模板
+2026-01-04 16:52:49 [graphrag-server] [INFO] routers.admin:222 - 收到完整构建请求
+2026-01-04 16:52:49 [graphrag-server] [INFO] routers.admin:111 - 创建构建历史记录: 2cd30ea7-ef97-4200-84af-309bea6bb51b
+2026-01-04 16:52:49 [graphrag-server] [INFO] graphrag_agent.pipelines.ingestion.document_processor:113 - ⚠️  使用默认 Chunker: chunk_size=500, overlap=100
+2026-01-04 16:52:49 [graphrag-server] [INFO] graphrag_agent.pipelines.ingestion.document_processor:114 -    推荐使用 chunker_mode='adaptive' 以获得更好的性能
+2026-01-04 16:52:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:421 - 🔥 生产级实体提取器已初始化
+2026-01-04 16:52:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:422 -    - Model: deepseek-chat
+2026-01-04 16:52:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:423 -    - Prompt Version: 911fb00c
+2026-01-04 16:52:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:424 -    - Cache Dir: ./cache/graph/deepseek-chat/911fb00c
+2026-01-04 16:52:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:425 -    - Max Workers: 4
+2026-01-04 16:52:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:426 -    - 实体类型白名单：{'条款', '机构', '地点', '部门', '文档', '条件', '概念', '法条', '规章制度', '政策', '当事人', '流程'}
+2026-01-04 16:52:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:427 -    - 关系类型白名单：{'有条件', '属于', '依据', '发布', '负责', '适用于', '关联', '有步骤', '包含', '需要', '提交给'}
+2026-01-04 16:52:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:428 -    - 最小实体频率：1
+2026-01-04 16:52:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:429 -    - 名称相似度阈值：0.85
+2026-01-04 16:52:49 [graphrag-server] [INFO] graphrag_agent.pipelines.ingestion.document_processor:113 - ⚠️  使用默认 Chunker: chunk_size=500, overlap=100
+2026-01-04 16:52:49 [graphrag-server] [INFO] graphrag_agent.pipelines.ingestion.document_processor:114 -    推荐使用 chunker_mode='adaptive' 以获得更好的性能
+2026-01-04 16:52:49 [graphrag-server] [ERROR] routers.admin:141 - 全量构建发生异常: EntityRelationExtractor.__init__() missing 3 required positional arguments: 'llm', 'system_template', and 'human_template'
+Traceback (most recent call last):
+  File "/Users/towns/Documents/duoyuanmaodun/graph-rag-agent/server/routers/admin.py", line 118, in _run_full_build_task
+    manager = IncrementalUpdateManagerV2(config=pipeline_config)
+  File "/Users/towns/Documents/duoyuanmaodun/graph-rag-agent/graphrag_agent/integrations/build/incremental_update_v2.py", line 91, in __init__
+    self.slow_pipeline = SlowGraphPipeline()
+  File "/Users/towns/Documents/duoyuanmaodun/graph-rag-agent/graphrag_agent/integrations/build/pipeline/slow_graph_pipeline.py", line 52, in __init__
+    self.entity_extractor = EntityRelationExtractor(
+TypeError: EntityRelationExtractor.__init__() missing 3 required positional arguments: 'llm', 'system_template', and 'human_template'
+2026-01-04 16:52:51 [graphrag-server] [INFO] routers.admin:614 - 收到获取图谱配置请求
+2026-01-04 16:52:51 [graphrag-server] [INFO] routers.admin:625 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T16:52:06.404166', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 16:52:51 [graphrag-server] [INFO] routers.admin:684 - 收到列出模板请求
+2026-01-04 16:52:51 [graphrag-server] [INFO] routers.admin:690 - 返回 3 个模板
+2026-01-04 16:52:51 [graphrag-server] [INFO] routers.admin:393 - 收到图谱统计请求
+2026-01-04 16:52:51 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:52:51 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 16:52:51 [graphrag-server] [INFO] routers.admin:375 - 查询构建统计信息
+2026-01-04 16:52:51 [graphrag-server] [INFO] routers.admin:347 - 查询构建历史: limit=50, offset=0
+2026-01-04 17:07:40 [graphrag-server] [INFO] main:166 - 已关闭所有 Agent 资源
+2026-01-04 17:07:40 [graphrag-server] [INFO] main:166 - 已关闭 Neo4j 连接
+2026-01-04 17:07:40 [graphrag-server] [INFO] graphrag_agent.graph.core.graph_connection:214 - Graph connection closed successfully
+2026-01-04 17:07:40 [graphrag-server] [INFO] graphrag_agent.graph.core.graph_connection:223 - Driver connection closed successfully

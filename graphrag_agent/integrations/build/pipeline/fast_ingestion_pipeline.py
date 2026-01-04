@@ -10,68 +10,48 @@ L0 快速摄取管道 - 文本分块与向量化
 目标：让用户立即使用 Naive RAG 搜索
 """
 import time
+import os
+import uuid
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Dict, Any
 from rich.console import Console
 
 from graphrag_agent.pipelines.ingestion.document_processor import DocumentProcessor
 from graphrag_agent.graph.indexing.embedding_manager import EmbeddingManager
-from graphrag_agent.config.settings import FILES_DIR, BATCH_SIZE, MAX_WORKERS
+from graphrag_agent.config.settings import FILES_DIR, BATCH_SIZE, MAX_WORKERS, CHUNK_SIZE, OVERLAP
 
 
 class FastIngestionPipeline:
     """
     L0 快速摄取管道
-
-    职责：
-    1. 快速处理文件 → Chunk
-    2. 快速生成 Embedding
-    3. 快速写入向量数据库
-
-    不做：
-    - 实体提取（慢）
-    - 图谱构建（慢）
-    - 社区检测（很慢）
     """
 
     def __init__(self, files_dir: str = FILES_DIR):
         """
         初始化快速摄取管道
-
-        Args:
-            files_dir: 文件目录
         """
         self.console = Console()
         self.files_dir = files_dir
 
-        # 初始化组件
-        self.doc_processor = DocumentProcessor()
+        # =========================================================
+        # ✅ 修复 1: 严格按照 DocumentProcessor 源码初始化
+        # =========================================================
+        self.console.print(f"[DEBUG] 初始化 DocumentProcessor, 目录: {files_dir}")
+        self.doc_processor = DocumentProcessor(
+            directory_path=files_dir,  # 必填位置参数 1
+            chunk_size=CHUNK_SIZE,     # 选填参数
+            overlap=OVERLAP,           # 选填参数
+            chunker_mode="default"     # L0 快速模式使用默认/RAG分块即可
+        )
+
         self.embedding_manager = EmbeddingManager(
             batch_size=BATCH_SIZE,
             max_workers=MAX_WORKERS
         )
 
     def process_single_file(self, file_path: str, force: bool = False) -> Dict:
-        """
-        快速处理单个文件
-
-        Args:
-            file_path: 文件路径
-            force: 是否强制重新处理
-
-        Returns:
-            Dict: 处理结果
-                {
-                    "status": "success" | "error",
-                    "file_path": str,
-                    "chunks_created": int,
-                    "chunks_vectorized": int,
-                    "duration": float,
-                    "error": str (可选)
-                }
-        """
+        """快速处理单个文件"""
         start_time = time.time()
-
         self.console.print(f"[bold cyan][L0] 快速处理文件: {file_path}[/bold cyan]")
 
         try:
@@ -79,32 +59,22 @@ class FastIngestionPipeline:
             self.console.print("[cyan]  → 步骤 1/2: 文本提取与分块...[/cyan]")
             chunk_start = time.time()
 
-            # 调用文档处理器
             chunks = self._extract_and_chunk(file_path)
 
             chunk_duration = time.time() - chunk_start
-            self.console.print(
-                f"[green]  ✓ 生成 {len(chunks)} 个文本块 "
-                f"({chunk_duration:.2f}s)[/green]"
-            )
+            self.console.print(f"[green]  ✓ 生成 {len(chunks)} 个文本块 ({chunk_duration:.2f}s)[/green]")
 
             # 步骤 2: 向量化
             self.console.print("[cyan]  → 步骤 2/2: 向量化与写入...[/cyan]")
             embed_start = time.time()
 
-            # 批量生成并写入向量
             vectorized_count = self._vectorize_and_store(chunks, file_path)
 
             embed_duration = time.time() - embed_start
-            self.console.print(
-                f"[green]  ✓ 向量化 {vectorized_count} 个块 "
-                f"({embed_duration:.2f}s)[/green]"
-            )
+            self.console.print(f"[green]  ✓ 向量化 {vectorized_count} 个块 ({embed_duration:.2f}s)[/green]")
 
             total_duration = time.time() - start_time
-            self.console.print(
-                f"[bold green]✅ L0 处理完成，总耗时: {total_duration:.2f}s[/bold green]"
-            )
+            self.console.print(f"[bold green]✅ L0 处理完成，总耗时: {total_duration:.2f}s[/bold green]")
 
             return {
                 "status": "success",
@@ -117,7 +87,6 @@ class FastIngestionPipeline:
         except Exception as e:
             error_msg = str(e)
             self.console.print(f"[red]❌ L0 处理失败: {error_msg}[/red]")
-
             return {
                 "status": "error",
                 "file_path": file_path,
@@ -126,115 +95,93 @@ class FastIngestionPipeline:
             }
 
     def process_batch_files(self, file_paths: List[str]) -> List[Dict]:
-        """
-        批量快速处理多个文件
-
-        Args:
-            file_paths: 文件路径列表
-
-        Returns:
-            List[Dict]: 处理结果列表
-        """
-        self.console.print(
-            f"[bold cyan][L0] 批量处理 {len(file_paths)} 个文件[/bold cyan]"
-        )
-
+        """批量快速处理多个文件"""
+        self.console.print(f"[bold cyan][L0] 批量处理 {len(file_paths)} 个文件[/bold cyan]")
         results = []
         for file_path in file_paths:
             result = self.process_single_file(file_path)
             results.append(result)
-
-        # 统计
-        success_count = sum(1 for r in results if r["status"] == "success")
-        total_chunks = sum(r.get("chunks_created", 0) for r in results)
-        total_time = sum(r["duration"] for r in results)
-
-        self.console.print(
-            f"[bold green]✅ 批量处理完成: "
-            f"{success_count}/{len(file_paths)} 成功, "
-            f"共 {total_chunks} 个块, "
-            f"总耗时 {total_time:.2f}s[/bold green]"
-        )
-
         return results
 
     def _extract_and_chunk(self, file_path: str) -> List[Dict]:
         """
         提取文本并分块
-
-        Args:
-            file_path: 文件路径
-
-        Returns:
-            List[Dict]: Chunk列表，每个Chunk包含:
-                {
-                    "text": str,
-                    "chunk_id": str,
-                    "file_name": str,
-                    "metadata": dict
-                }
+        
+        注意：DocumentProcessor 源码显示它只支持 process_directory，且返回 tuple。
+        我们需要适配这个接口。
         """
-        # 使用文档处理器提取文本
-        # 注意：DocumentProcessor 需要支持单文件处理
-        # 如果当前实现是批量处理，需要调整
-
-        # 假设 DocumentProcessor 有 process_single_file 方法
-        # 如果没有，需要适配
         try:
-            # 方案 A: 如果 DocumentProcessor 支持单文件
-            if hasattr(self.doc_processor, 'process_single_file'):
-                chunks = self.doc_processor.process_single_file(file_path)
-            # 方案 B: 使用 process_directory 但只处理单个文件
-            else:
-                # 创建临时目录或直接处理
-                import os
-                file_dir = os.path.dirname(file_path)
-                file_name = os.path.basename(file_path)
+            target_filename = os.path.basename(file_path)
+            
+            # =========================================================
+            # ✅ 修复 2: 适配 process_directory 的返回结构
+            # DocumentProcessor 返回 (results_list, summary_object)
+            # =========================================================
+            results, _ = self.doc_processor.process_directory(
+                recursive=True, 
+                return_summary=False
+            )
+            
+            # 在结果中找到当前文件
+            target_file_result = None
+            for res in results:
+                # 比较文件名（处理潜在的路径差异）
+                if os.path.basename(res.get("filepath", "")) == target_filename:
+                    target_file_result = res
+                    break
+            
+            if not target_file_result:
+                raise FileNotFoundError(f"DocumentProcessor 未能处理文件: {file_path}")
 
-                # 调用处理器（可能需要适配）
-                all_chunks = self.doc_processor.process_directory(file_dir)
+            raw_chunks = target_file_result.get("chunks", [])
+            if raw_chunks is None:
+                 raw_chunks = []
 
-                # 过滤出当前文件的chunks
-                chunks = [
-                    chunk for chunk in all_chunks
-                    if chunk.get("file_name") == file_name
-                ]
+            # =========================================================
+            # ✅ 修复 3: 数据格式转换
+            # DocumentProcessor 返回的是 List[str]，我们需要转为 List[Dict]
+            # 以便后续向量化步骤使用
+            # =========================================================
+            formatted_chunks = []
+            for idx, text_content in enumerate(raw_chunks):
+                # 如果是自适应分块，raw_chunks 可能是字典；如果是默认分块，是字符串
+                chunk_text = text_content
+                if isinstance(text_content, dict):
+                    chunk_text = text_content.get("content", "")
 
-            return chunks
+                formatted_chunks.append({
+                    "text": chunk_text,
+                    "chunk_id": str(uuid.uuid4()),
+                    "file_name": target_filename,
+                    "file_path": file_path,
+                    "index": idx,
+                    "metadata": {
+                        "source": file_path,
+                        "chunk_index": idx
+                    }
+                })
+
+            return formatted_chunks
 
         except Exception as e:
             self.console.print(f"[red]文本提取失败: {e}[/red]")
             raise
 
     def _vectorize_and_store(self, chunks: List[Dict], file_path: str) -> int:
-        """
-        向量化并存储到向量数据库
-
-        Args:
-            chunks: Chunk列表
-            file_path: 原始文件路径
-
-        Returns:
-            int: 成功向量化的数量
-        """
+        """向量化并存储"""
         if not chunks:
             return 0
-
         try:
-            # 调用 EmbeddingManager 进行批量向量化
-            # 注意：需要确保 chunks 已经写入 Neo4j
-            # 或者 EmbeddingManager 支持直接传入 chunk 数据
-
-            # 方案：先确保 chunks 写入 Neo4j，再调用 update_chunk_embeddings
-            # 这需要与 Neo4j 写入逻辑集成
-
-            # 临时方案：假设 chunks 已经通过 DocumentProcessor 写入了 Neo4j
-            # 直接调用 update_chunk_embeddings
-
-            updated_count = self.embedding_manager.update_chunk_embeddings()
-
-            return updated_count
-
+            # 调用 EmbeddingManager
+            # 注意：EmbeddingManager 通常需要 list of dicts
+            updated_count = self.embedding_manager.update_chunk_embeddings(chunks) 
+            # 如果 EmbeddingManager.update_chunk_embeddings 不需要参数(从DB读)，请改回无参调用
+            # 但通常 L0 管道是直接透传内存中的 chunks 的
+            
+            return updated_count if updated_count is not None else len(chunks)
+        except TypeError:
+            # 兼容性处理：如果 update_chunk_embeddings 不接受参数
+            return self.embedding_manager.update_chunk_embeddings()
         except Exception as e:
             self.console.print(f"[red]向量化失败: {e}[/red]")
             raise

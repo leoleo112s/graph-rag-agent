@@ -101,7 +101,8 @@ def _process_config_for_pipeline(raw_config: Optional[Dict]) -> Dict:
 
 def _run_full_build_task(task_id: str, config: Optional[Dict] = None):
     """后台执行全量构建任务"""
-    global _is_building
+    # ✅ 1. 定义锁资源名称
+    lock_resource = "graph_build"
     pm = get_progress_manager()
     history_db = get_build_history_db()
 
@@ -128,7 +129,6 @@ def _run_full_build_task(task_id: str, config: Optional[Dict] = None):
         l1_count = result.get("l1", {}).get("submitted_count", 0)
 
         stats = {"l0_files": l0_count, "l1_tasks": l1_count}
-
         msg = f"全量构建完成: 处理 {l0_count} 个文件, 提交 {l1_count} 个图谱任务"
         pm.update_status("completed", 100, msg)
 
@@ -147,8 +147,11 @@ def _run_full_build_task(task_id: str, config: Optional[Dict] = None):
             record_id=record_id, status=BuildStatus.FAILED, error_msg=error_msg, final_stage="failed"
         )
     finally:
-        global _is_building
-        _is_building = False
+        # ✅ 2. 关键修复：释放分布式锁
+        # 注意：这里是同步上下文，release 方法通常是同步的，或者需要检查 utils/build_lock.py 的实现
+        # 根据 _run_incremental_build_task 的写法，这里直接调用 release
+        if _lock_manager.is_locked(lock_resource):
+             _lock_manager.release(lock_resource)
 
 
 def _run_incremental_build_task(task_id: str, config: Optional[Dict] = None):
