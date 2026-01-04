@@ -10,8 +10,8 @@
 目的：解决实体爆炸问题的最后一道防线
 """
 
-from typing import List, Dict, Set, Tuple
 import re
+from typing import Dict, List, Set, Tuple
 
 
 def normalize_entity_name(name: str) -> str:
@@ -99,19 +99,13 @@ def calculate_levenshtein(s1: str, s2: str) -> int:
             if s1[i - 1] == s2[j - 1]:
                 dp[i][j] = dp[i - 1][j - 1]
             else:
-                dp[i][j] = min(
-                    dp[i - 1][j] + 1,      # 删除
-                    dp[i][j - 1] + 1,      # 插入
-                    dp[i - 1][j - 1] + 1   # 替换
-                )
+                dp[i][j] = min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + 1)  # 删除  # 插入  # 替换
 
     return dp[m][n]
 
 
 def merge_similar_entities(
-    entities: List[Dict[str, any]],
-    distance_threshold: int = 2,
-    name_key: str = "name"
+    entities: List[Dict[str, any]], distance_threshold: int = 2, name_key: str = "name"
 ) -> List[Dict[str, any]]:
     """
     合并相似实体（生产级验证 - 轻量版）
@@ -168,7 +162,7 @@ def merge_similar_entities(
 
         # 查找相似实体
         similar_group = [entity_a]
-        for j, entity_b in enumerate(entities[i + 1:], start=i + 1):
+        for j, entity_b in enumerate(entities[i + 1 :], start=i + 1):
             if j in to_skip:
                 continue
 
@@ -193,7 +187,7 @@ def filter_by_frequency(
     entities: List[Dict[str, any]],
     frequency_threshold: int = 2,
     frequency_key: str = "frequency",
-    name_key: str = "name"
+    name_key: str = "name",
 ) -> List[Dict[str, any]]:
     """
     过滤低频实体（生产级验证 - 非常有效）
@@ -245,7 +239,7 @@ def post_process_entities(
     distance_threshold: int = 2,
     frequency_threshold: int = 2,
     name_key: str = "name",
-    frequency_key: str = "frequency"
+    frequency_key: str = "frequency",
 ) -> List[Dict[str, any]]:
     """
     实体后处理管道（生产级验证 - 一站式）
@@ -291,20 +285,13 @@ def post_process_entities(
 
     # 2. 合并相似实体
     if merge_similar:
-        entities = merge_similar_entities(
-            entities,
-            distance_threshold=distance_threshold,
-            name_key=name_key
-        )
+        entities = merge_similar_entities(entities, distance_threshold=distance_threshold, name_key=name_key)
         print(f"✅ 合并相似实体完成：剩余 {len(entities)} 个实体")
 
     # 3. 过滤低频实体
     if filter_frequency:
         entities = filter_by_frequency(
-            entities,
-            frequency_threshold=frequency_threshold,
-            frequency_key=frequency_key,
-            name_key=name_key
+            entities, frequency_threshold=frequency_threshold, frequency_key=frequency_key, name_key=name_key
         )
         print(f"✅ 过滤低频实体完成：剩余 {len(entities)} 个实体")
 
@@ -321,7 +308,7 @@ if __name__ == "__main__":
         {"name": "国家励志奖学金", "type": "奖学金", "frequency": 5},
         {"name": "临时概念", "type": "其他", "frequency": 1},
         {"name": "学生处（管理部门）", "type": "部门", "frequency": 7},
-        {"name": "学生处", "type": "部门", "frequency": 3}
+        {"name": "学生处", "type": "部门", "frequency": 3},
     ]
 
     # 执行后处理
@@ -331,7 +318,7 @@ if __name__ == "__main__":
         merge_similar=True,
         filter_frequency=True,
         distance_threshold=2,
-        frequency_threshold=2
+        frequency_threshold=2,
     )
 
     print("\n📝 最终结果：")

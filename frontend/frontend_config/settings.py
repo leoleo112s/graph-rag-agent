@@ -3,15 +3,14 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv()
-
 # ===== 路径设置 =====
 # 直接定义，避免导入后端模块触发 Neo4j 连接
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent  # frontend 目录
 PROJECT_ROOT = FRONTEND_DIR.parent  # 项目根目录
 FILES_DIR = PROJECT_ROOT / "files"  # 文件存储目录
-
+ENV_PATH = PROJECT_ROOT / ".env"
+load_dotenv(dotenv_path=ENV_PATH)
 # ===== 示例问题 =====
 # 直接定义示例问题，避免导入后端模块
 
@@ -20,7 +19,7 @@ examples = [
     "如何申请国家奖学金？",
     "学生违纪处分有哪些类型？",
     "国家励志奖学金的申请条件是什么？",
-    "学生申诉的流程是怎样的？"
+    "学生申诉的流程是怎样的？",
 ]
 
 
@@ -45,7 +44,7 @@ def _get_env_int(key: str, default: int) -> int:
 
 # ===== 前端接口与会话配置 =====
 
-API_URL = os.getenv("FRONTEND_API_URL", "http://localhost:8000")  # 后端接口地址
+API_URL = os.getenv("FRONTEND_API_URL", "http://localhost:8000/api/V1")  # 后端接口地址
 
 DEFAULT_AGENT_TYPE = os.getenv("FRONTEND_DEFAULT_AGENT", "naive_rag_agent")  # 默认Agent
 DEFAULT_DEBUG_MODE = _get_env_bool("FRONTEND_DEFAULT_DEBUG", False)  # 默认是否开启调试
@@ -66,16 +65,16 @@ KG_COLOR_PALETTE = [
     "#FF6D00",  # 橙色
     "#757575",  # 灰色
     "#607D8B",  # 蓝灰色
-    "#C2185B"   # 粉色
+    "#C2185B",  # 粉色
 ]
 
 NODE_TYPE_COLORS = {
-    "Center": "#F0B2F4",     # 中心/源节点 - 紫色
-    "Source": "#4285F4",     # 源节点 - 蓝色
-    "Target": "#EA4335",     # 目标节点 - 红色
-    "Common": "#34A853",     # 共同邻居 - 绿色
-    "Level1": "#0097A7",     # 一级关联 - 青色
-    "Level2": "#FF6D00",     # 二级关联 - 橙色
+    "Center": "#F0B2F4",  # 中心/源节点 - 紫色
+    "Source": "#4285F4",  # 源节点 - 蓝色
+    "Target": "#EA4335",  # 目标节点 - 红色
+    "Common": "#34A853",  # 共同邻居 - 绿色
+    "Level1": "#0097A7",  # 一级关联 - 青色
+    "Level2": "#FF6D00",  # 二级关联 - 橙色
 }
 
 DEFAULT_KG_SETTINGS = {

@@ -1,52 +1,55 @@
-from typing import List, Dict, Any
-import time
 import json
-from langsmith import traceable
-from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+import time
+from typing import Any, Dict, List
+
 from langchain.chains import create_history_aware_retriever, create_retrieval_chain
+from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.tools import BaseTool
+from langsmith import traceable
 
 from graphrag_agent.config.prompts import (
     LC_SYSTEM_PROMPT,
-    contextualize_q_system_prompt,
     LOCAL_SEARCH_CONTEXT_PROMPT,
     LOCAL_SEARCH_KEYWORD_PROMPT,
+    contextualize_q_system_prompt,
 )
 from graphrag_agent.config.settings import lc_description
-from graphrag_agent.search.tool.base import BaseSearchTool
 from graphrag_agent.search.local_search import LocalSearch
-from graphrag_agent.search.retrieval_adapter import results_from_documents, results_to_payload
 from graphrag_agent.search.response_models import ResponseBuilder, create_error_response
+from graphrag_agent.search.retrieval_adapter import results_from_documents, results_to_payload
+from graphrag_agent.search.tool.base import BaseSearchTool
 
 
 class LocalSearchTool(BaseSearchTool):
     """本地搜索工具，基于向量检索实现社区内部的精确查询"""
-    
+
     def __init__(self):
         """初始化本地搜索工具"""
         # 调用父类构造函数
         super().__init__(cache_dir="./cache/local_search")
-        
+
         # 设置聊天历史，用于连续对话
         self.chat_history = []
-                
+
         # 创建本地搜索器和检索器
         self.local_searcher = LocalSearch(self.llm, self.embeddings)
         self.retriever = self.local_searcher.as_retriever()
 
         # 设置处理链
         self._setup_chains()
-    
+
     def _setup_chains(self):
         """设置处理链"""
         # 创建上下文理解提示模板
-        contextualize_q_prompt = ChatPromptTemplate.from_messages([
-            ("system", contextualize_q_system_prompt),
-            MessagesPlaceholder("chat_history"),
-            ("human", "{input}"),
-        ])
+        contextualize_q_prompt = ChatPromptTemplate.from_messages(
+            [
+                ("system", contextualize_q_system_prompt),
+                MessagesPlaceholder("chat_history"),
+                ("human", "{input}"),
+            ]
+        )
 
         # 创建历史感知检索器
         self.history_aware_retriever = create_history_aware_retriever(
@@ -56,11 +59,13 @@ class LocalSearchTool(BaseSearchTool):
         )
 
         # 创建带历史的本地查询提示模板
-        lc_prompt_with_history = ChatPromptTemplate.from_messages([
-            ("system", LC_SYSTEM_PROMPT),
-            MessagesPlaceholder("chat_history"),
-            ("human", LOCAL_SEARCH_CONTEXT_PROMPT),
-        ])
+        lc_prompt_with_history = ChatPromptTemplate.from_messages(
+            [
+                ("system", LC_SYSTEM_PROMPT),
+                MessagesPlaceholder("chat_history"),
+                ("human", LOCAL_SEARCH_CONTEXT_PROMPT),
+            ]
+        )
 
         # 创建问答链
         self.question_answer_chain = create_stuff_documents_chain(
@@ -73,22 +78,24 @@ class LocalSearchTool(BaseSearchTool):
             self.history_aware_retriever,
             self.question_answer_chain,
         )
-        
+
         # 创建关键词提取链
-        self.keyword_prompt = ChatPromptTemplate.from_messages([
-            ("system", LOCAL_SEARCH_KEYWORD_PROMPT),
-            ("human", "{query}"),
-        ])
-        
+        self.keyword_prompt = ChatPromptTemplate.from_messages(
+            [
+                ("system", LOCAL_SEARCH_KEYWORD_PROMPT),
+                ("human", "{query}"),
+            ]
+        )
+
         self.keyword_chain = self.keyword_prompt | self.llm | StrOutputParser()
-    
+
     def extract_keywords(self, query: str) -> Dict[str, List[str]]:
         """
         从查询中提取关键词
-        
+
         参数:
             query: 查询字符串
-            
+
         返回:
             Dict[str, List[str]]: 分类关键词字典
         """
@@ -96,19 +103,19 @@ class LocalSearchTool(BaseSearchTool):
         cached_keywords = self.cache_manager.get(f"keywords:{query}")
         if cached_keywords:
             return cached_keywords
-            
+
         try:
             llm_start = time.time()
-            
+
             # 调用LLM提取关键词
             result = self.keyword_chain.invoke({"query": query})
-            
+
             # 解析JSON结果
             keywords = json.loads(result)
-            
+
             # 记录LLM处理时间
             self.performance_metrics["llm_time"] = time.time() - llm_start
-            
+
             # 确保包含必要的键
             if not isinstance(keywords, dict):
                 keywords = {}
@@ -116,25 +123,25 @@ class LocalSearchTool(BaseSearchTool):
                 keywords["low_level"] = []
             if "high_level" not in keywords:
                 keywords["high_level"] = []
-                
+
             # 缓存结果
             self.cache_manager.set(f"keywords:{query}", keywords)
-            
+
             return keywords
-            
+
         except Exception as e:
             print(f"关键词提取失败: {e}")
             # 返回空字典作为默认值
             return {"low_level": [], "high_level": []}
-    
+
     def _filter_documents_by_relevance(self, docs, query: str) -> List:
         """
         根据相关性过滤文档
-        
+
         参数:
             docs: 文档列表
             query: 查询字符串
-            
+
         返回:
             List: 按相关性排序的文档列表
         """
@@ -210,9 +217,7 @@ class LocalSearchTool(BaseSearchTool):
             upgraded.setdefault("cache_hit", True)
             upgraded.setdefault("answer", upgraded.get("final_answer", ""))
             if "references" not in upgraded:
-                upgraded["references"] = self._build_references_from_payload(
-                    upgraded.get("retrieval_results", [])
-                )
+                upgraded["references"] = self._build_references_from_payload(upgraded.get("retrieval_results", []))
             upgraded.setdefault("cache_key", structured_cache_key)
             self.cache_manager.set(structured_cache_key, upgraded)
             return upgraded
@@ -249,9 +254,7 @@ class LocalSearchTool(BaseSearchTool):
 
             answer = chain_output.get("answer") or "抱歉，我无法回答这个问题。"
             documents = chain_output.get("context") or []
-            retrieval_results = results_to_payload(
-                results_from_documents(documents, source="local_search")
-            )
+            retrieval_results = results_to_payload(results_from_documents(documents, source="local_search"))
             references = self._build_references_from_payload(retrieval_results)
 
             total_time = time.time() - overall_start
@@ -326,16 +329,18 @@ class LocalSearchTool(BaseSearchTool):
             builder.set_cache_hit(structured.get("cache_hit", False))
 
             response = builder.build_dict(answer=answer_text)
-            response.update({
-                "query": structured.get("query"),
-                "keywords": structured.get("keywords", []),
-                "retrieval_results": structured.get("retrieval_results", []),
-                "references": references,
-                "raw_context": structured.get("raw_context", []),
-                "timing": timing,
-                "final_answer": answer_text,
-                "Chunks": references.get("chunks", []),
-            })
+            response.update(
+                {
+                    "query": structured.get("query"),
+                    "keywords": structured.get("keywords", []),
+                    "retrieval_results": structured.get("retrieval_results", []),
+                    "references": references,
+                    "raw_context": structured.get("raw_context", []),
+                    "timing": timing,
+                    "final_answer": answer_text,
+                    "Chunks": references.get("chunks", []),
+                }
+            )
 
             cache_key = structured.get("cache_key") or structured.get("query")
             if cache_key:
@@ -344,7 +349,7 @@ class LocalSearchTool(BaseSearchTool):
             return response
         except Exception as e:
             return create_error_response("local_search", str(e))
-    
+
     def get_tool(self) -> BaseTool:
         """返回只暴露answer的本地检索工具。"""
         outer = self
@@ -373,9 +378,7 @@ class LocalSearchTool(BaseSearchTool):
 
         class LocalSearchStructuredTool(BaseTool):
             name: str = "local_search_structured"
-            description: str = (
-                "结构化本地搜索工具：返回回答、检索上下文以及标准化的RetrievalResult列表。"
-            )
+            description: str = "结构化本地搜索工具：返回回答、检索上下文以及标准化的RetrievalResult列表。"
 
             def _run(self_tool, query: Any, **kwargs: Any) -> Dict[str, Any]:
                 payload = query
@@ -388,12 +391,12 @@ class LocalSearchTool(BaseSearchTool):
                 raise NotImplementedError("异步执行未实现")
 
         return LocalSearchStructuredTool()
-    
+
     def close(self):
         """关闭资源"""
         # 先调用父类方法关闭基础资源
         super().close()
-        
+
         # 关闭本地搜索器
-        if hasattr(self, 'local_searcher'):
+        if hasattr(self, "local_searcher"):
             self.local_searcher.close()

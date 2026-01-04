@@ -4,20 +4,21 @@
 负责串联 Planner → WorkerCoordinator → Reporter，形成完整的
 Plan-Execute-Report 生命周期。
 """
-from typing import List, Optional, Sequence, Literal, Dict, Any
+
+import json
 import logging
 import time
-import json
+from typing import Any, Dict, List, Literal, Optional, Sequence
 
 from pydantic import BaseModel, Field
 
-from graphrag_agent.agents.multi_agent.core.state import PlanExecuteState
 from graphrag_agent.agents.multi_agent.core.execution_record import ExecutionRecord
+from graphrag_agent.agents.multi_agent.core.state import PlanExecuteState
+from graphrag_agent.agents.multi_agent.executor.worker_coordinator import WorkerCoordinator
 from graphrag_agent.agents.multi_agent.planner.base_planner import (
     BasePlanner,
     PlannerResult,
 )
-from graphrag_agent.agents.multi_agent.executor.worker_coordinator import WorkerCoordinator
 from graphrag_agent.agents.multi_agent.reporter.base_reporter import (
     BaseReporter,
     ReportResult,
@@ -72,22 +73,12 @@ class OrchestratorResult(BaseModel):
     编排结果
     """
 
-    status: Literal["completed", "needs_clarification", "failed", "partial"] = Field(
-        description="整体流程状态"
-    )
-    planner: Optional[PlannerResult] = Field(
-        default=None, description="规划阶段的详细结果"
-    )
-    execution_records: List[ExecutionRecord] = Field(
-        default_factory=list, description="执行阶段产生的记录"
-    )
-    report: Optional[ReportResult] = Field(
-        default=None, description="Reporter 生成的报告"
-    )
+    status: Literal["completed", "needs_clarification", "failed", "partial"] = Field(description="整体流程状态")
+    planner: Optional[PlannerResult] = Field(default=None, description="规划阶段的详细结果")
+    execution_records: List[ExecutionRecord] = Field(default_factory=list, description="执行阶段产生的记录")
+    report: Optional[ReportResult] = Field(default=None, description="Reporter 生成的报告")
     errors: List[str] = Field(default_factory=list, description="流程中的错误列表")
-    metrics: OrchestratorMetrics = Field(
-        default_factory=OrchestratorMetrics, description="阶段耗时指标"
-    )
+    metrics: OrchestratorMetrics = Field(default_factory=OrchestratorMetrics, description="阶段耗时指标")
 
     def requires_clarification(self) -> bool:
         """是否需要用户澄清"""
@@ -498,16 +489,12 @@ class MultiAgentOrchestrator:
 
         task_status: Dict[str, str] = {}
         if state.plan is not None:
-            task_status = {
-                node.task_id: node.status for node in state.plan.task_graph.nodes
-            }
+            task_status = {node.task_id: node.status for node in state.plan.task_graph.nodes}
 
         summary: List[Dict[str, Any]] = []
         for record in execution_records:
             env_payload = dict(getattr(record.metadata, "environment", {}) or {})
-            error_messages = [
-                call.error for call in record.tool_calls if getattr(call, "error", None)
-            ]
+            error_messages = [call.error for call in record.tool_calls if getattr(call, "error", None)]
             record_summary: Dict[str, Any] = {
                 "task_id": record.task_id,
                 "worker": record.worker_type,
@@ -582,7 +569,9 @@ class MultiAgentOrchestrator:
                 # 控制台输出保留前5个问题，其余问题仍可在payload中查看完整结果
                 issues = issues[:5] + [{"info": f"其余 {len(check.issues) - 5} 项已省略，可在payload中查看完整结果"}]
             if corrections and len(corrections) > 5:
-                corrections = corrections[:5] + [{"info": f"其余 {len(check.corrections) - 5} 项已省略，可在payload中查看完整结果"}]
+                corrections = corrections[:5] + [
+                    {"info": f"其余 {len(check.corrections) - 5} 项已省略，可在payload中查看完整结果"}
+                ]
             payload["consistency_check"] = {
                 "is_consistent": check.is_consistent,
                 "issues": issues,

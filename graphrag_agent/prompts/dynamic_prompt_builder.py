@@ -4,7 +4,8 @@
 """
 
 from typing import Optional
-from graphrag_agent.config.graph_config_model import GraphConfig, BridgeDefinition, DomainDefinition
+
+from graphrag_agent.config.graph_config_model import BridgeDefinition, DomainDefinition, GraphConfig
 
 
 class DynamicPromptBuilder:
@@ -79,19 +80,74 @@ class DynamicPromptBuilder:
 
             prompt_parts.append("")
 
-        # 4. 抽取指导
-        prompt_parts.append("\n## 抽取指导")
-        prompt_parts.append("1. **首先**识别文档所属的领域（可能同时属于多个领域）")
-        prompt_parts.append("2. **必须**提取所有相关的桥接点，确保不同文档可以通过桥接点关联")
-        prompt_parts.append("3. **然后**根据领域的 schema 提取实体和关系")
-        prompt_parts.append("4. **实体提取**：")
-        prompt_parts.append("   - 提取实体时，标注其类型（来自领域 schema）")
-        prompt_parts.append("   - 如果实体是桥接点，同时标注 bridge_key")
-        prompt_parts.append("5. **关系提取**：")
-        prompt_parts.append("   - 关系类型必须来自领域 schema")
-        prompt_parts.append("   - 跨领域的关系通过桥接点连接")
+        # 4. 关键抽取规则（大幅增强中文适配性）
+        prompt_parts.append("\n## 关键抽取规则 (CRITICAL RULES)")
+        prompt_parts.append("1. **实体名称(name)必须保持原文**：")
+        prompt_parts.append("   - 不要翻译，不要缩写，不要改写")
+        prompt_parts.append(
+            '   - 例如原文是"学生处"，name必须是"学生处"，不能是"StudentOffice"或"Student Affairs Office"'
+        )
+        prompt_parts.append('   - 例如原文是"国家奖学金"，name必须是"国家奖学金"，不能是"National Scholarship"')
+        prompt_parts.append("")
+        prompt_parts.append("2. **实体类型(type)必须使用Schema定义的类型**：")
+        prompt_parts.append("   - 类型必须严格从定义的 schema 中选择（如上述领域中的实体类型）")
+        prompt_parts.append("   - 禁止创造新类型，禁止使用原文中的词汇作为类型")
+        prompt_parts.append("   - 类型与名称分离：type是分类标签，name是实际名称")
+        prompt_parts.append("")
+        prompt_parts.append("3. **桥接点(Bridge)优先**：")
+        prompt_parts.append("   - 一旦发现文档内容匹配'桥接点'定义，必须提取")
+        prompt_parts.append("   - 必须填入正确的 bridge_key")
+        prompt_parts.append("   - 桥接点是跨领域连接的关键，不可遗漏")
+        prompt_parts.append("")
+        prompt_parts.append("4. **禁止臆造关系**：")
+        prompt_parts.append("   - 只有当原文明确提到两个实体有关联时才提取")
+        prompt_parts.append("   - 不要基于常识推理补充关系")
+        prompt_parts.append("   - 关系类型必须来自 schema，不可自创")
+        prompt_parts.append("")
+        prompt_parts.append("5. **多值处理**：")
+        prompt_parts.append("   - 如果一个实体有多个别名，提取最正式的名称作为 name")
+        prompt_parts.append("   - 其他别名作为 description 的一部分")
+        prompt_parts.append("")
+        prompt_parts.append("6. **领域识别**：")
+        prompt_parts.append("   - 首先识别文档所属的领域（可能同时属于多个领域）")
+        prompt_parts.append("   - 然后根据领域的 schema 提取实体和关系")
 
-        # 5. 输出格式
+        # 5. 中文抽取示例（Few-Shot Learning）
+        prompt_parts.append("\n## 中文抽取示例 (Example)")
+        prompt_parts.append("**原文**：根据《学生管理规定》，教务处负责学籍管理。")
+        prompt_parts.append("")
+        prompt_parts.append("**正确输出 JSON**：")
+        prompt_parts.append("```json")
+        prompt_parts.append("{")
+        prompt_parts.append('  "domains": ["规则库"],')
+        prompt_parts.append('  "bridges": [],')
+        prompt_parts.append('  "entities": [')
+        prompt_parts.append(
+            '    {"name": "学生管理规定", "type": "政策", "bridge_key": null, "description": "学校规章制度", "domain": "规则库"},'
+        )
+        prompt_parts.append(
+            '    {"name": "教务处", "type": "部门", "bridge_key": null, "description": "学校行政部门", "domain": "规则库"},'
+        )
+        prompt_parts.append(
+            '    {"name": "学籍管理", "type": "流程", "bridge_key": null, "description": "管理活动", "domain": "规则库"}'
+        )
+        prompt_parts.append("  ],")
+        prompt_parts.append('  "relationships": [')
+        prompt_parts.append(
+            '    {"source": "教务处", "target": "学籍管理", "type": "负责", "description": "负责该流程", "domain": "规则库"}'
+        )
+        prompt_parts.append("  ]")
+        prompt_parts.append("}")
+        prompt_parts.append("```")
+        prompt_parts.append("")
+        prompt_parts.append("**错误示例**（请避免）：")
+        prompt_parts.append('- ❌ `{"name": "StudentAffairs", "type": "部门"}` → 名称必须是中文原文')
+        prompt_parts.append('- ❌ `{"name": "教务处", "type": "行政部门"}` → 类型必须来自schema，不能自创')
+        prompt_parts.append(
+            '- ❌ `{"name": "教务处", "type": "ORGANIZATION"}` → 类型必须与schema一致，如果schema是中文则用中文'
+        )
+
+        # 6. 输出格式
         prompt_parts.append("\n## 输出格式")
         prompt_parts.append("输出 JSON 格式，包含以下字段：")
         prompt_parts.append("```json")
@@ -99,26 +155,26 @@ class DynamicPromptBuilder:
         prompt_parts.append('  "domains": ["识别出的领域名称"],')
         prompt_parts.append('  "bridges": [')
         prompt_parts.append('    {{"bridge_key": "bridge_xxx", "value": "提取的值", "confidence": 0.9}}')
-        prompt_parts.append('  ],')
+        prompt_parts.append("  ],")
         prompt_parts.append('  "entities": [')
-        prompt_parts.append('    {{')
+        prompt_parts.append("    {{")
         prompt_parts.append('      "name": "实体名称",')
         prompt_parts.append('      "type": "实体类型（来自领域schema）",')
         prompt_parts.append('      "bridge_key": "如果是桥接点，填写对应的key，否则为null",')
         prompt_parts.append('      "description": "实体描述",')
         prompt_parts.append('      "domain": "所属领域"')
-        prompt_parts.append('    }}')
-        prompt_parts.append('  ],')
+        prompt_parts.append("    }}")
+        prompt_parts.append("  ],")
         prompt_parts.append('  "relationships": [')
-        prompt_parts.append('   {{')
+        prompt_parts.append("   {{")
         prompt_parts.append('      "source": "源实体名称",')
         prompt_parts.append('      "target": "目标实体名称",')
         prompt_parts.append('      "type": "关系类型（来自领域schema）",')
         prompt_parts.append('      "description": "关系描述",')
         prompt_parts.append('      "domain": "所属领域"')
-        prompt_parts.append('    }}')
-        prompt_parts.append('  ]')
-        prompt_parts.append('}}')
+        prompt_parts.append("    }}")
+        prompt_parts.append("  ]")
+        prompt_parts.append("}}")
         prompt_parts.append("```")
 
         return "\n".join(prompt_parts)
@@ -172,7 +228,9 @@ class DynamicPromptBuilder:
         prompt_parts.append(document_text)
         prompt_parts.append("---\n")
 
-        prompt_parts.append('输出 JSON 格式：{{"domains": ["领域1", "领域2"], "confidence": {{"领域1": 0.9, "领域2": 0.7}}}}')
+        prompt_parts.append(
+            '输出 JSON 格式：{{"domains": ["领域1", "领域2"], "confidence": {{"领域1": 0.9, "领域2": 0.7}}}}'
+        )
 
         return "\n".join(prompt_parts)
 

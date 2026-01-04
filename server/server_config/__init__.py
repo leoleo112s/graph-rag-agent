@@ -1,8 +1,8 @@
 from .settings import (
     SERVER_HOST,
+    SERVER_LOG_LEVEL,
     SERVER_PORT,
     SERVER_RELOAD,
-    SERVER_LOG_LEVEL,
     SERVER_WORKERS,
     UVICORN_CONFIG,
 )

@@ -12,10 +12,10 @@ router = APIRouter()
 async def feedback(request: FeedbackRequest):
     """
     处理用户对回答的反馈
-    
+
     Args:
         request: 反馈请求
-        
+
     Returns:
         FeedbackResponse: 反馈响应
     """
@@ -24,7 +24,7 @@ async def feedback(request: FeedbackRequest):
         query=request.query,
         is_positive=request.is_positive,
         thread_id=request.thread_id,
-        agent_type=request.agent_type
+        agent_type=request.agent_type,
     )
-    
+
     return FeedbackResponse(**result)

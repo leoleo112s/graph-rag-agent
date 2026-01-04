@@ -3,23 +3,24 @@
 
 实现分批写作能力，支持超过LLM上下文长度的长文档生成
 """
-from typing import List, Dict, Any, Optional, Iterable
-import logging
-import textwrap
-import json
-import re
 
-from pydantic import BaseModel, Field
+import json
+import logging
+import re
+import textwrap
+from typing import Any, Dict, Iterable, List, Optional
+
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage
+from pydantic import BaseModel, Field
 
-from graphrag_agent.config.prompts import SECTION_WRITE_PROMPT
-from graphrag_agent.models.get_models import get_llm_model
 from graphrag_agent.agents.multi_agent.core.retrieval_result import RetrievalResult
 from graphrag_agent.agents.multi_agent.reporter.outline_builder import (
     ReportOutline,
     SectionOutline,
 )
+from graphrag_agent.config.prompts import SECTION_WRITE_PROMPT
+from graphrag_agent.models.get_models import get_llm_model
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -28,26 +29,17 @@ class SectionWriterConfig(BaseModel):
     """
     章节写作配置
     """
-    max_evidence_per_call: int = Field(
-        default=8,
-        ge=1,
-        description="单次写作调用可使用的最大证据数量"
-    )
-    max_previous_context_chars: int = Field(
-        default=800,
-        ge=200,
-        description="多批写作时保留的前文摘要字符数"
-    )
-    enable_multi_pass: bool = Field(
-        default=True,
-        description="是否启用多批写作以支持超长章节"
-    )
+
+    max_evidence_per_call: int = Field(default=8, ge=1, description="单次写作调用可使用的最大证据数量")
+    max_previous_context_chars: int = Field(default=800, ge=200, description="多批写作时保留的前文摘要字符数")
+    enable_multi_pass: bool = Field(default=True, description="是否启用多批写作以支持超长章节")
 
 
 class SectionDraft(BaseModel):
     """
     章节写作结果
     """
+
     section_id: str = Field(description="章节ID")
     content: str = Field(description="章节Markdown内容")
     used_evidence_ids: List[str] = Field(default_factory=list, description="写作中引用的证据ID")
@@ -81,7 +73,8 @@ class SectionWriter:
         if not evidence_entries and fallback_evidence_ids:
             # 使用备用证据，避免完全无材料
             evidence_entries = [
-                evidence_map[eid] for eid in fallback_evidence_ids[: self.config.max_evidence_per_call]
+                evidence_map[eid]
+                for eid in fallback_evidence_ids[: self.config.max_evidence_per_call]
                 if eid in evidence_map
             ]
             evidence_ids = [result.result_id for result in evidence_entries]
@@ -93,10 +86,7 @@ class SectionWriter:
         outline_context_text = json.dumps(outline_context, ensure_ascii=False)
 
         if not evidence_entries:
-            placeholder = (
-                f"⚠️ 当前章节《{section.title}》未检索到可引用的证据。"
-                " 请补充检索或调整查询后重试。"
-            )
+            placeholder = f"⚠️ 当前章节《{section.title}》未检索到可引用的证据。" " 请补充检索或调整查询后重试。"
             _LOGGER.warning(
                 "No evidence available for section_id=%s title=%s",
                 section.section_id,
@@ -126,7 +116,7 @@ class SectionWriter:
                 section_title=section.title,
                 section_summary=section.summary,
                 estimated_words=section.estimated_words,
-                evidence_list=evidence_list_text + ("\n\n" + context_instruction if context_instruction else "")
+                evidence_list=evidence_list_text + ("\n\n" + context_instruction if context_instruction else ""),
             )
 
             generated = self._invoke_llm(prompt)
@@ -164,7 +154,7 @@ class SectionWriter:
             return [[]]
         batches: List[List[RetrievalResult]] = []
         for i in range(0, len(evidence_entries), batch_size):
-            batches.append(evidence_entries[i:i + batch_size])
+            batches.append(evidence_entries[i : i + batch_size])
         return batches
 
     def _format_evidence(self, entries: Iterable[RetrievalResult]) -> str:
@@ -192,7 +182,7 @@ class SectionWriter:
         if not contents:
             return ""
         joined = "\n\n".join(contents)
-        return joined[-self.config.max_previous_context_chars:]
+        return joined[-self.config.max_previous_context_chars :]
 
     def _invoke_llm(self, prompt: str) -> str:
         """调用LLM生成章节内容"""
@@ -243,16 +233,12 @@ class SectionWriter:
         构造精简的纲要上下文，减少提示长度但保留章节位置信息。
         """
         try:
-            index = next(
-                idx for idx, item in enumerate(outline.sections) if item.section_id == section.section_id
-            )
+            index = next(idx for idx, item in enumerate(outline.sections) if item.section_id == section.section_id)
         except StopIteration:
             index = 0
 
         previous_title = outline.sections[index - 1].title if index > 0 else None
-        next_title = (
-            outline.sections[index + 1].title if index + 1 < len(outline.sections) else None
-        )
+        next_title = outline.sections[index + 1].title if index + 1 < len(outline.sections) else None
 
         snapshot: Dict[str, Any] = {
             "report_title": outline.title,

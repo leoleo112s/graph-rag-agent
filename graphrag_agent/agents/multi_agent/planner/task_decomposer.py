@@ -3,21 +3,22 @@
 
 负责将清晰的查询拆解为结构化的任务图(TaskGraph)
 """
-from typing import Optional, Dict, Any, List
-import logging
 
-from pydantic import BaseModel, Field
+import logging
+from typing import Any, Dict, List, Optional
+
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage
+from pydantic import BaseModel, Field
 
-from graphrag_agent.config.prompts import TASK_DECOMPOSE_PROMPT
-from graphrag_agent.models.get_models import get_llm_model
 from graphrag_agent.agents.multi_agent.core.plan_spec import (
+    TASK_TYPE_CHOICES,
     TaskGraph,
     TaskNode,
-    TASK_TYPE_CHOICES,
 )
 from graphrag_agent.agents.multi_agent.tools.json_parser import parse_json_text
+from graphrag_agent.config.prompts import TASK_DECOMPOSE_PROMPT
+from graphrag_agent.models.get_models import get_llm_model
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -28,6 +29,7 @@ class TaskDecompositionResult(BaseModel):
     """
     任务分解结果数据模型
     """
+
     task_graph: TaskGraph = Field(description="结构化任务图")
     raw_task_graph: Dict[str, Any] = Field(description="未经清洗的任务图原始JSON")
     raw_response: str = Field(description="LLM 原始输出，便于调试")

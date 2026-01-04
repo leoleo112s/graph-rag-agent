@@ -24,12 +24,13 @@
     cache.add(query_embedding, response)
 """
 
-import numpy as np
-import threading
-from datetime import datetime
-from typing import Optional, Dict, Any, List
-from collections import deque
 import logging
+import threading
+from collections import deque
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+import numpy as np
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -104,7 +105,7 @@ class SemanticCache:
 
             # 遍历缓存，寻找最相似的条目
             for idx, item in enumerate(self.cache):
-                cache_vec = item['embedding']
+                cache_vec = item["embedding"]
                 cache_norm = np.linalg.norm(cache_vec)
 
                 if cache_norm == 0:
@@ -123,19 +124,18 @@ class SemanticCache:
                 self.hits += 1
 
                 # 更新命中次数和时间戳
-                best_item['hit_count'] += 1
-                best_item['last_hit'] = datetime.now()
+                best_item["hit_count"] += 1
+                best_item["last_hit"] = datetime.now()
 
                 # LRU 策略：将命中的条目移到队列末尾（最近使用）
                 self.cache.remove(best_item)
                 self.cache.append(best_item)
 
                 _LOGGER.info(
-                    f"✅ 语义缓存命中！相似度: {best_similarity:.4f}, "
-                    f"累计命中 {best_item['hit_count']} 次"
+                    f"✅ 语义缓存命中！相似度: {best_similarity:.4f}, " f"累计命中 {best_item['hit_count']} 次"
                 )
 
-                return best_item['response']
+                return best_item["response"]
             else:
                 self.misses += 1
                 _LOGGER.debug(f"语义缓存未命中，最高相似度: {best_similarity:.4f}")
@@ -152,12 +152,12 @@ class SemanticCache:
         """
         with self._lock:
             cache_item = {
-                'embedding': np.array(query_embedding),
-                'response': response,
-                'timestamp': datetime.now(),
-                'last_hit': datetime.now(),
-                'hit_count': 0,
-                'metadata': metadata or {}
+                "embedding": np.array(query_embedding),
+                "response": response,
+                "timestamp": datetime.now(),
+                "last_hit": datetime.now(),
+                "hit_count": 0,
+                "metadata": metadata or {},
             }
 
             # deque 会自动处理 maxlen，超出时移除最旧的条目
@@ -191,7 +191,7 @@ class SemanticCache:
                 "misses": self.misses,
                 "total_requests": total_requests,
                 "hit_rate": f"{hit_rate:.2%}",
-                "threshold": self.threshold
+                "threshold": self.threshold,
             }
 
     def __repr__(self):
@@ -227,10 +227,7 @@ def get_semantic_cache(threshold: float = 0.95, max_size: int = 1000) -> Semanti
     if _semantic_cache_instance is None:
         with _cache_lock:
             if _semantic_cache_instance is None:
-                _semantic_cache_instance = SemanticCache(
-                    threshold=threshold,
-                    max_size=max_size
-                )
+                _semantic_cache_instance = SemanticCache(threshold=threshold, max_size=max_size)
 
     return _semantic_cache_instance
 

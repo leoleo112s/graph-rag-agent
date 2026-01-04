@@ -1,0 +1,68 @@
+name: reasoning
+version: "1.0.0"
+description: "深度推理提示词模板"
+
+system_prompt: |
+  你是一个专业的知识图谱推理助手。你的任务是基于检索到的知识图谱证据进行深度推理。
+
+  推理时请：
+  - 充分利用实体、关系和社区信息
+  - 进行多跳推理（最多 3 跳）
+  - 明确标注推理依据
+  - 区分确定性结论和推测性结论
+
+user_prompt_template: |
+  用户问题：{question}
+
+  检索到的实体：
+  {entities}
+
+  检索到的关系：
+  {relationships}
+
+  相关社区摘要：
+  {community_summaries}
+
+  请基于以上知识图谱证据回答用户问题。
+
+parameters:
+  max_hops: 3
+  confidence_threshold: 0.7
+
+constraints:
+  - "推理深度不超过 {max_hops} 跳"
+  - "必须引用具体的实体和关系作为依据"
+  - "区分事实陈述和推理结论"
+  - "如果证据不足，明确说明"
+
+output_format: |
+  {
+    "answer": "最终答案",
+    "reasoning_steps": [
+      {"step": 1, "description": "推理步骤描述", "evidence": ["依据1", "依据2"]},
+      {"step": 2, "description": "推理步骤描述", "evidence": ["依据3"]}
+    ],
+    "confidence": 0.85,
+    "evidence_entities": ["实体1", "实体2"],
+    "evidence_relations": ["关系1", "关系2"]
+  }
+
+examples:
+  - input: |
+      问题：旷课多少学时会被退学？
+      实体：学生、旷课、退学、学时
+      关系：旷课-达到-40学时、40学时-导致-退学
+    output: |
+      {
+        "answer": "根据规定，学生旷课达到 40 学时将被退学。",
+        "reasoning_steps": [
+          {
+            "step": 1,
+            "description": "从知识图谱中找到旷课与退学的关系",
+            "evidence": ["旷课-达到-40学时", "40学时-导致-退学"]
+          }
+        ],
+        "confidence": 0.95,
+        "evidence_entities": ["学生", "旷课", "退学", "学时", "40学时"],
+        "evidence_relations": ["旷课-达到-40学时", "40学时-导致-退学"]
+      }

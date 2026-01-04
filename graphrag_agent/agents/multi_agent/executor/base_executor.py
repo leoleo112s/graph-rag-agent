@@ -3,18 +3,19 @@
 
 为不同类型的Worker（检索、研究、反思）提供统一的配置、输入规范与结果包装。
 """
-from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional
+
 import copy
+from abc import ABC, abstractmethod
+from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, Field
 
+from graphrag_agent.agents.multi_agent.core.execution_record import ExecutionRecord
 from graphrag_agent.agents.multi_agent.core.plan_spec import (
     PlanExecutionSignal,
     TaskNode,
 )
 from graphrag_agent.agents.multi_agent.core.state import PlanExecuteState
-from graphrag_agent.agents.multi_agent.core.execution_record import ExecutionRecord
 
 
 class ExecutorConfig(BaseModel):

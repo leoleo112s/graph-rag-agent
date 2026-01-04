@@ -1,8 +1,10 @@
 import streamlit as st
 
+
 def custom_css():
     """添加自定义CSS样式"""
-    st.markdown("""
+    st.markdown(
+        """
     <style>
     .main .block-container {
         padding-top: 2rem;
@@ -191,7 +193,10 @@ def custom_css():
         border-radius: 4px;
     }
     </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
+
 
 KG_MANAGEMENT_CSS = """
 <style>

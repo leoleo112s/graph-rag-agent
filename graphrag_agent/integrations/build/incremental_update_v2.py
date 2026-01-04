@@ -148,23 +148,58 @@ class IncrementalUpdateManagerV2:
                     details=f"准备处理 {total_files} 个文件..."
                 )
 
-            # 批量快速处理（带进度回调）
+            # ✅ 改进：使用并发控制批量处理（而不是串行）
             results = []
-            for idx, file_path in enumerate(file_paths):
-                result = self.fast_pipeline.process_single_file(file_path)
-                results.append(result)
+            processed_count = 0
 
-                # 更新进度
-                progress = int(10 + (idx + 1) / total_files * 80)  # 10-90%
-                if self.broadcaster:
-                    await self.broadcaster.emit_progress(
-                        "l0_ingestion", progress,
-                        current=idx + 1, total=total_files,
-                        details=f"处理中: {Path(file_path).name}"
+            # 创建信号量，限制并发数为 MAX_WORKERS
+            semaphore = asyncio.Semaphore(MAX_WORKERS)
+
+            async def process_file_with_sem(file_path: str, idx: int) -> tuple:
+                """使用信号量控制的文件处理"""
+                async with semaphore:
+                    # 在线程池中执行同步的 process_single_file
+                    result = await asyncio.to_thread(
+                        self.fast_pipeline.process_single_file,
+                        file_path
                     )
-                    await self.broadcaster.emit_file_status(
-                        file_path, result["status"], stage="L0"
-                    )
+
+                    # 更新进度
+                    nonlocal processed_count
+                    processed_count += 1
+                    progress = int(10 + processed_count / total_files * 80)  # 10-90%
+
+                    if self.broadcaster:
+                        await self.broadcaster.emit_progress(
+                            "l0_ingestion", progress,
+                            current=processed_count, total=total_files,
+                            details=f"处理中: {Path(file_path).name}"
+                        )
+                        await self.broadcaster.emit_file_status(
+                            file_path, result["status"], stage="L0"
+                        )
+
+                    return (idx, result)
+
+            # 并发处理所有文件（分批）
+            batch_size = BATCH_SIZE  # 每批处理的文件数
+            for batch_start in range(0, total_files, batch_size):
+                batch_end = min(batch_start + batch_size, total_files)
+                batch_files = file_paths[batch_start:batch_end]
+
+                # 并发处理当前批次
+                tasks = [
+                    process_file_with_sem(file_path, batch_start + idx)
+                    for idx, file_path in enumerate(batch_files)
+                ]
+                batch_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+                # 收集结果（保持顺序）
+                for idx, result in batch_results:
+                    if isinstance(result, Exception):
+                        results.append({"status": "error", "error": str(result)})
+                    else:
+                        results.append(result)
 
             # 更新统计
             success_count = sum(1 for r in results if r["status"] == "success")
@@ -452,6 +487,242 @@ class IncrementalUpdateManagerV2:
             self.stats["errors"] += 1
             return {"status": "error", "message": str(e)}
 
+    async def clean_all_data(self) -> Dict:
+        """
+        清理所有数据（用于全量构建）
+
+        ✅ 改进：实现真正的全量构建清理逻辑
+
+        清理内容：
+        1. Neo4j 数据库（所有节点和关系）
+        2. 向量索引（chunk_embedding_index, entity_embedding_index）
+        3. Redis 缓存（如果启用）
+        4. 文件注册表（file_registry.json）
+
+        Returns:
+            Dict: 清理结果
+        """
+        import os
+        import json
+        from pathlib import Path
+
+        self.console.print("\n[bold red]⚠️  开始清理所有数据（全量构建模式）...[/bold red]")
+
+        if self.broadcaster:
+            await self.broadcaster.emit_log("开始清理所有数据（全量构建模式）", "WARNING")
+            await self.broadcaster.emit_progress("cleaning", 0, details="准备清理...")
+
+        results = {
+            "neo4j": {"status": "pending", "cleared_nodes": 0, "cleared_relationships": 0},
+            "vector_index": {"status": "pending", "cleared_indexes": []},
+            "redis_cache": {"status": "pending"},
+            "file_registry": {"status": "pending"}
+        }
+
+        try:
+            # 1. 清空 Neo4j 数据库
+            self.console.print("[yellow]1. 清空 Neo4j 数据库...[/yellow]")
+            if self.broadcaster:
+                await self.broadcaster.emit_progress("cleaning", 25, details="清空 Neo4j 数据库...")
+
+            try:
+                # 先统计数据量
+                count_query = """
+                MATCH (n)
+                RETURN count(n) as node_count
+                """
+                count_result = self.graph.query(count_query)
+                node_count = count_result[0]["node_count"] if count_result else 0
+
+                rel_count_query = """
+                MATCH ()-[r]->()
+                RETURN count(r) as rel_count
+                """
+                rel_count_result = self.graph.query(rel_count_query)
+                rel_count = rel_count_result[0]["rel_count"] if rel_count_result else 0
+
+                self.console.print(f"   将删除 {node_count} 个节点和 {rel_count} 个关系")
+
+                # 执行清理（分批删除以避免超时）
+                delete_query = """
+                CALL apoc.periodic.iterate(
+                    "MATCH (n) RETURN n",
+                    "DETACH DELETE n",
+                    {batchSize: 10000, parallel: false}
+                )
+                """
+
+                # 如果 APOC 不可用，使用简单删除
+                try:
+                    self.graph.query(delete_query)
+                except Exception:
+                    # 回退到简单删除
+                    simple_delete = "MATCH (n) DETACH DELETE n"
+                    self.graph.query(simple_delete)
+
+                results["neo4j"]["status"] = "success"
+                results["neo4j"]["cleared_nodes"] = node_count
+                results["neo4j"]["cleared_relationships"] = rel_count
+                self.console.print(f"   [green]✓ Neo4j 清理完成[/green]")
+
+            except Exception as e:
+                results["neo4j"]["status"] = "error"
+                results["neo4j"]["error"] = str(e)
+                self.console.print(f"   [red]✗ Neo4j 清理失败: {e}[/red]")
+
+            # 2. 清空向量索引
+            self.console.print("[yellow]2. 清空向量索引...[/yellow]")
+            if self.broadcaster:
+                await self.broadcaster.emit_progress("cleaning", 50, details="清空向量索引...")
+
+            try:
+                # 删除并重建向量索引
+                from graphrag_agent.config.settings import (
+                    CHUNK_VECTOR_INDEX,
+                    ENTITY_VECTOR_INDEX,
+                    EMBEDDING_DIM,
+                    VECTOR_SIMILARITY_FUNCTION
+                )
+
+                cleared_indexes = []
+
+                # 删除 chunk 向量索引
+                try:
+                    drop_chunk_index = f"DROP INDEX {CHUNK_VECTOR_INDEX} IF EXISTS"
+                    self.graph.query(drop_chunk_index)
+                    cleared_indexes.append(CHUNK_VECTOR_INDEX)
+                    self.console.print(f"   [green]✓ 已删除索引: {CHUNK_VECTOR_INDEX}[/green]")
+                except Exception as e:
+                    self.console.print(f"   [yellow]⚠ 删除索引 {CHUNK_VECTOR_INDEX} 失败: {e}[/yellow]")
+
+                # 删除 entity 向量索引
+                try:
+                    drop_entity_index = f"DROP INDEX {ENTITY_VECTOR_INDEX} IF EXISTS"
+                    self.graph.query(drop_entity_index)
+                    cleared_indexes.append(ENTITY_VECTOR_INDEX)
+                    self.console.print(f"   [green]✓ 已删除索引: {ENTITY_VECTOR_INDEX}[/green]")
+                except Exception as e:
+                    self.console.print(f"   [yellow]⚠ 删除索引 {ENTITY_VECTOR_INDEX} 失败: {e}[/yellow]")
+
+                # 重建向量索引
+                self.console.print("   重建向量索引...")
+
+                # 重建 chunk 向量索引
+                try:
+                    create_chunk_index = f"""
+                    CREATE VECTOR INDEX {CHUNK_VECTOR_INDEX} IF NOT EXISTS
+                    FOR (c:__Chunk__)
+                    ON c.embedding
+                    OPTIONS {{
+                        indexConfig: {{
+                            `vector.dimensions`: {EMBEDDING_DIM},
+                            `vector.similarity_function`: '{VECTOR_SIMILARITY_FUNCTION}'
+                        }}
+                    }}
+                    """
+                    self.graph.query(create_chunk_index)
+                    self.console.print(f"   [green]✓ 已重建索引: {CHUNK_VECTOR_INDEX}[/green]")
+                except Exception as e:
+                    self.console.print(f"   [yellow]⚠ 重建索引 {CHUNK_VECTOR_INDEX} 失败: {e}[/yellow]")
+
+                # 重建 entity 向量索引
+                try:
+                    create_entity_index = f"""
+                    CREATE VECTOR INDEX {ENTITY_VECTOR_INDEX} IF NOT EXISTS
+                    FOR (e:__Entity__)
+                    ON e.embedding
+                    OPTIONS {{
+                        indexConfig: {{
+                            `vector.dimensions`: {EMBEDDING_DIM},
+                            `vector.similarity_function`: '{VECTOR_SIMILARITY_FUNCTION}'
+                        }}
+                    }}
+                    """
+                    self.graph.query(create_entity_index)
+                    self.console.print(f"   [green]✓ 已重建索引: {ENTITY_VECTOR_INDEX}[/green]")
+                except Exception as e:
+                    self.console.print(f"   [yellow]⚠ 重建索引 {ENTITY_VECTOR_INDEX} 失败: {e}[/yellow]")
+
+                results["vector_index"]["status"] = "success"
+                results["vector_index"]["cleared_indexes"] = cleared_indexes
+                self.console.print(f"   [green]✓ 向量索引清理完成[/green]")
+
+            except Exception as e:
+                results["vector_index"]["status"] = "error"
+                results["vector_index"]["error"] = str(e)
+                self.console.print(f"   [red]✗ 向量索引清理失败: {e}[/red]")
+
+            # 3. 清空 Redis 缓存（如果启用）
+            self.console.print("[yellow]3. 清空 Redis 缓存...[/yellow]")
+            if self.broadcaster:
+                await self.broadcaster.emit_progress("cleaning", 75, details="清空 Redis 缓存...")
+
+            try:
+                # 尝试清空 Redis
+                try:
+                    from graphrag_agent.cache_manager import get_cache_manager
+                    cache_manager = get_cache_manager()
+                    # 如果是 Redis 后端，清空缓存
+                    if hasattr(cache_manager, 'clear'):
+                        cache_manager.clear()
+                        self.console.print(f"   [green]✓ Redis 缓存已清空[/green]")
+                        results["redis_cache"]["status"] = "success"
+                    else:
+                        self.console.print(f"   [yellow]⚠ 缓存管理器不支持清空操作[/yellow]")
+                        results["redis_cache"]["status"] = "skipped"
+                except ImportError:
+                    self.console.print(f"   [yellow]⚠ Redis 未启用，跳过[/yellow]")
+                    results["redis_cache"]["status"] = "skipped"
+
+            except Exception as e:
+                results["redis_cache"]["status"] = "error"
+                results["redis_cache"]["error"] = str(e)
+                self.console.print(f"   [red]✗ Redis 清理失败: {e}[/red]")
+
+            # 4. 清空文件注册表
+            self.console.print("[yellow]4. 清空文件注册表...[/yellow]")
+            if self.broadcaster:
+                await self.broadcaster.emit_progress("cleaning", 90, details="清空文件注册表...")
+
+            try:
+                registry_path = Path(self.files_dir) / "file_registry.json"
+
+                if registry_path.exists():
+                    # 备份现有注册表
+                    backup_path = Path(self.files_dir) / f"file_registry_backup_{int(time.time())}.json"
+                    import shutil
+                    shutil.copy(registry_path, backup_path)
+                    self.console.print(f"   [green]✓ 已备份注册表到: {backup_path.name}[/green]")
+
+                    # 清空注册表
+                    with open(registry_path, 'w', encoding='utf-8') as f:
+                        json.dump({}, f)
+
+                    self.console.print(f"   [green]✓ 文件注册表已清空[/green]")
+                    results["file_registry"]["status"] = "success"
+                    results["file_registry"]["backup"] = str(backup_path)
+                else:
+                    self.console.print(f"   [yellow]⚠ 文件注册表不存在，跳过[/yellow]")
+                    results["file_registry"]["status"] = "skipped"
+
+            except Exception as e:
+                results["file_registry"]["status"] = "error"
+                results["file_registry"]["error"] = str(e)
+                self.console.print(f"   [red]✗ 文件注册表清理失败: {e}[/red]")
+
+            # 完成
+            if self.broadcaster:
+                await self.broadcaster.emit_progress("cleaning", 100, details="清理完成")
+
+            self.console.print("\n[bold green]✓ 数据清理完成[/bold green]")
+            return {"status": "success", "results": results}
+
+        except Exception as e:
+            self.console.print(f"\n[bold red]✗ 数据清理失败: {e}[/bold red]")
+            if self.broadcaster:
+                await self.broadcaster.emit_log(f"数据清理失败: {e}", "ERROR")
+            return {"status": "error", "error": str(e), "results": results}
+
     def verify_graph_consistency(self, repair=True) -> Dict:
         """
         验证图谱一致性
@@ -568,23 +839,55 @@ class IncrementalUpdateManagerV2:
     # 完整流程
     # ===================
 
-    async def run_full_pipeline(self, file_paths: Optional[List[str]] = None) -> Dict:
+    async def run_full_pipeline(
+        self,
+        file_paths: Optional[List[str]] = None,
+        clean: bool = False
+    ) -> Dict:
         """
-        执行完整的增量更新流程（L0 + L1）
+        执行完整的更新流程（L0 + L1）
+
+        ✅ 改进：支持全量构建模式（clean=True）
 
         Args:
-            file_paths: 文件路径列表
+            file_paths: 文件路径列表（None 则处理所有变更文件）
+            clean: 是否清理现有数据（全量构建模式）
+                  - True: 全量构建（先清理所有数据，再处理所有文件）
+                  - False: 增量构建（仅处理变更文件）
 
         Returns:
             Dict: 处理结果
         """
         start_time = time.time()
 
-        self.console.print("\n[bold cyan]开始完整增量更新流程...[/bold cyan]")
+        mode_name = "全量构建" if clean else "增量更新"
+        self.console.print(f"\n[bold cyan]开始 {mode_name} 流程...[/bold cyan]")
 
         results = {}
 
         try:
+            # 步骤 0: 如果是全量构建，先清理所有数据
+            if clean:
+                self.console.print("[bold yellow]⚠️  全量构建模式：将清理所有现有数据[/bold yellow]")
+                clean_result = await self.clean_all_data()
+                results["clean"] = clean_result
+
+                if clean_result["status"] != "success":
+                    raise Exception(f"数据清理失败: {clean_result.get('error', 'Unknown error')}")
+
+                # 全量构建：处理所有文件（忽略 file_paths，使用目录中所有文件）
+                if file_paths is None:
+                    from pathlib import Path
+                    files_dir = Path(self.files_dir)
+                    # 获取所有支持的文件类型
+                    supported_extensions = ['.txt', '.pdf', '.md', '.docx', '.doc', '.csv', '.json', '.yaml']
+                    file_paths = [
+                        str(f.relative_to(files_dir))
+                        for f in files_dir.rglob('*')
+                        if f.suffix.lower() in supported_extensions and f.is_file()
+                    ]
+                    self.console.print(f"[cyan]全量构建：将处理 {len(file_paths)} 个文件[/cyan]")
+
             # 步骤 1: L0 快速摄取
             l0_result = await self.run_fast_ingestion(file_paths)
             results["l0"] = l0_result
@@ -594,7 +897,7 @@ class IncrementalUpdateManagerV2:
             results["l1"] = l1_result
 
             # 步骤 3: 验证图谱一致性（仅在有变更时）
-            if l0_result.get("files_processed", 0) > 0:
+            if l0_result.get("files_processed", 0) > 0 or l0_result.get("processed_count", 0) > 0:
                 consistency_result = self.verify_graph_consistency()
                 results["consistency"] = consistency_result
 

@@ -4,10 +4,11 @@ WebSocket 进度广播器
 用于将后端的图谱构建进度实时推送到前端。
 支持多个 WebSocket 客户端同时连接和接收进度更新。
 """
+
 import asyncio
 import logging
-from typing import List, Dict, Any, Optional
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from fastapi import WebSocket
 
@@ -41,11 +42,9 @@ class ProgressBroadcaster:
         _LOGGER.info(f"新的 WebSocket 连接建立，当前连接数：{len(self.active_connections)}")
 
         # 发送初始连接成功消息
-        await self._send_to_client(websocket, {
-            "type": "connected",
-            "message": "WebSocket 连接成功",
-            "timestamp": datetime.now().isoformat()
-        })
+        await self._send_to_client(
+            websocket, {"type": "connected", "message": "WebSocket 连接成功", "timestamp": datetime.now().isoformat()}
+        )
 
     async def disconnect(self, websocket: WebSocket):
         """
@@ -115,19 +114,10 @@ class ProgressBroadcaster:
             text: 日志文本
             level: 日志级别（INFO, WARNING, ERROR）
         """
-        await self.broadcast({
-            "type": "log",
-            "level": level,
-            "content": text
-        })
+        await self.broadcast({"type": "log", "level": level, "content": text})
 
     async def emit_progress(
-        self,
-        stage: str,
-        percent: int,
-        current: Optional[int] = None,
-        total: Optional[int] = None,
-        details: str = ""
+        self, stage: str, percent: int, current: Optional[int] = None, total: Optional[int] = None, details: str = ""
     ):
         """
         发送进度更新
@@ -143,7 +133,7 @@ class ProgressBroadcaster:
             "type": "progress",
             "stage": stage,
             "percent": min(100, max(0, percent)),  # 限制在 0-100
-            "details": details
+            "details": details,
         }
 
         if current is not None and total is not None:
@@ -160,11 +150,7 @@ class ProgressBroadcaster:
             status: 状态（started, running, completed, failed, paused）
             message: 状态描述
         """
-        await self.broadcast({
-            "type": "status",
-            "status": status,
-            "message": message
-        })
+        await self.broadcast({"type": "status", "status": status, "message": message})
 
     async def emit_error(self, error: str, details: Optional[Dict] = None):
         """
@@ -174,22 +160,13 @@ class ProgressBroadcaster:
             error: 错误描述
             details: 错误详情
         """
-        message = {
-            "type": "error",
-            "error": error
-        }
+        message = {"type": "error", "error": error}
         if details:
             message["details"] = details
 
         await self.broadcast(message)
 
-    async def emit_file_status(
-        self,
-        file_path: str,
-        status: str,
-        stage: str = "",
-        progress: Optional[int] = None
-    ):
+    async def emit_file_status(self, file_path: str, status: str, stage: str = "", progress: Optional[int] = None):
         """
         发送单个文件的处理状态
 
@@ -219,10 +196,7 @@ class ProgressBroadcaster:
         Args:
             stats: 统计数据（实体数、关系数、文件数等）
         """
-        await self.broadcast({
-            "type": "stats",
-            "data": stats
-        })
+        await self.broadcast({"type": "stats", "data": stats})
 
     def has_active_connections(self) -> bool:
         """

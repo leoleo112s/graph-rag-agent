@@ -1,10 +1,10 @@
 """
 构建多智能体编排器所需组件的工厂工具。
 """
+
 from dataclasses import dataclass
 from typing import Optional
 
-from graphrag_agent.cache_manager.manager import CacheManager
 from graphrag_agent.agents.multi_agent.executor.worker_coordinator import (
     WorkerCoordinator,
 )
@@ -13,8 +13,8 @@ from graphrag_agent.agents.multi_agent.orchestrator import (
     OrchestratorConfig,
 )
 from graphrag_agent.agents.multi_agent.planner.base_planner import BasePlanner
-from graphrag_agent.agents.multi_agent.reporter.base_reporter import BaseReporter
-from graphrag_agent.agents.multi_agent.reporter.base_reporter import ReporterConfig
+from graphrag_agent.agents.multi_agent.reporter.base_reporter import BaseReporter, ReporterConfig
+from graphrag_agent.cache_manager.manager import CacheManager
 from graphrag_agent.config.settings import (
     MULTI_AGENT_AUTO_GENERATE_REPORT,
     MULTI_AGENT_STOP_ON_CLARIFICATION,

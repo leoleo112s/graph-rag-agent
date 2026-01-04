@@ -1,16 +1,17 @@
 """
 一致性校验模块
 """
-from typing import Dict, Any, Optional
-import logging
 
-from pydantic import BaseModel, Field
+import logging
+from typing import Any, Dict, Optional
+
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage
+from pydantic import BaseModel, Field
 
+from graphrag_agent.agents.multi_agent.tools.json_parser import parse_json_text
 from graphrag_agent.config.prompts import CONSISTENCY_CHECK_PROMPT
 from graphrag_agent.models.get_models import get_llm_model
-from graphrag_agent.agents.multi_agent.tools.json_parser import parse_json_text
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -19,6 +20,7 @@ class ConsistencyCheckResult(BaseModel):
     """
     一致性检查结果
     """
+
     is_consistent: bool = Field(default=True, description="报告是否通过检查")
     issues: list[Dict[str, Any]] = Field(default_factory=list, description="问题列表")
     corrections: list[Dict[str, Any]] = Field(default_factory=list, description="修正建议")

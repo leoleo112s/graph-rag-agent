@@ -69,7 +69,8 @@ graph-rag-agent/
 │   │       ├── incremental/ # 增量更新子模块
 │   │       └── incremental_update.py # 增量更新管理
 │   ├── models/             # 🧩 模型管理
-│   │   └── get_models.py   # 模型初始化
+│   │   ├── get_models.py   # 模型初始化
+│   │   └── model_manager.py # 🆕 模型管理器（单例，动态切换）
 │   ├── pipelines/          # 🔄 数据管道
 │   │   └── ingestion/      # 📄 文档摄取处理器
 │   │       ├── document_processor.py # 文档处理核心
@@ -87,8 +88,11 @@ graph-rag-agent/
 ├── server/                 # 🖧 后端服务（独立服务）
 │   ├── main.py             # FastAPI应用入口
 │   ├── models/             # 数据模型
+│   │   └── graph_template.py # 🆕 图谱模板数据模型
 │   ├── routers/            # API路由
-│   │   └── admin.py        # 🆕 管理路由（新增 AI Copilot API）
+│   │   ├── admin.py        # 管理路由（AI Copilot API）
+│   │   ├── templates.py    # 🆕 模板市场路由
+│   │   └── models.py       # 🆕 模型管理路由
 │   └── services/           # 业务逻辑
 ├── frontend/               # 🖥️ 前端界面（独立服务）
 │   ├── app.py              # 应用入口（新增 AI 向导导航）
@@ -97,7 +101,9 @@ graph-rag-agent/
 │   │   ├── document_manager.py    # 📚 文档管理
 │   │   ├── config_manager.py      # ⚙️ 配置管理（重构）
 │   │   ├── build_manager.py       # 🏗️ 构建管理
-│   │   └── ai_config_wizard.py    # 🆕 🤖 AI 配置向导
+│   │   ├── ai_config_wizard.py    # 🤖 AI 配置向导
+│   │   ├── template_marketplace.py # 🆕 🏪 模板市场
+│   │   └── model_hub.py           # 🆕 🧠 模型中心
 │   └── utils/              # 前端工具
 ├── test/                  # 🧪 测试模块
 │   ├── search_with_stream.py # 流式输出测试
@@ -133,7 +139,21 @@ graph-rag-agent/
 - **实体质量提升**：实体消歧和对齐机制，有效解决实体歧义和重复问题
 - **思考过程可视化**：展示 AI 的推理轨迹，提高可解释性和透明度
 
-### 🆕 最新特性（v2.0）
+### 🆕 最新特性（v2.1）
+
+- **🏪 行业模板市场**：一键分享和复用图谱配置模板
+  - 模板发布：将当前配置发布为可复用模板
+  - 模板评分：5星评价系统 + 用户评论
+  - 领域筛选：法务、医疗、电商、教育等行业分类
+  - 一键应用：直接应用模板配置到当前项目
+  - 模板下载：导出模板配置文件
+
+- **🧠 自定义模型管理中心**：动态管理多个LLM和Embedding模型
+  - 模型注册：支持OpenAI、本地模型、自定义模型
+  - 动态切换：无需重启服务即可切换模型
+  - 模型配置：温度、Max Tokens、API端点等参数管理
+  - 模型监控：查看当前活跃模型状态
+  - 配置持久化：模型注册表自动保存
 
 - **🌐 通用图谱构建器**：不再限定于特定领域，支持用户自定义任意行业的知识图谱
   - 用户定义**领域（Domain）**和**桥接点（Bridge）**代替硬编码实体/关系类型
@@ -155,6 +175,45 @@ graph-rag-agent/
   - 无需修改代码即可适配不同行业
   - 支持传统模式与动态模式自动切换
   - 完全向后兼容
+
+### 🏭 生产级架构特性（New！）
+
+- **📋 统一 API 返回格式**：标准化 JSON 响应 + 细粒度错误码
+  - `BaseResponse[T]` 泛型模型（code + msg + data）
+  - 分层错误码体系（51xx LLM, 52xx DB, 53xx Cache, 54xx File, 55xx Extraction）
+  - API 版本控制（/api/v1 前缀）
+  - 全局异常处理（BusinessException, HTTPException, Exception）
+  - DEBUG 模式控制错误详情可见性
+
+- **📊 结构化日志系统**：生产环境友好的日志架构
+  - JSONFormatter（生产）+ ColoredConsoleFormatter（开发）
+  - 自动上下文追踪（request_id, user_id, session_id）
+  - 日志轮转（100MB/文件，5 份备份）
+  - Pub/Sub 支持实时日志推送
+  - 替代 604 个 print() 调用和 363 个 console.print()
+
+- **⚙️ Celery 任务队列**：异步任务处理 + 进程隔离
+  - 替代 BackgroundTasks（解决资源竞争）
+  - 自动重试（最多 3 次，60s 间隔）
+  - 任务超时控制（1h soft, 1h5m hard）
+  - Redis 作为 broker 和 result backend
+  - Flower 监控面板
+  - 分布式锁防止并发构建
+
+- **📡 Redis 状态管理**：多 worker 进度同步
+  - 替代内存单例（支持水平扩展）
+  - Redis Pub/Sub 实时进度推送
+  - WebSocket 广播构建进度
+  - TTL 自动过期清理
+  - 持久化任务状态追踪
+
+- **🗄️ Neo4j 部署优化**：生产环境最佳实践
+  - 环境变量化内存配置（HEAP_INITIAL_SIZE, HEAP_MAX_SIZE, PAGECACHE_SIZE）
+  - 索引预创建脚本（`scripts/init_indices.py`）
+  - 动态 Schema 刷新开关（`NEO4J_REFRESH_SCHEMA`）
+  - 增强健康检查（读/写延迟、连接池、磁盘空间）
+  - APOC 插件配置文档
+  - 文件上传安全校验（6 层防护）
 
 ### 🚀 性能与优化特性
 
@@ -261,7 +320,7 @@ graph-rag-agent/
 
 请参考：[快速开始文档](./assets/start.md)
 
-### 本地部署（Neo4j Docker + 前后端分进程）
+### 本地部署（推荐：开发环境）
 
 ```bash
 # 1) 克隆项目
@@ -279,14 +338,85 @@ pip install -e .
 
 # 4) 配置环境变量
 cp .env.example .env
-# 按需填入 OpenAI/Neo4j 等密钥，确保 CHUNK_VECTOR_INDEX/ENTITY_VECTOR_INDEX 与 Neo4j 中一致
+# 编辑 .env 文件，填入必要配置：
+# - OPENAI_API_KEY, OPENAI_BASE_URL
+# - NEO4J_URI, NEO4J_USERNAME, NEO4J_PASSWORD
+# - 可选：调整 Neo4j 内存配置（根据服务器规格）
 
-# 5) 启动后端
-uvicorn server.main:app --reload --host 0.0.0.0 --port 8000
-# 可用 /status 检查向量索引是否就绪
+# 5) 创建 Neo4j 索引（生产环境必须，开发环境可选）
+python scripts/init_indices.py
+# 或手动执行：cypher-shell -u neo4j -p 12345678 < scripts/init_indices.cypher
 
-# 6) 启动前端（新终端）
-streamlit run frontend/app.py --server.port 8501 --server.address 0.0.0.0
+# 6) 启动后端
+python server/main.py
+# 默认端口: 8000
+# 健康检查: http://localhost:8000/api/v1/admin/health
+
+# 7) 启动前端（新终端）
+streamlit run frontend/app.py
+# 默认端口: 8501
+# 访问: http://localhost:8501
+```
+
+### 生产环境部署（可选：Celery + Redis）
+
+如需使用任务队列功能（异步图谱构建、进度追踪）：
+
+```bash
+# 1) 安装 Redis（如果尚未安装）
+# macOS: brew install redis && brew services start redis
+# Ubuntu: sudo apt install redis-server && sudo systemctl start redis
+# Docker: docker run -d --name redis -p 6379:6379 redis:7
+
+# 2) 配置环境变量（添加到 .env）
+echo "CELERY_BROKER_URL=redis://localhost:6379/0" >> .env
+echo "CELERY_RESULT_BACKEND=redis://localhost:6379/1" >> .env
+echo "REDIS_HOST=localhost" >> .env
+echo "REDIS_PORT=6379" >> .env
+
+# 3) 启动 Celery Worker（新终端）
+celery -A server.celery_app worker --loglevel=info --concurrency=2
+
+# 4) 启动 Flower 监控（可选，新终端）
+celery -A server.celery_app flower --port=5555
+# 访问: http://localhost:5555
+
+# 5) 使用 Celery 版 API
+# POST http://localhost:8000/api/v1/build-celery/run
+# GET  http://localhost:8000/api/v1/build-celery/status/{task_id}
+# WebSocket: ws://localhost:8000/api/v1/build-celery/ws/{task_id}
+```
+
+### Neo4j 内存调优（生产环境推荐）
+
+根据服务器规格调整 `.env` 中的内存配置：
+
+```env
+# 4GB 服务器
+NEO4J_HEAP_INITIAL_SIZE=1G
+NEO4J_HEAP_MAX_SIZE=1G
+NEO4J_PAGECACHE_SIZE=1G
+
+# 8GB 服务器
+NEO4J_HEAP_INITIAL_SIZE=2G
+NEO4J_HEAP_MAX_SIZE=2G
+NEO4J_PAGECACHE_SIZE=2G
+
+# 16GB 服务器
+NEO4J_HEAP_INITIAL_SIZE=4G
+NEO4J_HEAP_MAX_SIZE=4G
+NEO4J_PAGECACHE_SIZE=6G
+
+# 32GB 服务器
+NEO4J_HEAP_INITIAL_SIZE=8G
+NEO4J_HEAP_MAX_SIZE=8G
+NEO4J_PAGECACHE_SIZE=12G
+```
+
+重启 Docker Compose 使配置生效：
+```bash
+docker compose down
+docker compose up -d
 ```
 
 ### 方式二：AI 向导模式（推荐新用户）
@@ -319,7 +449,7 @@ docker compose up -d
 python server/main.py
 
 # 启动前端（新开终端）
-streamlit run frontend/app.py
+streamlit run frontend/app.py --server.headless true
 ```
 
 **3. 使用 AI 向导创建配置**
@@ -364,7 +494,62 @@ streamlit run frontend/app.py
 
 ## 🧰 功能模块
 
-### 通用图谱构建器（New！）
+### 行业模板市场（New in v2.1!）
+
+- **模板管理**：
+  - 模板发布：将当前 `graph_config.json` 发布为可复用模板
+  - 模板评分：1-5 星评价系统，支持用户评论
+  - 下载统计：跟踪模板使用热度
+  - 官方认证：标记官方推荐模板
+
+- **模板发现**：
+  - 领域筛选：按行业（法务、医疗、电商、教育等）快速筛选
+  - 排序方式：按评分、下载量、创建时间排序
+  - 模板详情：查看完整配置、实体类型、关系类型
+  - 用户评价：查看其他用户的使用反馈
+
+- **一键应用**：
+  - 直接替换当前配置文件
+  - 支持配置预览和下载
+  - 智能配置验证
+
+- **使用场景**：
+  - 快速启动新项目（复用成熟配置）
+  - 跨项目配置共享
+  - 社区最佳实践沉淀
+
+### 自定义模型管理中心（New in v2.1!）
+
+- **模型注册器**：
+  - 支持 OpenAI 兼容模型（GPT-4、Claude、DeepSeek 等）
+  - 支持本地模型（.gguf 文件、Adapters）
+  - 支持自定义模型端点
+  - 灵活的模型参数配置（Temperature、Max Tokens、API Key、Base URL）
+
+- **动态模型切换**：
+  - 无需重启服务即可切换活跃模型
+  - 支持 LLM 和 Embedding 独立管理
+  - 自动缓存清理和重新加载
+  - 线程安全的单例模式
+
+- **模型监控**：
+  - 查看当前活跃的 LLM 和 Embedding 模型
+  - 模型配置预览（API Key 自动脱敏）
+  - 模型标签和描述管理
+  - 默认模型保护（不可删除）
+
+- **持久化存储**：
+  - 模型注册表 JSON 持久化（`data/model_registry.json`）
+  - 自动加载默认模型（从 `.env` 读取）
+  - 配置导入导出
+
+- **使用场景**：
+  - 快速切换不同 LLM 提供商（OpenAI ↔ DeepSeek ↔ Claude）
+  - A/B 测试不同模型效果
+  - 成本优化（使用更便宜的模型处理简单任务）
+  - 本地离线模型支持
+
+### 通用图谱构建器
 
 - **用户定义配置模型**：
   - `BridgeDefinition`：桥接点定义（跨领域公共概念）
@@ -448,19 +633,63 @@ streamlit run frontend/app.py
 - **性能监控**：跟踪 API 调用耗时，优化系统性能
 - **用户反馈机制**：收集用户对回答的评价，持续改进系统
 
+### 生产级 API 架构（New！）
+
+- **统一 JSON 返回格式**：
+  - `BaseResponse[T]` 泛型模型（code, msg, data）
+  - 细粒度错误码（200 成功, 4xx 客户端错误, 5xxx 服务端错误）
+  - API 版本控制（/api/v1 前缀）
+  - 三层异常处理（BusinessException → HTTPException → Exception）
+  - DEBUG 模式控制错误详情可见性
+
+- **结构化日志系统**：
+  - 生产环境 JSON 格式（便于日志分析）
+  - 开发环境彩色控制台（可读性强）
+  - 请求链路追踪（request_id, user_id, session_id）
+  - 日志轮转和归档（100MB/文件，保留 5 份）
+  - Pub/Sub 实时日志推送
+
+- **任务队列架构**：
+  - Celery + Redis 异步任务处理
+  - 进程隔离（FastAPI Web + Celery Worker）
+  - 自动重试和超时控制
+  - 分布式锁防止并发冲突
+  - Flower 监控面板
+  - WebSocket 实时进度推送
+
+- **文件上传安全**：
+  - 6 层安全防护（文件名、扩展名、MIME 类型、魔术字节、大小、哈希）
+  - 防止路径遍历、扩展名伪造、DoS 攻击
+  - 支持批量上传和去重
+  - 病毒扫描占位（生产环境可集成 ClamAV）
+  - 参考实现：`server/routers/upload.py`
+
+- **增强健康检查**：
+  - Neo4j 读/写测试（带延迟测量）
+  - 连接池状态（活跃/空闲连接数）
+  - 磁盘空间检查（告警阈值）
+  - 文件目录可写性测试
+  - 三级状态（healthy, degraded, unhealthy）
+  - 支持 Prometheus/Nginx/K8s 集成
+
 ### 前后端实现
 
-- **Web 管理界面**（New！）：
+- **Web 管理界面**：
   - 📚 **文档管理**：拖拽上传、批量删除、二次确认
   - ⚙️ **配置管理**：可视化编辑 Domain/Bridge、模板切换、配置导出
   - 🏗️ **构建管理**：实时进度、图谱统计、日志查看
   - 🤖 **AI 向导**：4步智能配置流程
+  - 🏪 **模板市场**（New in v2.1!）：模板发布、评分、一键应用
+  - 🧠 **模型中心**（New in v2.1!）：模型注册、切换、配置管理
 
 - **流式响应**：支持 AI 生成内容的实时流式显示
 - **交互式知识图谱**：提供 Neo4j 风格的图谱交互界面
 - **调试模式**：开发者可查看执行轨迹和搜索过程
 - **RESTful API**：完善的后端 API 设计，支持扩展开发
   - 新增 AI Copilot API 端点（文档分析、配置推荐、应用推荐）
+  - 新增 Celery 构建 API（/api/v1/build-celery）
+  - 增强健康检查 API（/api/v1/admin/health）
+  - 文件上传校验 API（/api/v1/upload）
 
 ## 🖥️ 简单演示
 
@@ -750,16 +979,41 @@ cp graph_config.json graph_config.json.backup  # 新增：图谱配置备份
 # git pull 后如果配置冲突，可以还原
 ```
 
+### 生产环境部署清单
+
+完整的生产环境部署步骤，请参考 [`NEO4J_DEPLOYMENT_IMPROVEMENTS.md`](./NEO4J_DEPLOYMENT_IMPROVEMENTS.md)
+
+**关键检查项**：
+
+- [ ] **内存调优**：根据服务器规格配置 Neo4j 内存（`.env` 文件）
+- [ ] **索引预创建**：运行 `python scripts/init_indices.py`
+- [ ] **关闭 Schema 刷新**：设置 `NEO4J_REFRESH_SCHEMA=false`
+- [ ] **健康检查**：配置负载均衡使用 `/api/v1/admin/health`
+- [ ] **日志配置**：设置 `DEBUG=false` 启用 JSON 日志
+- [ ] **任务队列**（可选）：部署 Redis + Celery Worker
+- [ ] **文件上传安全**：根据 `upload.py` 实现文件校验
+- [ ] **监控告警**：集成 Prometheus/Grafana
+
+**相关文档**：
+- [API 改进文档](./API_IMPROVEMENTS.md)
+- [日志和异常处理改进](./LOGGING_AND_EXCEPTION_IMPROVEMENTS.md)
+- [任务队列和进度改进](./TASK_QUEUE_AND_PROGRESS_IMPROVEMENTS.md)
+- [Neo4j 部署改进](./NEO4J_DEPLOYMENT_IMPROVEMENTS.md)
+
 ### 关闭系统
 
 ```bash
-# 方式 1: 优雅关闭
+# 方式 1: 优雅关闭（推荐）
 # 在运行服务的终端按 Ctrl+C
+# 如果使用 Celery，也需要停止 worker 进程
 
-# 方式 2: 停止 Neo4j 容器
+# 方式 2: 停止所有容器
 docker compose down
 
-# 方式 3: 停止 Docker Desktop（释放所有资源）
+# 方式 3: 完全清理（删除数据）
+docker compose down -v  # 警告：会删除 Neo4j 数据！
+
+# 方式 4: 停止 Docker Desktop（释放所有资源）
 # macOS: 菜单栏图标 -> Quit Docker Desktop
 # Linux: sudo systemctl stop docker
 ```

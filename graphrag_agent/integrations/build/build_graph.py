@@ -29,6 +29,7 @@ from graphrag_agent.config.neo4jdb import get_db_manager
 from graphrag_agent.graph import GraphStructureBuilder
 from graphrag_agent.graph import GraphWriter
 from graphrag_agent.graph.extraction.extractor_factory import create_entity_extractor
+from graphrag_agent.graph.indexing.embedding_manager import EmbeddingManager
 
 import shutup
 shutup.please()
@@ -62,11 +63,19 @@ class KnowledgeGraphBuilder:
             "文件处理": 0,  # 改为"文件处理"，包含读取和分块
             "图结构构建": 0,
             "实体抽取": 0,
-            "写入数据库": 0
+            "写入数据库": 0,
+            "向量化": 0
         }
         
         # 初始化组件
         self._initialize_components()
+
+        # [新增] 初始化 EmbeddingManager
+        # 注意：这里不需要显式传入 embedding model，Manager 内部会调用 get_embeddings_model
+        self.embedding_manager = EmbeddingManager(
+            batch_size=10,  # 向量化通常比纯文本处理慢，建议批次小一点
+            max_workers=4
+        )
 
     def _create_progress(self):
         """创建进度显示器"""
@@ -281,11 +290,42 @@ class KnowledgeGraphBuilder:
                 
                 # 将处理结果合并回文档数据
                 file_content_map = {}
+                old_format_count = 0  # 统计旧格式数量
+
                 for processed_file in processed_file_contents:
-                    if len(processed_file) >= 4:  # 确保有足够的元素
-                        filename = processed_file[0]
+                    # 兼容不同的返回格式
+                    filename = processed_file[0]
+                    entity_data = []
+
+                    if len(processed_file) == 3:
+                        # 批处理 (process_chunks_batch) 返回: (filename, orig_chunks, proc_chunks)
+                        entity_data = processed_file[2]
+                    elif len(processed_file) >= 4:
+                        # 普通处理 (process_chunks) 返回: [filename, content, chunks, entity_data]
                         entity_data = processed_file[3]
-                        file_content_map[filename] = entity_data
+                    else:
+                        self.console.print(f"[yellow]警告: 文件 {filename} 返回格式异常，长度: {len(processed_file)}[/yellow]")
+                        continue
+
+                    # 检测并警告旧格式
+                    if entity_data and len(entity_data) > 0:
+                        first_item = entity_data[0]
+                        if isinstance(first_item, str) or isinstance(first_item, tuple):
+                            old_format_count += 1
+
+                    file_content_map[filename] = entity_data
+
+                # 如果检测到旧格式，给出警告
+                if old_format_count > 0:
+                    self.console.print(
+                        f"[yellow]⚠️  检测到 {old_format_count} 个文件使用旧的实体抽取格式[/yellow]"
+                    )
+                    self.console.print(
+                        "[yellow]   建议运行: python scripts/migrate_extraction_cache.py[/yellow]"
+                    )
+                    self.console.print(
+                        "[yellow]   v2.0 将移除对旧格式的支持[/yellow]"
+                    )
                 
                 # 使用映射将结果放回到原始文档中
                 for doc in self.processed_documents:
@@ -328,53 +368,27 @@ class KnowledgeGraphBuilder:
                             self.console.print(f"[yellow]警告: 文件 {doc['filename']} 的实体数据缺失或格式不正确[/yellow]")
                             continue
 
-                        # ✅ 兼容性处理：规范化 entity_data 中的每个结果为 dict 格式
+                        # 强制要求标准格式：entity_data 必须是字典列表
                         normalized_entity_data = []
                         for res in entity_data:
                             if isinstance(res, dict):
-                                # ✅ 新格式：dict，直接使用
+                                # 确保包含必要的键，如果没有则补空列表
+                                res.setdefault("entities", [])
+                                res.setdefault("relationships", [])
+                                res.setdefault("relations", res.get("relationships", []))  # 兼容旧字段名
+                                res.setdefault("bridges", [])
+                                res.setdefault("domains", [])
                                 normalized_entity_data.append(res)
-                            elif isinstance(res, (tuple, list)):
-                                # ⚠️ 老格式：tuple/list，转换为 dict
-                                if len(res) >= 2:
-                                    normalized_entity_data.append({
-                                        "entities": res[0] if len(res) > 0 else [],
-                                        "relations": res[1] if len(res) > 1 else [],
-                                        "relationships": res[1] if len(res) > 1 else [],
-                                        "bridges": res[2] if len(res) > 2 else [],
-                                        "domains": res[3] if len(res) > 3 else [],
-                                        "raw": str(res)
-                                    })
-                                else:
-                                    # 格式不正确，使用空结构
-                                    normalized_entity_data.append({
-                                        "entities": [],
-                                        "relations": [],
-                                        "relationships": [],
-                                        "bridges": [],
-                                        "domains": [],
-                                        "raw": str(res)
-                                    })
-                            elif isinstance(res, str):
-                                # ⚠️ 老格式：string（可能是原始 LLM 输出），转换为 dict
-                                normalized_entity_data.append({
-                                    "entities": [],
-                                    "relations": [],
-                                    "relationships": [],
-                                    "bridges": [],
-                                    "domains": [],
-                                    "raw": res
-                                })
                             else:
-                                # 未知格式，使用空结构
-                                normalized_entity_data.append({
-                                    "entities": [],
-                                    "relations": [],
-                                    "relationships": [],
-                                    "bridges": [],
-                                    "domains": [],
-                                    "raw": str(res)
-                                })
+                                # 遇到非 dict 格式直接报错，强制开发者修复上游 Extractor
+                                self.console.print(
+                                    f"[red]❌ 错误: 发现非法的实体数据格式 {type(res).__name__}，必须为 dict。"
+                                    f"请检查 Extractor 返回格式。忽略此条目。[/red]"
+                                )
+                                # 记录详细信息用于调试
+                                import logging
+                                logging.error(f"Invalid entity data format: type={type(res)}, value={res}")
+                                continue
 
                         # 使用规范化后的数据
                         entity_data = normalized_entity_data
@@ -398,7 +412,30 @@ class KnowledgeGraphBuilder:
                 progress.update(task, completed=1)
             
             self.performance_stats["写入数据库"] = time.time() - write_start
-            
+
+            # 6. [新增] 生成 Embedding 向量
+            embed_start = time.time()
+            self._display_stage_header("生成向量索引 (Embedding)")
+
+            with self._create_progress() as progress:
+                # 给一个不确定的进度条，因为具体数量由 Manager 内部计算
+                task = progress.add_task("[cyan]正在计算实体和文本块向量...", total=None)
+
+                # 调用 EmbeddingManager 的核心处理流程
+                # 它会自动查找数据库中 embedding 为 null 的节点进行计算
+                embed_stats = self.embedding_manager.process(
+                    entity_limit=10000,
+                    chunk_limit=10000
+                )
+
+                progress.update(task, completed=100, total=100)
+
+            # 记录耗时
+            self.performance_stats["向量化"] = time.time() - embed_start
+
+            # 打印向量化结果
+            self.console.print(f"[blue]向量化统计: {embed_stats}[/blue]")
+
             self.console.print("[green]基础知识图谱构建完成[/green]")
             
             # 显示性能统计

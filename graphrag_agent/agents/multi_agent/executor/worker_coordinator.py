@@ -3,9 +3,10 @@
 
 根据 PlanExecutionSignal 调度不同类型的 Worker 执行任务，支持串行与并行模式。
 """
+
+import logging
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from typing import Dict, List, Optional, Tuple
-import logging
 
 from graphrag_agent.agents.multi_agent.core.execution_record import (
     ExecutionMetadata,
@@ -20,9 +21,9 @@ from graphrag_agent.agents.multi_agent.executor.base_executor import (
     BaseExecutor,
     TaskExecutionResult,
 )
+from graphrag_agent.agents.multi_agent.executor.reflector import ReflectionExecutor
 from graphrag_agent.agents.multi_agent.executor.research_executor import ResearchExecutor
 from graphrag_agent.agents.multi_agent.executor.retrieval_executor import RetrievalExecutor
-from graphrag_agent.agents.multi_agent.executor.reflector import ReflectionExecutor
 from graphrag_agent.config.settings import (
     MULTI_AGENT_REFLECTION_ALLOW_RETRY,
     MULTI_AGENT_REFLECTION_MAX_RETRIES,
@@ -56,9 +57,7 @@ class WorkerCoordinator:
             ]
         self.executors = executors
         configured_mode = (
-            execution_mode.strip().lower()
-            if isinstance(execution_mode, str)
-            else MULTI_AGENT_WORKER_EXECUTION_MODE
+            execution_mode.strip().lower() if isinstance(execution_mode, str) else MULTI_AGENT_WORKER_EXECUTION_MODE
         )
         if configured_mode not in {"sequential", "parallel"}:
             raise ValueError(
@@ -301,10 +300,7 @@ class WorkerCoordinator:
             exec_result = executor.execute_task(task, state, signal)
             results.append(exec_result.record)
 
-            if (
-                task.task_type == "reflection"
-                and MULTI_AGENT_REFLECTION_ALLOW_RETRY
-            ):
+            if task.task_type == "reflection" and MULTI_AGENT_REFLECTION_ALLOW_RETRY:
                 retry_result = self._handle_reflection_retry(
                     task=task,
                     initial_result=exec_result,
@@ -500,8 +496,7 @@ class WorkerCoordinator:
         while (
             reflection is not None
             and reflection.needs_retry
-            and retry_counts.get(target_task_id, 0)
-            < MULTI_AGENT_REFLECTION_MAX_RETRIES
+            and retry_counts.get(target_task_id, 0) < MULTI_AGENT_REFLECTION_MAX_RETRIES
         ):
             attempt_index = retry_counts.get(target_task_id, 0) + 1
             retry_counts[target_task_id] = attempt_index
@@ -550,8 +545,7 @@ class WorkerCoordinator:
         if (
             reflection is not None
             and reflection.needs_retry
-            and retry_counts.get(target_task_id, 0)
-            >= MULTI_AGENT_REFLECTION_MAX_RETRIES
+            and retry_counts.get(target_task_id, 0) >= MULTI_AGENT_REFLECTION_MAX_RETRIES
         ):
             _LOGGER.info(
                 "反思重试已达上限，仍未通过验证: target_task_id=%s",

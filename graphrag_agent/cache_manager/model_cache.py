@@ -1,16 +1,18 @@
 """
 模型缓存管理模块，用于预加载和管理模型缓存
 """
+
 import os
+
 ENABLE_MODEL_CACHE_PRELOAD = os.getenv("ENABLE_MODEL_CACHE_PRELOAD", "0") == "1"
 
 from typing import List, Optional
 
 from graphrag_agent.config.settings import (
-    MODEL_CACHE_DIR,
-    SENTENCE_TRANSFORMER_MODELS,
     CACHE_EMBEDDING_PROVIDER,
     CACHE_SENTENCE_TRANSFORMER_MODEL,
+    MODEL_CACHE_DIR,
+    SENTENCE_TRANSFORMER_MODELS,
 )
 
 
@@ -24,14 +26,14 @@ def preload_sentence_transformer_models(models: Optional[List[str]] = None) -> N
     """预加载SentenceTransformer模型到缓存目录"""
     try:
         from sentence_transformers import SentenceTransformer
-        
+
         # 获取要预加载的模型列表
         if models is None:
             models = list(SENTENCE_TRANSFORMER_MODELS)
-        
+
         if not models:
             return
-            
+
         # 获取缓存目录
         cache_dir = ensure_model_cache_dir()
 
@@ -51,11 +53,11 @@ def preload_sentence_transformer_models(models: Optional[List[str]] = None) -> N
 def preload_cache_embedding_model() -> None:
     """预加载缓存使用的嵌入模型"""
     provider_type = CACHE_EMBEDDING_PROVIDER
-    
-    if provider_type == 'openai':
+
+    if provider_type == "openai":
         # OpenAI模型不需要预加载
         return
-    
+
     # 预加载SentenceTransformer模型
     model_name = CACHE_SENTENCE_TRANSFORMER_MODEL
     preload_sentence_transformer_models([model_name])
@@ -69,7 +71,6 @@ def initialize_model_cache() -> None:
 
     ensure_model_cache_dir()
     preload_cache_embedding_model()
-
 
 
 if __name__ == "__main__":

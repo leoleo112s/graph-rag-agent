@@ -4,17 +4,18 @@
 旧版协调器通过 ``process_query`` 返回答案和调试信息。本文件提供等价
 接口，但实际执行委托给新的 Plan-Execute-Report 流程。
 """
+
 from typing import Any, Dict, Iterable, Optional, Sequence
 
 from langchain_core.messages import HumanMessage
 
-from graphrag_agent.cache_manager.manager import CacheManager
 from graphrag_agent.agents.multi_agent.core.state import PlanExecuteState
 from graphrag_agent.agents.multi_agent.integration.multi_agent_factory import (
     MultiAgentFactory,
     OrchestratorBundle,
 )
 from graphrag_agent.agents.multi_agent.orchestrator import OrchestratorResult
+from graphrag_agent.cache_manager.manager import CacheManager
 
 
 class MultiAgentFacade:
@@ -27,9 +28,7 @@ class MultiAgentFacade:
         cache_manager: Optional[CacheManager] = None,
     ) -> None:
         self.cache_manager = cache_manager
-        self.bundle = bundle or MultiAgentFactory.create_default_bundle(
-            cache_manager=cache_manager
-        )
+        self.bundle = bundle or MultiAgentFactory.create_default_bundle(cache_manager=cache_manager)
 
     def process_query(
         self,
@@ -90,9 +89,7 @@ class MultiAgentFacade:
                 "sections": [section.model_dump(mode="json") for section in report.sections],
                 "references": report.references,
                 "consistency_check": (
-                    report.consistency_check.model_dump(mode="json")
-                    if report.consistency_check
-                    else None
+                    report.consistency_check.model_dump(mode="json") if report.consistency_check else None
                 ),
             }
         if state.report_context is not None:

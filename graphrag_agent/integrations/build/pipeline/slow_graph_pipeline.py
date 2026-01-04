@@ -16,6 +16,8 @@ from rich.console import Console
 from graphrag_agent.graph.extraction.extractor_factory import create_entity_extractor
 from graphrag_agent.graph.indexing.embedding_manager import EmbeddingManager
 from graphrag_agent.integrations.build.pipeline.task_queue import Task, TaskStatus
+from graphrag_agent.models.get_models import get_llm_model
+from graphrag_agent.config.prompts import system_template_build_graph, human_template_build_graph
 from graphrag_agent.config.settings import (
     BATCH_SIZE,
     MAX_WORKERS,
@@ -203,13 +205,15 @@ class SlowGraphPipeline:
         file_name = os.path.basename(file_path)
 
         query = """
-        MATCH (c:Chunk)
-        WHERE c.file_name = $file_name
-        RETURN c.chunk_id AS chunk_id,
+        MATCH (c:`__Chunk__`)
+        WHERE c.file_name = $file_name OR c.fileName = $file_name
+        WITH c,
+             coalesce(c.chunk_index, c.position) AS idx
+        RETURN c.id AS chunk_id,
                c.text AS text,
-               c.file_name AS file_name,
-               c.chunk_index AS chunk_index
-        ORDER BY c.chunk_index
+               coalesce(c.file_name, c.fileName) AS file_name,
+               idx AS chunk_index
+        ORDER BY idx
         """
 
         result = graph.query(query, params={"file_name": file_name})
@@ -272,10 +276,27 @@ class SlowGraphPipeline:
         # 注意：process_chunks_batch 的接口
 
         if hasattr(self.entity_extractor, 'process_chunks_batch'):
-            entities, relationships = self.entity_extractor.process_chunks_batch(
-                chunks=chunks,
-                batch_size=BATCH_SIZE
-            )
+            if not chunks:
+                return [], []
+
+            file_contents = [
+                (file_path, "", [chunk.get("text", "") for chunk in chunks])
+            ]
+
+            processed = self.entity_extractor.process_chunks_batch(file_contents)
+
+            entities = []
+            relationships = []
+
+            for _, _, proc_chunks in processed:
+                for chunk_result in proc_chunks:
+                    entities.extend(chunk_result.get("entities", []))
+                    # 兼容字段名: relationships 或 relations
+                    relationships.extend(
+                        chunk_result.get("relationships")
+                        or chunk_result.get("relations")
+                        or []
+                    )
         else:
             # 兜底：逐个处理
             entities = []
