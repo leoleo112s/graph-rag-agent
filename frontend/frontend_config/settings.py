@@ -3,15 +3,14 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv()
-
 # ===== 路径设置 =====
 # 直接定义，避免导入后端模块触发 Neo4j 连接
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent  # frontend 目录
 PROJECT_ROOT = FRONTEND_DIR.parent  # 项目根目录
 FILES_DIR = PROJECT_ROOT / "files"  # 文件存储目录
-
+ENV_PATH = PROJECT_ROOT / ".env"
+load_dotenv(dotenv_path=ENV_PATH)
 # ===== 示例问题 =====
 # 直接定义示例问题，避免导入后端模块
 
@@ -45,7 +44,7 @@ def _get_env_int(key: str, default: int) -> int:
 
 # ===== 前端接口与会话配置 =====
 
-API_URL = os.getenv("FRONTEND_API_URL", "http://localhost:8000")  # 后端接口地址
+API_URL = os.getenv("FRONTEND_API_URL", "http://localhost:8000/api/V1")  # 后端接口地址
 
 DEFAULT_AGENT_TYPE = os.getenv("FRONTEND_DEFAULT_AGENT", "naive_rag_agent")  # 默认Agent
 DEFAULT_DEBUG_MODE = _get_env_bool("FRONTEND_DEFAULT_DEBUG", False)  # 默认是否开启调试

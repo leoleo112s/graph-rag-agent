@@ -34,7 +34,13 @@ SERVER_RELOAD = _get_env_bool("SERVER_RELOAD", False)  # 热重载开关
 SERVER_LOG_LEVEL = os.getenv("SERVER_LOG_LEVEL", "info")  # 日志等级
 
 # Worker 数量优先使用 SERVER_WORKERS，否则回落到核心配置
-SERVER_WORKERS = _get_env_int("SERVER_WORKERS", core_workers) or core_workers
+_workers_env = os.getenv("SERVER_WORKERS")
+
+if _workers_env is not None and _workers_env != "":
+    SERVER_WORKERS = int(_workers_env)
+else:
+    SERVER_WORKERS = core_workers
+
 
 # 统一封装 uvicorn.run 可用参数
 UVICORN_CONFIG = {

@@ -1,0 +1,92 @@
+2026-01-04 09:09:19 [graphrag-server] [INFO] graphrag_agent.utils.logging_config:95 - 日志系统初始化完成: level=INFO, format=text, file=logs/graphrag.log
+2026-01-04 09:09:22 [graphrag-server] [INFO] graphrag_agent.utils.logging_config:95 - 日志系统初始化完成: level=INFO, format=text, file=logs/graphrag.log
+2026-01-04 09:09:22 [graphrag-server] [INFO] graphrag_agent.utils.logging_config:95 - 日志系统初始化完成: level=INFO, format=text, file=logs/graphrag.log
+2026-01-04 09:09:22 [graphrag-server] [INFO] graphrag_agent.utils.logging_config:95 - 日志系统初始化完成: level=INFO, format=text, file=logs/graphrag.log
+2026-01-04 09:09:22 [graphrag-server] [INFO] graphrag_agent.utils.logging_config:95 - 日志系统初始化完成: level=INFO, format=text, file=logs/graphrag.log
+2026-01-04 09:09:22 [graphrag-server] [INFO] main:166 - 知识图谱问答系统启动
+2026-01-04 09:09:22 [graphrag-server] [INFO] main:166 - 知识图谱问答系统启动
+2026-01-04 09:18:06 [graphrag-server] [INFO] main:166 - 已关闭所有 Agent 资源
+2026-01-04 09:18:06 [graphrag-server] [INFO] main:166 - 已关闭所有 Agent 资源
+2026-01-04 09:18:06 [graphrag-server] [INFO] main:166 - 已关闭 Neo4j 连接
+2026-01-04 09:18:06 [graphrag-server] [INFO] main:166 - 已关闭 Neo4j 连接
+2026-01-04 09:18:06 [graphrag-server] [INFO] graphrag_agent.graph.core.graph_connection:214 - Graph connection closed successfully
+2026-01-04 09:18:06 [graphrag-server] [INFO] graphrag_agent.graph.core.graph_connection:223 - Driver connection closed successfully
+2026-01-04 09:18:06 [graphrag-server] [INFO] graphrag_agent.graph.core.graph_connection:214 - Graph connection closed successfully
+2026-01-04 09:18:06 [graphrag-server] [INFO] graphrag_agent.graph.core.graph_connection:223 - Driver connection closed successfully
+2026-01-04 09:29:40 [graphrag-server] [INFO] graphrag_agent.utils.logging_config:95 - 日志系统初始化完成: level=INFO, format=text, file=logs/graphrag.log
+2026-01-04 09:29:43 [graphrag-server] [INFO] graphrag_agent.utils.logging_config:95 - 日志系统初始化完成: level=INFO, format=text, file=logs/graphrag.log
+2026-01-04 09:29:43 [graphrag-server] [INFO] graphrag_agent.utils.logging_config:95 - 日志系统初始化完成: level=INFO, format=text, file=logs/graphrag.log
+2026-01-04 09:29:43 [graphrag-server] [INFO] main:166 - 知识图谱问答系统启动
+2026-01-04 09:38:54 [graphrag-server] [INFO] main:166 - 已关闭所有 Agent 资源
+2026-01-04 09:38:54 [graphrag-server] [INFO] main:166 - 已关闭 Neo4j 连接
+2026-01-04 09:38:58 [graphrag-server] [INFO] graphrag_agent.utils.logging_config:95 - 日志系统初始化完成: level=INFO, format=text, file=logs/graphrag.log
+2026-01-04 09:38:58 [graphrag-server] [INFO] graphrag_agent.utils.logging_config:95 - 日志系统初始化完成: level=INFO, format=text, file=logs/graphrag.log
+2026-01-04 09:38:58 [graphrag-server] [INFO] main:166 - 知识图谱问答系统启动
+2026-01-04 09:40:21 [graphrag-server] [INFO] main:166 - 已关闭所有 Agent 资源
+2026-01-04 09:40:21 [graphrag-server] [INFO] main:166 - 已关闭 Neo4j 连接
+2026-01-04 09:40:21 [graphrag-server] [INFO] graphrag_agent.graph.core.graph_connection:214 - Graph connection closed successfully
+2026-01-04 09:40:21 [graphrag-server] [INFO] graphrag_agent.graph.core.graph_connection:223 - Driver connection closed successfully
+2026-01-04 09:40:22 [graphrag-server] [INFO] graphrag_agent.graph.core.graph_connection:214 - Graph connection closed successfully
+2026-01-04 09:40:22 [graphrag-server] [INFO] graphrag_agent.graph.core.graph_connection:223 - Driver connection closed successfully
+2026-01-04 09:40:35 [graphrag-server] [INFO] graphrag_agent.utils.logging_config:95 - 日志系统初始化完成: level=INFO, format=text, file=logs/graphrag.log
+2026-01-04 09:40:35 [graphrag-server] [INFO] graphrag_agent.utils.logging_config:95 - 日志系统初始化完成: level=INFO, format=text, file=logs/graphrag.log
+2026-01-04 09:40:35 [graphrag-server] [INFO] main:166 - 知识图谱问答系统启动
+2026-01-04 09:57:52 [graphrag-server] [INFO] main:166 - 已关闭所有 Agent 资源
+2026-01-04 09:57:52 [graphrag-server] [INFO] main:166 - 已关闭 Neo4j 连接
+2026-01-04 09:57:52 [graphrag-server] [INFO] graphrag_agent.graph.core.graph_connection:214 - Graph connection closed successfully
+2026-01-04 09:57:52 [graphrag-server] [INFO] graphrag_agent.graph.core.graph_connection:223 - Driver connection closed successfully
+2026-01-04 09:57:57 [graphrag-server] [INFO] graphrag_agent.utils.logging_config:95 - 日志系统初始化完成: level=INFO, format=text, file=logs/graphrag.log
+2026-01-04 09:57:57 [graphrag-server] [INFO] graphrag_agent.utils.logging_config:95 - 日志系统初始化完成: level=INFO, format=text, file=logs/graphrag.log
+2026-01-04 09:57:57 [graphrag-server] [INFO] main:166 - 知识图谱问答系统启动
+2026-01-04 10:01:54 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 10:01:54 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 10:01:54 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 10:01:54 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 10:02:10 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 10:02:10 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 10:02:10 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 10:02:10 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 10:02:10 [graphrag-server] [INFO] routers.admin:390 - 收到图谱统计请求
+2026-01-04 10:02:10 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 10:02:10 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 10:02:10 [graphrag-server] [INFO] routers.admin:372 - 查询构建统计信息
+2026-01-04 10:02:10 [graphrag-server] [INFO] routers.admin:344 - 查询构建历史: limit=50, offset=0
+2026-01-04 11:07:40 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 11:07:40 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 11:07:40 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 11:07:40 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 11:07:41 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 11:07:41 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 11:07:41 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 11:07:41 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 11:07:41 [graphrag-server] [INFO] routers.admin:390 - 收到图谱统计请求
+2026-01-04 11:07:41 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 11:07:41 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 11:07:41 [graphrag-server] [INFO] routers.admin:372 - 查询构建统计信息
+2026-01-04 11:07:41 [graphrag-server] [INFO] routers.admin:344 - 查询构建历史: limit=50, offset=0
+2026-01-04 11:30:20 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 11:30:20 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 11:30:20 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 11:30:20 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 11:30:23 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 11:30:23 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 11:30:23 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 11:30:23 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 11:30:23 [graphrag-server] [INFO] routers.admin:390 - 收到图谱统计请求
+2026-01-04 11:30:23 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 11:30:23 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 11:30:23 [graphrag-server] [INFO] routers.admin:372 - 查询构建统计信息
+2026-01-04 11:30:23 [graphrag-server] [INFO] routers.admin:344 - 查询构建历史: limit=50, offset=0
+2026-01-04 11:33:38 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 11:33:38 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 11:33:38 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 11:33:38 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 11:33:39 [graphrag-server] [INFO] routers.admin:611 - 收到获取图谱配置请求
+2026-01-04 11:33:39 [graphrag-server] [INFO] routers.admin:622 - 返回配置: 东理工大学学生管理 (缓存状态: {'has_cache': True, 'project_name': '东理工大学学生管理', 'last_reload_time': '2026-01-04T10:01:54.875732', 'domain_count': 3, 'bridge_count': 2})
+2026-01-04 11:33:39 [graphrag-server] [INFO] routers.admin:681 - 收到列出模板请求
+2026-01-04 11:33:39 [graphrag-server] [INFO] routers.admin:687 - 返回 3 个模板
+2026-01-04 11:33:39 [graphrag-server] [INFO] routers.admin:390 - 收到图谱统计请求
+2026-01-04 11:33:39 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 11:33:39 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-04 11:33:39 [graphrag-server] [INFO] routers.admin:372 - 查询构建统计信息
+2026-01-04 11:33:39 [graphrag-server] [INFO] routers.admin:344 - 查询构建历史: limit=50, offset=0

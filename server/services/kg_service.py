@@ -9,6 +9,12 @@ from utils.keywords import extract_smart_keywords
 db_manager = get_db_manager()
 driver = db_manager.driver
 
+def get_neo4j_driver():
+    """
+    给路由/服务层提供统一的 Neo4j Driver 获取方式
+    """
+    # 这里直接复用已初始化的 driver
+    return driver
 
 def extract_kg_from_message(message: str, query: str = None, reference: Dict = None) -> Dict:
     """

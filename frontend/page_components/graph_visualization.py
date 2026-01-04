@@ -11,7 +11,7 @@ from pathlib import Path
 import tempfile
 
 # API 基础 URL
-API_URL = "http://localhost:8000"
+from frontend_config.settings import API_URL
 
 
 def render_graph_visualization():

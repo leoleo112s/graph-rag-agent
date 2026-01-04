@@ -12,7 +12,7 @@ import requests
 import streamlit as st
 
 # API 基础 URL
-API_URL = "http://localhost:8000"
+from frontend_config.settings import API_URL
 
 
 def render_template_marketplace():

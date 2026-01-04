@@ -449,7 +449,7 @@ docker compose up -d
 python server/main.py
 
 # 启动前端（新开终端）
-streamlit run frontend/app.py
+streamlit run frontend/app.py --server.headless true
 ```
 
 **3. 使用 AI 向导创建配置**

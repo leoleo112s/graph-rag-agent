@@ -10,7 +10,7 @@ import requests
 import streamlit as st
 
 # API 基础 URL
-API_URL = "http://localhost:8000"
+from frontend_config.settings import API_URL
 
 
 def render_detailed_feedback_button(message_id: str, user_query: str, thread_id: str, agent_type: str):

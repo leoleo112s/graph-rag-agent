@@ -1,7 +1,7 @@
 import logging
 import os
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional, Tuple
 
 from graphrag_agent.config.settings import CHUNK_SIZE, FILES_DIR, OVERLAP
 from graphrag_agent.pipelines.ingestion.adaptive_chunker import AdaptiveChunker, create_adaptive_chunker

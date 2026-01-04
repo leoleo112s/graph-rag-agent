@@ -12,7 +12,7 @@ import plotly.express as px
 from datetime import datetime, timedelta
 
 # API 基础 URL
-API_URL = "http://localhost:8000"
+from frontend_config.settings import API_URL
 
 
 def render_cache_dashboard():
