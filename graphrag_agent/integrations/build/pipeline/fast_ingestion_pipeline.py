@@ -45,7 +45,7 @@ class FastIngestionPipeline:
         self.files_dir = files_dir
 
         # 初始化组件
-        self.doc_processor = DocumentProcessor()
+        self.doc_processor = DocumentProcessor(directory_path=files_dir)
         self.embedding_manager = EmbeddingManager(
             batch_size=BATCH_SIZE,
             max_workers=MAX_WORKERS
