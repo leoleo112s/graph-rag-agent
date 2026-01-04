@@ -55,11 +55,24 @@ class FastIngestionPipeline:
         self.console.print(f"[bold cyan][L0] 快速处理文件: {file_path}[/bold cyan]")
 
         try:
+            target_filename = os.path.basename(file_path)
+
+            # 跳过隐藏文件或系统元数据文件（例如 .DS_Store）
+            if target_filename.startswith('.'):
+                self.console.print(
+                    f"[yellow]跳过不支持的文件: {target_filename}[/yellow]"
+                )
+                return {
+                    "status": "skipped",
+                    "file_path": file_path,
+                    "reason": "unsupported hidden or system file",
+                    "duration": time.time() - start_time,
+                }
+
             # 步骤 1: 文本提取与分块
             self.console.print("[cyan]  → 步骤 1/2: 文本提取与分块...[/cyan]")
             chunk_start = time.time()
-
-            chunks = self._extract_and_chunk(file_path)
+            chunks = self._extract_and_chunk(file_path, target_filename)
 
             chunk_duration = time.time() - chunk_start
             self.console.print(f"[green]  ✓ 生成 {len(chunks)} 个文本块 ({chunk_duration:.2f}s)[/green]")
@@ -103,7 +116,7 @@ class FastIngestionPipeline:
             results.append(result)
         return results
 
-    def _extract_and_chunk(self, file_path: str) -> List[Dict]:
+    def _extract_and_chunk(self, file_path: str, target_filename: str) -> List[Dict]:
         """
         提取文本并分块
         
@@ -111,31 +124,23 @@ class FastIngestionPipeline:
         我们需要适配这个接口。
         """
         try:
-            target_filename = os.path.basename(file_path)
-            
             # =========================================================
-            # ✅ 修复 2: 适配 process_directory 的返回结构
-            # DocumentProcessor 返回 (results_list, summary_object)
+            # ✅ 修复 2: 仅处理目标文件，避免重复处理目录下的其他文件
+            # DocumentProcessor.process_file 返回 (results_list, summary_object)
             # =========================================================
-            results, _ = self.doc_processor.process_directory(
-                recursive=True, 
-                return_summary=False
+            results, _ = self.doc_processor.process_file(
+                file_path=file_path,
+                return_summary=False,
             )
-            
-            # 在结果中找到当前文件
-            target_file_result = None
-            for res in results:
-                # 比较文件名（处理潜在的路径差异）
-                if os.path.basename(res.get("filepath", "")) == target_filename:
-                    target_file_result = res
-                    break
-            
-            if not target_file_result:
+
+            if not results:
                 raise FileNotFoundError(f"DocumentProcessor 未能处理文件: {file_path}")
+
+            target_file_result = results[0]
 
             raw_chunks = target_file_result.get("chunks", [])
             if raw_chunks is None:
-                 raw_chunks = []
+                raw_chunks = []
 
             # =========================================================
             # ✅ 修复 3: 数据格式转换
@@ -144,14 +149,22 @@ class FastIngestionPipeline:
             # =========================================================
             formatted_chunks = []
             for idx, text_content in enumerate(raw_chunks):
-                # 如果是自适应分块，raw_chunks 可能是字典；如果是默认分块，是字符串
+                # 如果是自适应分块，raw_chunks 可能是字典；如果是默认分块，是字符串或字符列表
                 chunk_text = text_content
                 if isinstance(text_content, dict):
                     chunk_text = text_content.get("content", "")
+                elif isinstance(text_content, list):
+                    # 默认分块器返回的是字符列表，需要拼接成字符串
+                    if all(isinstance(x, str) for x in text_content):
+                        chunk_text = "".join(text_content)
+                    else:
+                        chunk_text = " ".join(str(x) for x in text_content)
 
+                chunk_id = str(uuid.uuid4())
                 formatted_chunks.append({
                     "text": chunk_text,
-                    "chunk_id": str(uuid.uuid4()),
+                    "chunk_id": chunk_id,
+                    "id": chunk_id,
                     "file_name": target_filename,
                     "file_path": file_path,
                     "index": idx,
@@ -172,11 +185,13 @@ class FastIngestionPipeline:
         if not chunks:
             return 0
         try:
-            # 调用 EmbeddingManager
-            # 注意：EmbeddingManager 通常需要 list of dicts
-            updated_count = self.embedding_manager.update_chunk_embeddings(chunks) 
-            # 如果 EmbeddingManager.update_chunk_embeddings 不需要参数(从DB读)，请改回无参调用
-            # 但通常 L0 管道是直接透传内存中的 chunks 的
+            # 将分块写入 Neo4j，确保后续向量化有对应节点
+            self._upsert_chunks(chunks)
+
+            chunk_ids = [chunk.get("chunk_id") for chunk in chunks if chunk.get("chunk_id")]
+
+            # 调用 EmbeddingManager，仅使用 chunk_id 列表以匹配预期接口
+            updated_count = self.embedding_manager.update_chunk_embeddings(chunk_ids)
             
             return updated_count if updated_count is not None else len(chunks)
         except TypeError:
@@ -215,6 +230,33 @@ class FastIngestionPipeline:
         except Exception as e:
             self.console.print(f"[yellow]检查文件状态失败: {e}[/yellow]")
             return False
+
+    def _upsert_chunks(self, chunks: List[Dict]) -> None:
+        """确保分块节点存在并需要向量化"""
+        query = """
+        UNWIND $chunks AS chunk
+        MERGE (d:`__Document__` {fileName: chunk.file_name})
+          ON CREATE SET d.id = coalesce(chunk.file_name, chunk.file_path),
+                        d.uri = chunk.file_path,
+                        d.created_at = datetime()
+          ON MATCH SET d.last_updated = datetime()
+        MERGE (c:`__Chunk__` {id: chunk.chunk_id})
+          SET c.text = chunk.text,
+              c.file_name = chunk.file_name,
+              c.fileName = chunk.file_name,
+              c.file_path = chunk.file_path,
+              c.position = chunk.index,
+              c.chunk_index = chunk.index,
+              c.needs_reembedding = true,
+              c.last_updated = datetime()
+        MERGE (c)-[:PART_OF]->(d)
+        RETURN count(c) AS touched
+        """
+
+        try:
+            self.embedding_manager.graph.query(query, params={"chunks": chunks})
+        except Exception as exc:
+            self.console.print(f"[yellow]写入分块节点时出错: {exc}[/yellow]")
 
     def get_processing_stats(self) -> Dict:
         """
