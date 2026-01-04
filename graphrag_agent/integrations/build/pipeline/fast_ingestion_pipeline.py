@@ -186,13 +186,17 @@ class FastIngestionPipeline:
                 chunks = self.doc_processor.process_single_file(file_path)
             # 方案 B: 使用 process_directory 但只处理单个文件
             else:
-                # 创建临时目录或直接处理
+                # 获取文件名和扩展名
                 import os
-                file_dir = os.path.dirname(file_path)
                 file_name = os.path.basename(file_path)
+                file_ext = os.path.splitext(file_path)[1]  # 例如 '.pdf'
 
-                # 调用处理器（返回元组：(chunks_list, summary)）
-                result = self.doc_processor.process_directory(file_dir)
+                # 调用处理器（只传递扩展名，不传递路径）
+                # 注意：process_directory() 第一个参数是 file_extensions，不是路径
+                result = self.doc_processor.process_directory(
+                    file_extensions=[file_ext] if file_ext else None,
+                    recursive=False  # 不递归，提高性能
+                )
 
                 # 解包元组
                 if isinstance(result, tuple):

@@ -263,13 +263,16 @@ class SlowGraphPipeline:
         # 注意：process_chunks_batch 期望 file_contents 格式
 
         if hasattr(self.entity_extractor, 'process_chunks_batch'):
-            # 构建 file_contents 格式：List[Tuple] 或 List[Dict]
-            # process_chunks_batch 接受: [{"filename": ..., "chunks": [...]}, ...]
+            # 构建 file_contents 格式：List[Tuple]
+            # process_chunks_batch 接受: [[filename, content, chunks], ...]
             import os
-            file_contents = [{
-                "filename": os.path.basename(file_path),
-                "chunks": [chunk.get("text", "") for chunk in chunks]
-            }]
+            file_contents = [
+                [
+                    os.path.basename(file_path),  # filename
+                    "",  # content (可以为空)
+                    [chunk.get("text", "") for chunk in chunks]  # chunk 文本列表
+                ]
+            ]
 
             results = self.entity_extractor.process_chunks_batch(file_contents)
 
