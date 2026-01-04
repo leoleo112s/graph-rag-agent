@@ -193,14 +193,15 @@ class SlowGraphPipeline:
         # Cypher 查询：获取文件对应的所有 Chunk
         file_name = os.path.basename(file_path)
 
+        # 注意：Neo4j 中使用 __Chunk__ 标签和 fileName 属性（驼峰命名）
         query = """
-        MATCH (c:Chunk)
-        WHERE c.file_name = $file_name
-        RETURN c.chunk_id AS chunk_id,
+        MATCH (c:`__Chunk__`)
+        WHERE c.fileName = $file_name
+        RETURN c.id AS chunk_id,
                c.text AS text,
-               c.file_name AS file_name,
-               c.chunk_index AS chunk_index
-        ORDER BY c.chunk_index
+               c.fileName AS file_name,
+               c.position AS chunk_index
+        ORDER BY c.position
         """
 
         result = graph.query(query, params={"file_name": file_name})
