@@ -22,15 +22,13 @@ from graphrag_agent.config.settings import (
     BATCH_SIZE,
     MAX_WORKERS,
     entity_types,
-    relationship_types,
-    OPENAI_LLM_MODEL
+    relationship_types
 )
 from graphrag_agent.config.prompts.graph_prompts import (
     system_template_build_graph,
     human_template_build_graph
 )
-from langchain_openai import ChatOpenAI
-from graphrag_agent.config.settings import OPENAI_API_KEY, OPENAI_BASE_URL
+from graphrag_agent.models.get_models import get_llm_model
 
 
 class SlowGraphPipeline:
@@ -57,17 +55,10 @@ class SlowGraphPipeline:
         """
         self.console = Console()
 
-        # 创建 LLM 实例
-        llm = ChatOpenAI(
-            model=OPENAI_LLM_MODEL,
-            api_key=OPENAI_API_KEY,
-            base_url=OPENAI_BASE_URL,
-            temperature=0
-        )
-
         # 使用工厂函数初始化实体提取器（支持动态/传统配置）
+        # 注意：create_entity_extractor 内部会通过 get_llm_model() 创建 LLM 实例
         self.entity_extractor = create_entity_extractor(
-            llm=llm,
+            llm=get_llm_model(),
             system_template=system_template_build_graph,
             human_template=human_template_build_graph,
             entity_types=entity_types,
