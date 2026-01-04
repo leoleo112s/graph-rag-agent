@@ -191,8 +191,14 @@ class FastIngestionPipeline:
                 file_dir = os.path.dirname(file_path)
                 file_name = os.path.basename(file_path)
 
-                # 调用处理器（可能需要适配）
-                all_chunks = self.doc_processor.process_directory(file_dir)
+                # 调用处理器（返回元组：(chunks_list, summary)）
+                result = self.doc_processor.process_directory(file_dir)
+
+                # 解包元组
+                if isinstance(result, tuple):
+                    all_chunks, summary = result
+                else:
+                    all_chunks = result
 
                 # 过滤出当前文件的chunks
                 chunks = [

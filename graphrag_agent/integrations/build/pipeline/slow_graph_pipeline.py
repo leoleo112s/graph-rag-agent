@@ -260,13 +260,31 @@ class SlowGraphPipeline:
         self.console.print("[blue]    使用批量提取模式[/blue]")
 
         # 调用批量处理方法
-        # 注意：process_chunks_batch 的接口
+        # 注意：process_chunks_batch 期望 file_contents 格式
 
         if hasattr(self.entity_extractor, 'process_chunks_batch'):
-            entities, relationships = self.entity_extractor.process_chunks_batch(
-                chunks=chunks,
-                batch_size=BATCH_SIZE
-            )
+            # 构建 file_contents 格式：List[Tuple] 或 List[Dict]
+            # process_chunks_batch 接受: [{"filename": ..., "chunks": [...]}, ...]
+            import os
+            file_contents = [{
+                "filename": os.path.basename(file_path),
+                "chunks": [chunk.get("text", "") for chunk in chunks]
+            }]
+
+            results = self.entity_extractor.process_chunks_batch(file_contents)
+
+            # 解析返回值：[(fname, orig_chunks, proc_chunks), ...]
+            if results and len(results) > 0:
+                _, _, proc_chunks = results[0]
+                # proc_chunks 是 List[Dict]，每个 Dict 包含实体和关系
+                entities = []
+                relationships = []
+                for chunk_result in proc_chunks:
+                    if isinstance(chunk_result, dict):
+                        entities.extend(chunk_result.get('entities', []))
+                        relationships.extend(chunk_result.get('relationships', []))
+            else:
+                entities, relationships = [], []
         else:
             # 兜底：逐个处理
             entities = []
