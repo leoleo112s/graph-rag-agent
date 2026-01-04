@@ -191,13 +191,15 @@ class SlowGraphPipeline:
         file_name = os.path.basename(file_path)
 
         query = """
-        MATCH (c:Chunk)
-        WHERE c.file_name = $file_name
-        RETURN c.chunk_id AS chunk_id,
+        MATCH (c:`__Chunk__`)
+        WHERE c.file_name = $file_name OR c.fileName = $file_name
+        WITH c,
+             coalesce(c.chunk_index, c.position) AS idx
+        RETURN c.id AS chunk_id,
                c.text AS text,
-               c.file_name AS file_name,
-               c.chunk_index AS chunk_index
-        ORDER BY c.chunk_index
+               coalesce(c.file_name, c.fileName) AS file_name,
+               idx AS chunk_index
+        ORDER BY idx
         """
 
         result = graph.query(query, params={"file_name": file_name})

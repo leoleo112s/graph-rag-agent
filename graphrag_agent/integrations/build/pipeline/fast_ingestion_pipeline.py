@@ -166,9 +166,11 @@ class FastIngestionPipeline:
                     else:
                         chunk_text = " ".join(str(x) for x in text_content)
 
+                chunk_id = str(uuid.uuid4())
                 formatted_chunks.append({
                     "text": chunk_text,
-                    "chunk_id": str(uuid.uuid4()),
+                    "chunk_id": chunk_id,
+                    "id": chunk_id,
                     "file_name": target_filename,
                     "file_path": file_path,
                     "index": idx,
@@ -189,11 +191,13 @@ class FastIngestionPipeline:
         if not chunks:
             return 0
         try:
-            # 调用 EmbeddingManager
-            # 注意：EmbeddingManager 通常需要 list of dicts
-            updated_count = self.embedding_manager.update_chunk_embeddings(chunks) 
-            # 如果 EmbeddingManager.update_chunk_embeddings 不需要参数(从DB读)，请改回无参调用
-            # 但通常 L0 管道是直接透传内存中的 chunks 的
+            # 将分块写入 Neo4j，确保后续向量化有对应节点
+            self._upsert_chunks(chunks)
+
+            chunk_ids = [chunk.get("chunk_id") for chunk in chunks if chunk.get("chunk_id")]
+
+            # 调用 EmbeddingManager，仅使用 chunk_id 列表以匹配预期接口
+            updated_count = self.embedding_manager.update_chunk_embeddings(chunk_ids)
             
             return updated_count if updated_count is not None else len(chunks)
         except TypeError:
@@ -232,6 +236,33 @@ class FastIngestionPipeline:
         except Exception as e:
             self.console.print(f"[yellow]检查文件状态失败: {e}[/yellow]")
             return False
+
+    def _upsert_chunks(self, chunks: List[Dict]) -> None:
+        """确保分块节点存在并需要向量化"""
+        query = """
+        UNWIND $chunks AS chunk
+        MERGE (d:`__Document__` {fileName: chunk.file_name})
+          ON CREATE SET d.id = coalesce(chunk.file_name, chunk.file_path),
+                        d.uri = chunk.file_path,
+                        d.created_at = datetime()
+          ON MATCH SET d.last_updated = datetime()
+        MERGE (c:`__Chunk__` {id: chunk.chunk_id})
+          SET c.text = chunk.text,
+              c.file_name = chunk.file_name,
+              c.fileName = chunk.file_name,
+              c.file_path = chunk.file_path,
+              c.position = chunk.index,
+              c.chunk_index = chunk.index,
+              c.needs_reembedding = true,
+              c.last_updated = datetime()
+        MERGE (c)-[:PART_OF]->(d)
+        RETURN count(c) AS touched
+        """
+
+        try:
+            self.embedding_manager.graph.query(query, params={"chunks": chunks})
+        except Exception as exc:
+            self.console.print(f"[yellow]写入分块节点时出错: {exc}[/yellow]")
 
     def get_processing_stats(self) -> Dict:
         """
