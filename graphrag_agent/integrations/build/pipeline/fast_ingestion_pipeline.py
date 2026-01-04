@@ -125,24 +125,18 @@ class FastIngestionPipeline:
         """
         try:
             # =========================================================
-            # ✅ 修复 2: 适配 process_directory 的返回结构
-            # DocumentProcessor 返回 (results_list, summary_object)
+            # ✅ 修复 2: 仅处理目标文件，避免重复处理目录下的其他文件
+            # DocumentProcessor.process_file 返回 (results_list, summary_object)
             # =========================================================
-            results, _ = self.doc_processor.process_directory(
-                recursive=True, 
-                return_summary=False
+            results, _ = self.doc_processor.process_file(
+                file_path=file_path,
+                return_summary=False,
             )
-            
-            # 在结果中找到当前文件
-            target_file_result = None
-            for res in results:
-                # 比较文件名（处理潜在的路径差异）
-                if os.path.basename(res.get("filepath", "")) == target_filename:
-                    target_file_result = res
-                    break
-            
-            if not target_file_result:
+
+            if not results:
                 raise FileNotFoundError(f"DocumentProcessor 未能处理文件: {file_path}")
+
+            target_file_result = results[0]
 
             raw_chunks = target_file_result.get("chunks", [])
             if raw_chunks is None:
