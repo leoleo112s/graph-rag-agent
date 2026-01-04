@@ -16,6 +16,8 @@ from rich.console import Console
 from graphrag_agent.graph.extraction.entity_extractor import EntityRelationExtractor
 from graphrag_agent.graph.indexing.embedding_manager import EmbeddingManager
 from graphrag_agent.integrations.build.pipeline.task_queue import Task, TaskStatus
+from graphrag_agent.models.get_models import get_llm_model
+from graphrag_agent.config.prompts import system_template_build_graph, human_template_build_graph
 from graphrag_agent.config.settings import (
     BATCH_SIZE,
     MAX_WORKERS,
@@ -48,8 +50,14 @@ class SlowGraphPipeline:
         """
         self.console = Console()
 
+        # 初始化 LLM
+        self.llm = get_llm_model()
+
         # 初始化实体提取器
         self.entity_extractor = EntityRelationExtractor(
+            self.llm,
+            system_template_build_graph,
+            human_template_build_graph,
             entity_types=entity_types,
             relationship_types=relationship_types,
             # user_examples=user_examples  # TODO: 需要在 EntityRelationExtractor 中实现
@@ -252,10 +260,27 @@ class SlowGraphPipeline:
         # 注意：process_chunks_batch 的接口
 
         if hasattr(self.entity_extractor, 'process_chunks_batch'):
-            entities, relationships = self.entity_extractor.process_chunks_batch(
-                chunks=chunks,
-                batch_size=BATCH_SIZE
-            )
+            if not chunks:
+                return [], []
+
+            file_contents = [
+                (file_path, "", [chunk.get("text", "") for chunk in chunks])
+            ]
+
+            processed = self.entity_extractor.process_chunks_batch(file_contents)
+
+            entities = []
+            relationships = []
+
+            for _, _, proc_chunks in processed:
+                for chunk_result in proc_chunks:
+                    entities.extend(chunk_result.get("entities", []))
+                    # 兼容字段名: relationships 或 relations
+                    relationships.extend(
+                        chunk_result.get("relationships")
+                        or chunk_result.get("relations")
+                        or []
+                    )
         else:
             # 兜底：逐个处理
             entities = []
