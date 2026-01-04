@@ -249,6 +249,115 @@ class DocumentProcessor:
         else:
             return results, None
 
+    def process_file(
+        self, file_path: str, return_summary: bool = True
+    ) -> Tuple[List[Dict[str, Any]], Optional[ProcessingSummary]]:
+        """处理单个文件，避免遍历整个目录。
+
+        Args:
+            file_path: 要处理的文件的绝对或相对路径。
+            return_summary: 是否返回处理摘要。
+
+        Returns:
+            (results, summary): 处理结果列表和摘要统计（如果 return_summary=True）
+        """
+
+        root_dir = os.path.abspath(self.directory_path)
+
+        # 支持仅传入文件名或相对路径的情况，自动补全到根目录下
+        abs_path = os.path.abspath(file_path)
+        if not abs_path.startswith(root_dir):
+            abs_path = os.path.abspath(os.path.join(root_dir, file_path))
+
+        if not abs_path.startswith(root_dir):
+            raise FileNotFoundError(
+                f"文件不在允许的目录内: {file_path} (根目录: {self.directory_path})"
+            )
+
+        rel_path = os.path.relpath(abs_path, self.directory_path)
+        file_ext = os.path.splitext(abs_path)[1].lower()
+
+        supported_extensions = {
+            ".txt": self.file_reader._read_txt,
+            ".pdf": self.file_reader._read_pdf,
+            ".md": self.file_reader._read_markdown,
+            ".docx": self.file_reader._read_docx,
+            ".doc": self.file_reader._read_doc,
+            ".csv": self.file_reader._read_csv,
+            ".json": self.file_reader._read_json,
+            ".yaml": self.file_reader._read_yaml,
+            ".yml": self.file_reader._read_yaml,
+            ".png": self.file_reader._read_image,
+            ".jpg": self.file_reader._read_image,
+            ".jpeg": self.file_reader._read_image,
+            ".bmp": self.file_reader._read_image,
+            ".tiff": self.file_reader._read_image,
+            ".tif": self.file_reader._read_image,
+            ".mp3": self.file_reader._read_audio,
+            ".wav": self.file_reader._read_audio,
+            ".m4a": self.file_reader._read_audio,
+            ".mp4": self.file_reader._read_audio,
+            ".ogg": self.file_reader._read_audio,
+            ".flac": self.file_reader._read_audio,
+        }
+
+        if file_ext not in supported_extensions:
+            raise ValueError(f"不支持的文件类型: {file_ext}")
+
+        summary = ProcessingSummary(total_files=1) if return_summary else None
+
+        results: List[Dict[str, Any]] = []
+        try:
+            content = supported_extensions[file_ext](abs_path)
+            file_result: Dict[str, Any] = {
+                "filepath": rel_path,
+                "filename": os.path.basename(abs_path),
+                "extension": file_ext,
+                "content": content,
+                "content_length": len(content),
+                "chunks": None,
+            }
+
+            if self.use_adaptive:
+                chunks, chunk_stats = self.chunker.chunk_text(content, file_path=rel_path)
+                file_result["chunks"] = chunks
+                file_result["chunk_count"] = len(chunks)
+                file_result["chunk_stats"] = chunk_stats
+
+                if summary:
+                    summary.total_chunks += chunk_stats["chunk_count"]
+                    language = chunk_stats.get("language", "unknown")
+                    structure = chunk_stats.get("structure_type", "plain")
+                    summary.language_distribution[language] = summary.language_distribution.get(language, 0) + 1
+                    summary.structure_distribution[structure] = summary.structure_distribution.get(structure, 0) + 1
+            else:
+                chunks = self.chunker.chunk_text(content)
+                file_result["chunks"] = chunks
+                file_result["chunk_count"] = len(chunks)
+
+                if summary:
+                    summary.total_chunks += len(chunks)
+
+            if summary:
+                summary.success_count += 1
+                summary.total_content_length += len(content)
+
+                if file_result.get("chunks"):
+                    chunk_lengths = [len("".join(chunk)) for chunk in file_result["chunks"]]
+                    summary.avg_chunk_size = sum(chunk_lengths) / len(chunk_lengths)
+                    summary.min_chunk_size = min(chunk_lengths)
+                    summary.max_chunk_size = max(chunk_lengths)
+                    summary.total_chunks = len(chunk_lengths)
+
+            results.append(file_result)
+        except Exception as exc:
+            if summary:
+                summary.failed_count += 1
+                summary.add_warning(str(exc))
+            raise
+
+        return results, summary
+
     def get_file_stats(self, file_extensions: Optional[List[str]] = None, recursive: bool = True) -> Dict[str, Any]:
         """
         获取目录中文件的统计信息
