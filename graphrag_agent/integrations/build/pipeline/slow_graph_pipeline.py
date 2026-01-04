@@ -260,10 +260,27 @@ class SlowGraphPipeline:
         # 注意：process_chunks_batch 的接口
 
         if hasattr(self.entity_extractor, 'process_chunks_batch'):
-            entities, relationships = self.entity_extractor.process_chunks_batch(
-                chunks=chunks,
-                batch_size=BATCH_SIZE
-            )
+            if not chunks:
+                return [], []
+
+            file_contents = [
+                (file_path, "", [chunk.get("text", "") for chunk in chunks])
+            ]
+
+            processed = self.entity_extractor.process_chunks_batch(file_contents)
+
+            entities = []
+            relationships = []
+
+            for _, _, proc_chunks in processed:
+                for chunk_result in proc_chunks:
+                    entities.extend(chunk_result.get("entities", []))
+                    # 兼容字段名: relationships 或 relations
+                    relationships.extend(
+                        chunk_result.get("relationships")
+                        or chunk_result.get("relations")
+                        or []
+                    )
         else:
             # 兜底：逐个处理
             entities = []
