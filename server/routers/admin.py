@@ -852,14 +852,14 @@ async def analyze_documents_for_config(industry_hint: Optional[str] = None, num_
 
         # 读取文档
         doc_processor = DocumentProcessor(FILES_DIR, CHUNK_SIZE, OVERLAP)
-        processed_docs = doc_processor.process_directory()
+        results, summary = doc_processor.process_directory()  # 🔥 正确解包元组
 
-        if not processed_docs:
+        if not results:
             logger.warning("没有找到可分析的文档")
             raise HTTPException(status_code=400, detail="没有找到可分析的文档，请先上传文档")
 
-        # 准备文档数据
-        documents = [{"filename": doc["filename"], "content": doc["content"]} for doc in processed_docs]
+        # 准备文档数据（使用 results，而不是 processed_docs）
+        documents = [{"filename": doc["filename"], "content": doc["content"]} for doc in results]
 
         logger.info(f"开始分析 {len(documents)} 个文档")
 
