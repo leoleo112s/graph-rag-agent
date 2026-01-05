@@ -978,6 +978,8 @@ def main():
                         help="运行模式: l0(快速), l1(慢速), full(完整)")
     parser.add_argument("--file", type=str, help="处理单个文件")
     parser.add_argument("--status", action="store_true", help="显示状态")
+    parser.add_argument("--incremental", action="store_true",
+                        help="增量模式（不清理旧数据）。默认：--mode full 会清理所有旧数据")
 
     args = parser.parse_args()
 
@@ -994,11 +996,14 @@ def main():
             quick_upload_file(args.file)
     else:
         if args.mode == "l0":
-            manager.run_fast_ingestion()
+            asyncio.run(manager.run_fast_ingestion())
         elif args.mode == "l1":
-            manager.run_deep_indexing()
+            asyncio.run(manager.run_deep_indexing())
         else:
-            manager.run_full_pipeline()
+            # 全量构建模式：默认 clean=True（清理旧数据）
+            # 使用 --incremental 标志可以保留旧数据（增量更新）
+            clean = not args.incremental
+            asyncio.run(manager.run_full_pipeline(clean=clean))
 
 
 if __name__ == "__main__":
