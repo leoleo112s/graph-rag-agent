@@ -434,6 +434,75 @@ class IncrementalUpdateManagerV2:
             ) if self.broadcaster else None)
             return {"status": "error", "error": str(e)}
 
+    def build_entity_index(self) -> Dict:
+        """
+        构建实体索引（生成实体 embeddings 和向量索引）
+
+        Returns:
+            Dict: 实体索引构建结果
+        """
+        from graphrag_agent.graph.indexing.entity_indexer import EntityIndexer
+        from graphrag_agent.graph.indexing.helpers import ensure_vector_index
+
+        self.console.print("[bold cyan]构建实体索引...[/bold cyan]")
+
+        start_time = time.time()
+
+        try:
+            # 检查是否有实体数据
+            entity_count_query = "MATCH (e:`__Entity__`) RETURN count(e) AS count"
+            entity_count_result = self.graph.query(entity_count_query)
+            entity_count = entity_count_result[0]["count"] if entity_count_result else 0
+
+            if entity_count == 0:
+                self.console.print("[yellow]⚠️  没有实体数据，跳过实体索引构建[/yellow]")
+                return {
+                    "status": "skipped",
+                    "reason": "no_entities",
+                    "duration": time.time() - start_time
+                }
+
+            self.console.print(f"[cyan]发现 {entity_count} 个实体，开始生成 embeddings...[/cyan]")
+
+            # 创建实体索引管理器
+            entity_indexer = EntityIndexer()
+
+            # 生成实体 embeddings 并创建向量索引
+            vector_store = entity_indexer.create_entity_index()
+
+            # 确保向量索引存在
+            ensure_vector_index(
+                self.graph,
+                ENTITY_VECTOR_INDEX,
+                "__Entity__",
+                "embedding",
+                EMBEDDING_DIM,
+                VECTOR_SIMILARITY_FUNCTION,
+            )
+
+            duration = time.time() - start_time
+
+            self.console.print(
+                f"[green]✅ 实体索引构建完成，耗时: {duration:.2f}s[/green]"
+            )
+
+            return {
+                "status": "success",
+                "entity_count": entity_count,
+                "duration": duration
+            }
+
+        except Exception as e:
+            self.console.print(f"[red]❌ 实体索引构建失败: {e}[/red]")
+            import traceback
+            traceback.print_exc()
+
+            return {
+                "status": "error",
+                "error": str(e),
+                "duration": time.time() - start_time
+            }
+
     def detect_communities(self) -> Dict:
         """
         执行社区检测和摘要生成
@@ -896,12 +965,18 @@ class IncrementalUpdateManagerV2:
             l1_result = await self.run_deep_indexing(file_paths)
             results["l1"] = l1_result
 
-            # 步骤 3: 验证图谱一致性（仅在有变更时）
+            # 步骤 3: 构建实体索引（生成实体 embeddings 和向量索引）
+            # 这一步是必须的，否则实体索引会显示为 ❌
+            if l0_result.get("files_processed", 0) > 0 or l0_result.get("processed_count", 0) > 0:
+                entity_index_result = self.build_entity_index()
+                results["entity_index"] = entity_index_result
+
+            # 步骤 4: 验证图谱一致性（仅在有变更时）
             if l0_result.get("files_processed", 0) > 0 or l0_result.get("processed_count", 0) > 0:
                 consistency_result = self.verify_graph_consistency()
                 results["consistency"] = consistency_result
 
-            # 步骤 4: 社区检测（仅在有变更时）
+            # 步骤 5: 社区检测（仅在有变更时）
             if l0_result.get("files_processed", 0) > 0:
                 community_result = self.detect_communities()
                 results["community"] = community_result
