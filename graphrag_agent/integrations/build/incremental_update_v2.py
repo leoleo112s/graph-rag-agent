@@ -43,6 +43,7 @@ from graphrag_agent.integrations.build.pipeline import (
     GraphBuildTaskQueue,
     Task,
     TaskPriority,
+    TaskStatus,
     get_global_task_queue,
     entity_extraction_task_handler
 )
@@ -442,7 +443,7 @@ class IncrementalUpdateManagerV2:
             Dict: 实体索引构建结果
         """
         from graphrag_agent.graph.indexing.entity_indexer import EntityIndexManager
-        from graphrag_agent.graph.indexing.helpers import ensure_vector_index
+        from graphrag_agent.graph.core.utils import ensure_vector_index
 
         self.console.print("[bold cyan]构建实体索引...[/bold cyan]")
 
@@ -964,6 +965,26 @@ class IncrementalUpdateManagerV2:
             # 步骤 2: L1 任务提交
             l1_result = await self.run_deep_indexing(file_paths)
             results["l1"] = l1_result
+
+            # 🔥 步骤 2.5: 等待 L1 任务完成（全量构建模式下同步等待）
+            if l1_result.get("task_ids") and len(l1_result["task_ids"]) > 0:
+                self.console.print("\n[cyan]等待 L1 实体提取任务完成...[/cyan]")
+                task_ids = l1_result["task_ids"]
+
+                # 等待任务完成（无超时限制）
+                all_success = self.task_queue.wait_for_tasks(task_ids, timeout=None, poll_interval=2.0)
+
+                print()  # 换行（因为 wait_for_tasks 使用了 \r）
+
+                if all_success:
+                    self.console.print("[green]✓ 所有 L1 任务已成功完成[/green]")
+                else:
+                    self.console.print("[yellow]⚠️  部分 L1 任务失败，请查看任务日志[/yellow]")
+                    # 打印失败任务详情
+                    for task_id in task_ids:
+                        task = self.task_queue.get_task(task_id)
+                        if task and task.status == TaskStatus.FAILED:
+                            self.console.print(f"[red]  ❌ 任务失败: {task.file_path} - {task.error}[/red]")
 
             # 步骤 3: 构建实体索引（生成实体 embeddings 和向量索引）
             # 这一步是必须的，否则实体索引会显示为 ❌

@@ -131,6 +131,79 @@ class GraphConfig(BaseModel):
 
         return self
 
+    def route_domain(self, filename: str, content: str) -> str:
+        """
+        路由文档到领域（基于触发条件的简单匹配）
+
+        策略：
+        1. 遍历所有领域定义
+        2. 检查内容是否匹配触发条件中的关键词
+        3. 返回第一个匹配的领域名称
+        4. 如果没有匹配，返回第一个领域（默认）
+
+        Args:
+            filename: 文件名
+            content: 文件内容（前1000字符用于判断）
+
+        Returns:
+            domain_name: 领域名称（如 "规则库", "事实库"）
+        """
+        if not self.domain_definitions:
+            return "default"
+
+        # 截取前1000字符用于快速判断（避免处理超大文件）
+        sample_content = (content or "")[:1000]
+
+        # 简单匹配：检查trigger_condition中的关键词是否出现在内容中
+        for domain in self.domain_definitions:
+            trigger_keywords = self._extract_keywords(domain.trigger_condition)
+            if any(keyword in sample_content for keyword in trigger_keywords):
+                return domain.domain_name
+
+        # 如果没有匹配，返回第一个领域作为默认值
+        return self.domain_definitions[0].domain_name if self.domain_definitions else "default"
+
+    def _extract_keywords(self, trigger_condition: str) -> list:
+        """
+        从触发条件中提取关键词
+
+        Args:
+            trigger_condition: 触发条件描述
+
+        Returns:
+            关键词列表
+        """
+        # 移除常见的连接词和标点
+        stopwords = {"包含", "当", "文档", "时", "是", "的", "、", "，", "。", "和", "或"}
+        words = []
+
+        # 按标点符号分割
+        for delimiter in ["、", "，", "。", "；", " "]:
+            trigger_condition = trigger_condition.replace(delimiter, "|")
+
+        parts = trigger_condition.split("|")
+        for part in parts:
+            part = part.strip()
+            if part and part not in stopwords and len(part) > 1:
+                words.append(part)
+
+        return words
+
+    def get_domain(self, domain_name: str) -> Optional[DomainDefinition]:
+        """
+        获取领域定义
+
+        Args:
+            domain_name: 领域名称
+
+        Returns:
+            DomainDefinition or None
+        """
+        for domain in self.domain_definitions:
+            if domain.domain_name == domain_name:
+                return domain
+        return None
+
     class Config:
         json_schema_extra = {
             "example": {

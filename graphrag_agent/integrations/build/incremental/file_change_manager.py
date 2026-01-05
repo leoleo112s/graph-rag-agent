@@ -11,13 +11,27 @@ from graphrag_agent.config.settings import FILE_REGISTRY_PATH
 class FileChangeManager:
     """
     文件变更管理器，负责追踪文件的变更状态。
-    
+
     主要功能：
     1. 扫描文件目录，计算文件哈希值
     2. 与历史记录比较，识别变更的文件
     3. 更新文件注册表
     """
-    
+
+    # 需要忽略的文件和目录模式
+    IGNORED_PATTERNS = {
+        '.DS_Store',           # macOS 系统文件
+        'Thumbs.db',           # Windows 缩略图缓存
+        'desktop.ini',         # Windows 桌面配置
+        '.git',                # Git 版本控制目录
+        '__pycache__',         # Python 缓存
+        '.pytest_cache',       # Pytest 缓存
+        '.venv',               # 虚拟环境
+        'node_modules',        # Node.js 依赖
+        '.idea',               # JetBrains IDE 配置
+        '.vscode',             # VS Code 配置
+    }
+
     def __init__(self, files_dir: str, registry_path: str = None):
         """
         初始化文件变更管理器
@@ -55,13 +69,35 @@ class FileChangeManager:
         with open(self.registry_path, 'w', encoding='utf-8') as f:
             json.dump(self.registry, f, ensure_ascii=False, indent=2)
     
+    def _should_ignore_file(self, file_path: Path) -> bool:
+        """
+        检查文件是否应该被忽略
+
+        Args:
+            file_path: 文件路径
+
+        Returns:
+            bool: True 表示应该忽略
+        """
+        # 检查文件名或任何父目录是否在忽略列表中
+        path_parts = file_path.parts
+        for part in path_parts:
+            if part in self.IGNORED_PATTERNS:
+                return True
+
+        # 检查文件名是否以点开头（隐藏文件）
+        if file_path.name.startswith('.') and file_path.name not in ['.', '..']:
+            return True
+
+        return False
+
     def _compute_file_hash(self, file_path: Path) -> str:
         """
         计算文件的SHA256哈希值
-        
+
         Args:
             file_path: 文件路径
-            
+
         Returns:
             str: 文件哈希值
         """
@@ -74,27 +110,32 @@ class FileChangeManager:
         except Exception as e:
             print(f"计算文件哈希值失败: {file_path}, 错误: {e}")
             return ""
-    
+
     def _scan_current_files(self) -> Dict[str, Dict[str, Any]]:
         """
         扫描当前文件目录中的所有文件
-        
+
         Returns:
             Dict: 当前文件状态，键为文件路径，值为文件元数据
         """
         current_files = {}
-        
+
         # 遍历文件目录
         for root, _, files in os.walk(self.files_dir):
             for filename in files:
                 file_path = Path(root) / filename
+
+                # 🔧 忽略系统文件和隐藏文件
+                if self._should_ignore_file(file_path):
+                    continue
+
                 rel_path = str(file_path.relative_to(self.files_dir))
-                
+
                 # 计算文件哈希值
                 file_hash = self._compute_file_hash(file_path)
                 if not file_hash:
                     continue
-                
+
                 # 记录文件元数据
                 file_info = {
                     "hash": file_hash,
@@ -103,7 +144,7 @@ class FileChangeManager:
                     "last_scanned": time.time()
                 }
                 current_files[rel_path] = file_info
-        
+
         return current_files
     
     def detect_changes(self) -> Dict[str, List[str]]:

@@ -192,6 +192,86 @@ class GraphBuildTaskQueue:
                 if task.status == TaskStatus.RUNNING
             ]
 
+    def wait_for_tasks(self, task_ids: List[str], timeout: Optional[float] = None, poll_interval: float = 1.0) -> bool:
+        """
+        等待指定任务完成
+
+        Args:
+            task_ids: 要等待的任务ID列表
+            timeout: 超时时间（秒），None 表示无限等待
+            poll_interval: 轮询间隔（秒）
+
+        Returns:
+            bool: 所有任务是否都成功完成（True = 全部成功, False = 有失败或超时）
+        """
+        import time
+        start_time = time.time()
+
+        while True:
+            with self.task_lock:
+                all_done = True
+                all_success = True
+
+                for task_id in task_ids:
+                    task = self.task_registry.get(task_id)
+                    if not task:
+                        continue
+
+                    if task.status in [TaskStatus.PENDING, TaskStatus.RUNNING]:
+                        all_done = False
+                        break
+
+                    if task.status == TaskStatus.FAILED:
+                        all_success = False
+
+                if all_done:
+                    return all_success
+
+            # 检查超时
+            if timeout and (time.time() - start_time) > timeout:
+                print(f"[TaskQueue] 等待任务超时（{timeout}秒）")
+                return False
+
+            # 等待后再次检查
+            time.sleep(poll_interval)
+
+    def wait_for_all_tasks(self, timeout: Optional[float] = None, poll_interval: float = 1.0) -> bool:
+        """
+        等待所有任务完成
+
+        Args:
+            timeout: 超时时间（秒），None 表示无限等待
+            poll_interval: 轮询间隔（秒）
+
+        Returns:
+            bool: 所有任务是否都成功完成
+        """
+        import time
+        start_time = time.time()
+
+        while True:
+            pending = self.get_pending_tasks()
+            running = self.get_running_tasks()
+
+            if not pending and not running:
+                # 所有任务都完成了，检查是否有失败
+                with self.task_lock:
+                    failed = [t for t in self.task_registry.values() if t.status == TaskStatus.FAILED]
+                    return len(failed) == 0
+
+            # 检查超时
+            if timeout and (time.time() - start_time) > timeout:
+                print(f"[TaskQueue] 等待所有任务超时（{timeout}秒）")
+                return False
+
+            # 打印进度
+            total = len(self.task_registry)
+            completed = total - len(pending) - len(running)
+            print(f"\r[TaskQueue] 等待任务完成: {completed}/{total} (运行中: {len(running)}, 待处理: {len(pending)})", end="")
+
+            # 等待后再次检查
+            time.sleep(poll_interval)
+
     def _worker_loop(self, worker_id: int):
         """
         Worker主循环
