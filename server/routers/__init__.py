@@ -15,6 +15,7 @@ from . import (
     stats,
     status,
     templates,
+    user_configs,
 )
 
 # 创建总路由器
@@ -35,5 +36,6 @@ api_router.include_router(status.router, tags=["系统状态"])
 api_router.include_router(stats.router, tags=["统计监控"])
 api_router.include_router(templates.router, tags=["模板市场"])
 api_router.include_router(models.router, tags=["模型管理"])
+api_router.include_router(user_configs.router, tags=["用户配置"])
 
 __all__ = ["api_router"]

@@ -103,55 +103,58 @@ def get_build_statistics() -> Optional[Dict]:
 
 
 def get_available_configs() -> List[Dict]:
-    """获取可用的配置列表"""
+    """获取可用的配置列表（从用户配置仓库）"""
     try:
-        # 获取当前配置
-        response = requests.get(f"{API_URL}/admin/graph/config", timeout=5)
         configs = []
 
+        # 🔥 从用户配置仓库获取所有用户配置
+        response = requests.get(f"{API_URL}/admin/configs/list", timeout=5)
         if response.status_code == 200:
             data = response.json()
-            if data.get("exists"):
-                config = data.get("config")
+            user_configs = data.get("configs", [])
 
-                # 🔧 修复：检查 config 是否为字典类型
-                if isinstance(config, dict):
+            for config_meta in user_configs:
+                # 获取配置完整内容
+                config_id = config_meta.get("id")
+                config_response = requests.get(f"{API_URL}/admin/configs/{config_id}", timeout=5)
+
+                if config_response.status_code == 200:
+                    config_data = config_response.json()
+                    config_obj = config_data.get("config")
+                    metadata = config_data.get("metadata")
+
+                    # 标记默认配置
+                    is_default = metadata.get("is_default", False)
+                    name_prefix = "⭐ " if is_default else ""
+
                     configs.append({
-                        "name": config.get("project_name", "当前配置"),
-                        "type": "current",
-                        "config": config
+                        "id": config_id,
+                        "name": f"{name_prefix}{metadata.get('name', '未命名配置')}",
+                        "type": "user",
+                        "config": config_obj,
+                        "is_default": is_default,
+                        "description": metadata.get("description", "")
                     })
-                elif isinstance(config, str):
-                    # 如果是 JSON 字符串，尝试解析
-                    import json
-                    try:
-                        config_dict = json.loads(config)
-                        configs.append({
-                            "name": config_dict.get("project_name", "当前配置"),
-                            "type": "current",
-                            "config": config_dict
-                        })
-                    except json.JSONDecodeError:
-                        st.warning(f"配置格式错误，无法解析：{config[:100]}...")
-                else:
-                    st.warning(f"配置类型错误：{type(config)}，跳过")
 
-        # 获取模板列表
+        # 🔥 获取预置模板列表
         response = requests.get(f"{API_URL}/admin/graph/templates", timeout=5)
         if response.status_code == 200:
-            templates = response.json().get("templates", [])
-            for template in templates:
-                # 同样检查模板格式
-                if isinstance(template, dict):
-                    configs.append({
-                        "name": template.get("name", "未命名模板"),
-                        "type": "template",
-                        "config": template
-                    })
+            templates = response.json().get("templates", {})
+            for template_key, template_info in templates.items():
+                configs.append({
+                    "id": f"template_{template_key}",
+                    "name": f"{template_info.get('project_name', '未命名模板')} (模板)",
+                    "type": "template",
+                    "config": None,  # 模板需要时再加载
+                    "template_key": template_key,
+                    "description": template_info.get("description", "")
+                })
 
         return configs
     except Exception as e:
         st.error(f"获取配置列表失败: {str(e)}")
+        import traceback
+        st.error(f"详细错误: {traceback.format_exc()}")
         return []
 
 
@@ -172,7 +175,7 @@ def build_manager_page():
         configs = get_available_configs()
 
         if configs:
-            config_names = ["<不使用配置（使用默认配置）>"] + [f"{c['name']} ({c['type']})" for c in configs]
+            config_names = ["<不使用配置（使用默认配置）>"] + [c['name'] for c in configs]
             selected_config_index = st.selectbox(
                 "选择构建配置",
                 range(len(config_names)),
@@ -184,14 +187,35 @@ def build_manager_page():
                 st.session_state.selected_build_config = None
                 st.info("💡 将使用系统默认配置进行构建")
             else:
-                st.session_state.selected_build_config = configs[selected_config_index - 1]["config"]
-                config_name = configs[selected_config_index - 1]["name"]
+                selected_config_meta = configs[selected_config_index - 1]
+                config_name = selected_config_meta["name"]
+
+                # 如果是模板，需要先加载完整配置
+                if selected_config_meta["type"] == "template" and selected_config_meta["config"] is None:
+                    template_key = selected_config_meta["template_key"]
+                    try:
+                        template_response = requests.get(f"{API_URL}/admin/graph/templates/{template_key}", timeout=5)
+                        if template_response.status_code == 200:
+                            selected_config_meta["config"] = template_response.json().get("config")
+                        else:
+                            st.error(f"加载模板失败: {template_key}")
+                            selected_config_meta["config"] = None
+                    except Exception as e:
+                        st.error(f"加载模板出错: {str(e)}")
+                        selected_config_meta["config"] = None
+
+                st.session_state.selected_build_config = selected_config_meta["config"]
                 st.success(f"✅ 已选择配置: {config_name}")
 
                 # 显示配置摘要
+                if selected_config_meta.get("description"):
+                    st.caption(f"📝 {selected_config_meta['description']}")
+
                 with st.expander("🔍 查看配置详情"):
-                    selected = st.session_state.selected_build_config
-                    st.json(selected)
+                    if st.session_state.selected_build_config:
+                        st.json(st.session_state.selected_build_config)
+                    else:
+                        st.warning("配置内容为空")
         else:
             st.session_state.selected_build_config = None
             st.warning("⚠️ 未找到可用配置，将使用系统默认配置")
