@@ -218,6 +218,9 @@ async def _run_build_task(request: BuildRequest):
     progress_mgr = get_progress_manager()
     history_db = get_build_history_db()
 
+    # ✅ 立即重置状态（避免显示上一次构建的残留状态）
+    progress_mgr.reset()
+
     # ✅ 使用统一的分布式锁（无需 global 变量）
     lock_resource = "graph_build"
 

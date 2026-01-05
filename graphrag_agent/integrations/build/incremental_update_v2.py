@@ -441,7 +441,7 @@ class IncrementalUpdateManagerV2:
         Returns:
             Dict: 实体索引构建结果
         """
-        from graphrag_agent.graph.indexing.entity_indexer import EntityIndexer
+        from graphrag_agent.graph.indexing.entity_indexer import EntityIndexManager
         from graphrag_agent.graph.indexing.helpers import ensure_vector_index
 
         self.console.print("[bold cyan]构建实体索引...[/bold cyan]")
@@ -465,10 +465,10 @@ class IncrementalUpdateManagerV2:
             self.console.print(f"[cyan]发现 {entity_count} 个实体，开始生成 embeddings...[/cyan]")
 
             # 创建实体索引管理器
-            entity_indexer = EntityIndexer()
+            entity_index_manager = EntityIndexManager()
 
             # 生成实体 embeddings 并创建向量索引
-            vector_store = entity_indexer.create_entity_index()
+            vector_store = entity_index_manager.create_entity_index()
 
             # 确保向量索引存在
             ensure_vector_index(
