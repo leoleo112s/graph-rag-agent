@@ -120,8 +120,8 @@ def _run_full_build_task(task_id: str, config: Optional[Dict] = None):
         logger.info(f"开始执行全量构建: {task_id}")
         pm.update_status("initializing", 5, "初始化构建环境")
 
-        # 使用 asyncio.run 运行异步管道
-        result = asyncio.run(manager.run_full_pipeline())
+        # 🔥 使用 asyncio.run 运行异步管道（clean=True 清空现有数据）
+        result = asyncio.run(manager.run_full_pipeline(clean=True))
 
         # 4. 更新状态和历史
         l0_count = result.get("l0", {}).get("files_processed", 0)
@@ -174,7 +174,8 @@ def _run_incremental_build_task(task_id: str, config: Optional[Dict] = None):
         logger.info(f"开始执行增量构建: {task_id}")
         pm.update_status("detecting_changes", 10, "检测文件变化")
 
-        result = asyncio.run(manager.run_full_pipeline())
+        # 🔥 增量构建：clean=False 保留现有数据
+        result = asyncio.run(manager.run_full_pipeline(clean=False))
 
         # 4. 更新状态和历史
         l0_count = result.get("l0", {}).get("files_processed", 0)
