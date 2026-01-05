@@ -226,6 +226,10 @@ async def _run_build_task(request: BuildRequest):
         # 初始化状态
         await broadcaster.emit_status("started", "图谱构建任务已启动")
         await broadcaster.emit_log("初始化构建管理器...", "INFO")
+
+        # ✅ 记录构建开始时间（用于计算 elapsed_time）
+        progress_mgr.start_build()
+
         await progress_mgr.update(percent=0, stage="init", details="初始化构建管理器...", log="图谱构建任务已启动")
 
         # 创建管理器实例（传入广播器）

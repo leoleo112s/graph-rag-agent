@@ -92,6 +92,7 @@ class ProgressManager:
             "logs": [],
             "stats": {"l0_files": 0, "l1_tasks": 0, "entities": 0, "relations": 0},
             "last_update": datetime.now().isoformat(),
+            "start_time": None,  # 构建开始时间（ISO格式字符串）
         }
 
         # 用于通知 SSE 有新数据的事件
@@ -265,6 +266,14 @@ class ProgressManager:
             # 清理订阅
             await self.unsubscribe(event)
 
+    def start_build(self):
+        """开始构建（记录开始时间）"""
+        self.current_status["start_time"] = datetime.now().isoformat()
+        self.current_status["percent"] = 0
+        self.current_status["stage"] = "initializing"
+        self.current_status["details"] = "正在初始化..."
+        self.current_status["last_update"] = datetime.now().isoformat()
+
     def reset(self):
         """重置状态到初始值"""
         self.current_status = {
@@ -274,6 +283,7 @@ class ProgressManager:
             "logs": [],
             "stats": {"l0_files": 0, "l1_tasks": 0, "entities": 0, "relations": 0},
             "last_update": datetime.now().isoformat(),
+            "start_time": None,
         }
 
     def has_subscribers(self) -> bool:

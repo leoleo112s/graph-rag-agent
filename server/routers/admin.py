@@ -281,14 +281,61 @@ async def get_build_status():
     """获取构建状态
 
     ✅ 改进：使用分布式锁状态，支持多进程
+    ✅ 字段映射：将 ProgressManager 格式转换为前端期望的格式
     """
+    from datetime import datetime
+
     lock_resource = "graph_build"
 
-    status = get_progress_manager().get_current_status()
-    # 确保 status 包含 is_running 字段
-    if "is_running" not in status:
-        status["is_running"] = _lock_manager.is_locked(lock_resource)
-    return status
+    pm_status = get_progress_manager().get_current_status()
+
+    # 判断总体状态
+    is_locked = _lock_manager.is_locked(lock_resource)
+    stage = pm_status.get("stage", "idle")
+
+    # 根据 stage 和 lock 状态推断总体状态
+    if is_locked:
+        overall_status = "running"
+    elif stage == "completed":
+        overall_status = "completed"
+    elif stage == "failed":
+        overall_status = "failed"
+    else:
+        overall_status = "idle"
+
+    # 计算已用时间（秒）
+    elapsed_time = 0
+    start_time_str = pm_status.get("start_time")
+    if start_time_str:
+        try:
+            start_time = datetime.fromisoformat(start_time_str)
+            elapsed_time = int((datetime.now() - start_time).total_seconds())
+        except (ValueError, TypeError):
+            elapsed_time = 0
+
+    # 映射字段：ProgressManager 格式 -> 前端期望格式
+    frontend_status = {
+        # 前端期望的字段
+        "status": overall_status,                # running/completed/idle/failed
+        "progress": pm_status.get("percent", 0),  # 进度百分比
+        "current_stage": pm_status.get("stage", "N/A"),  # 当前阶段
+        "processed": pm_status.get("stats", {}).get("l0_files", 0),  # 已处理文件数
+        "total": pm_status.get("stats", {}).get("l0_files", 0),  # 总文件数（暂时相同）
+        "elapsed_time": elapsed_time,  # 已用时间（秒）
+        "logs": pm_status.get("logs", []),  # 日志列表
+
+        # 兼容旧字段
+        "is_running": is_locked,
+        "details": pm_status.get("details", ""),
+        "stats": pm_status.get("stats", {}),
+        "last_update": pm_status.get("last_update", ""),
+
+        # 原始字段（调试用）
+        "percent": pm_status.get("percent", 0),
+        "stage": pm_status.get("stage", "idle"),
+    }
+
+    return frontend_status
 
 
 @router.get("/build/stream")
