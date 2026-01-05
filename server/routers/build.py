@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field
 from utils.build_lock import get_build_lock_manager  # ✅ 使用统一的锁管理器
 from utils.progress_broadcaster import get_broadcaster
 from utils.progress_manager import get_progress_manager
+from server.models.build_history import get_build_history_db, BuildStatus, BuildType  # ✅ 构建历史记录
 
 from graphrag_agent.config.settings import FILES_DIR
 
@@ -215,9 +216,22 @@ async def _run_build_task(request: BuildRequest):
     """
     broadcaster = get_broadcaster()
     progress_mgr = get_progress_manager()
+    history_db = get_build_history_db()
 
     # ✅ 使用统一的分布式锁（无需 global 变量）
     lock_resource = "graph_build"
+
+    # ✅ 创建构建历史记录
+    task_type = BuildType.FULL if request.mode == "full" else BuildType.INCREMENTAL
+    record_id = history_db.create_record(
+        task_type=task_type,
+        config_snapshot=request.model_dump() if request else None
+    )
+    _LOGGER.info(f"创建构建历史记录: {record_id}")
+
+    # 用于记录最终统计数据
+    final_stats = {}
+    final_stage = None
 
     try:
         # 动态导入，避免循环依赖和模块加载时的 Neo4j 连接
@@ -238,6 +252,9 @@ async def _run_build_task(request: BuildRequest):
         # 执行构建
         if request.mode == "incremental":
             # 增量构建
+            l0_files = 0
+            l1_tasks = 0
+
             if not request.skip_l0:
                 await broadcaster.emit_log("开始执行 L0 快速索引...", "INFO")
                 await progress_mgr.update(
@@ -276,6 +293,10 @@ async def _run_build_task(request: BuildRequest):
                     stats={"l1_tasks": l1_tasks},
                 )
 
+            # ✅ 记录增量构建统计数据
+            final_stats = {"l0_files": l0_files, "l1_tasks": l1_tasks}
+            final_stage = "l1_completed" if not request.skip_l1 else "l0_completed"
+
         elif request.mode == "full":
             # 全量构建
             await broadcaster.emit_log("执行全量构建（将清理所有现有数据）...", "WARNING")
@@ -312,14 +333,38 @@ async def _run_build_task(request: BuildRequest):
                 stats={"l0_files": l0_files, "l1_tasks": l1_tasks},
             )
 
+            # ✅ 记录全量构建统计数据
+            final_stats = {"l0_files": l0_files, "l1_tasks": l1_tasks}
+            final_stage = "full_build_completed"
+
         await broadcaster.emit_status("completed", "图谱构建任务完成")
         await progress_mgr.update(percent=100, stage="completed", details="图谱构建任务完成", log="✅ 所有任务完成")
+
+        # ✅ 更新构建历史记录为成功
+        final_stage = "completed"
+        history_db.update_record(
+            record_id=record_id,
+            status=BuildStatus.COMPLETED,
+            stats=final_stats,
+            final_stage=final_stage
+        )
+        _LOGGER.info(f"构建历史记录已更新（成功）: {record_id}")
 
     except Exception as exc:
         _LOGGER.exception(f"构建任务执行失败: {exc}")
         await broadcaster.emit_error(f"构建失败: {exc}")
         await broadcaster.emit_status("failed", str(exc))
         await progress_mgr.update(stage="error", details=f"构建失败: {exc}", log=f"❌ 错误: {exc}")
+
+        # ✅ 更新构建历史记录为失败
+        history_db.update_record(
+            record_id=record_id,
+            status=BuildStatus.FAILED,
+            error_msg=str(exc),
+            stats=final_stats,
+            final_stage="failed"
+        )
+        _LOGGER.info(f"构建历史记录已更新（失败）: {record_id}")
 
     finally:
         # ✅ 释放分布式锁
