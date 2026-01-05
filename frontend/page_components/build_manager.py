@@ -113,14 +113,41 @@ def get_available_configs() -> List[Dict]:
             data = response.json()
             if data.get("exists"):
                 config = data.get("config")
-                configs.append({"name": config.get("project_name", "当前配置"), "type": "current", "config": config})
+
+                # 🔧 修复：检查 config 是否为字典类型
+                if isinstance(config, dict):
+                    configs.append({
+                        "name": config.get("project_name", "当前配置"),
+                        "type": "current",
+                        "config": config
+                    })
+                elif isinstance(config, str):
+                    # 如果是 JSON 字符串，尝试解析
+                    import json
+                    try:
+                        config_dict = json.loads(config)
+                        configs.append({
+                            "name": config_dict.get("project_name", "当前配置"),
+                            "type": "current",
+                            "config": config_dict
+                        })
+                    except json.JSONDecodeError:
+                        st.warning(f"配置格式错误，无法解析：{config[:100]}...")
+                else:
+                    st.warning(f"配置类型错误：{type(config)}，跳过")
 
         # 获取模板列表
         response = requests.get(f"{API_URL}/admin/graph/templates", timeout=5)
         if response.status_code == 200:
             templates = response.json().get("templates", [])
             for template in templates:
-                configs.append({"name": template.get("name", "未命名模板"), "type": "template", "config": template})
+                # 同样检查模板格式
+                if isinstance(template, dict):
+                    configs.append({
+                        "name": template.get("name", "未命名模板"),
+                        "type": "template",
+                        "config": template
+                    })
 
         return configs
     except Exception as e:
