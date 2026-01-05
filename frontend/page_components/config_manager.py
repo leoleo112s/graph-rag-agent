@@ -15,6 +15,15 @@ import requests
 import streamlit as st
 
 from frontend.frontend_config.settings import API_URL
+from frontend.utils.config_repository_api import (
+    list_all_configs,
+    get_config_detail,
+    create_config,
+    update_config,
+    delete_config,
+    set_default_config,
+    duplicate_config,
+)
 
 
 def validate_config(config: Dict) -> tuple[bool, Optional[str]]:
@@ -200,19 +209,33 @@ def render_save_button(working_config: Dict) -> bool:
 
     with col2:
         if st.button("💾 保存配置", type="primary", use_container_width=True, key=f"save_btn_{st.session_state.get('active_tab', 'default')}"):
-            success, _ = save_graph_config(working_config, show_feedback=True)
-            if success:
-                # 保存成功后，更新 saved_config_snapshot
-                st.session_state.saved_config_snapshot = working_config.copy()
-                st.session_state.config_reload_trigger = True
-                st.rerun()
-                return True
-            return False
+            # 🔥 使用新的保存函数（配置仓库API）
+            if "save_current_config" in st.session_state:
+                success = st.session_state.save_current_config()
+                if success:
+                    st.success("✅ 配置已保存")
+                    st.rerun()
+                    return True
+                return False
+            else:
+                # 兼容旧逻辑（如果save_current_config不存在）
+                success, _ = save_graph_config(working_config, show_feedback=True)
+                if success:
+                    st.session_state.saved_config_snapshot = working_config.copy()
+                    st.session_state.config_reload_trigger = True
+                    st.rerun()
+                    return True
+                return False
     return False
 
 
-def render_template_selector():
-    """渲染模板选择器"""
+def render_template_selector(is_create_mode: bool = False):
+    """
+    渲染模板选择器
+
+    Args:
+        is_create_mode: 是否为创建模式（True=创建新配置，False=覆盖当前配置）
+    """
     st.subheader("📋 选择预置行业模板")
     st.caption(f"系统内置 3 个行业模板（法务、电商、医疗），可作为配置的起点")
 
@@ -235,15 +258,37 @@ def render_template_selector():
             st.caption(f"🔗 {template_info['bridge_count']} 个桥接点")
             st.caption(f"📦 {template_info['domain_count']} 个领域")
 
-            if st.button(f"📥 加载", key=f"load_{template_key}"):
+            button_label = "📥 使用此模板" if is_create_mode else "📥 加载"
+            if st.button(button_label, key=f"load_{template_key}_{'create' if is_create_mode else 'edit'}"):
                 with st.spinner("正在加载模板..."):
                     template_config = fetch_template_detail(template_key)
                     if template_config:
-                        # 只更新working_config，不保存
-                        st.session_state.current_config = template_config
-                        st.success(f"✅ 模板 '{template_info['project_name']}' 已加载到当前配置")
-                        st.info("💡 请点击下方「💾 保存配置」按钮保存修改")
-                        st.rerun()
+                        if is_create_mode:
+                            # 创建模式：提示输入配置名称
+                            config_name = st.text_input(
+                                "配置名称*",
+                                value=f"{template_info['project_name']}",
+                                key=f"name_for_{template_key}"
+                            )
+                            if config_name:
+                                success, config_id, error = create_config(
+                                    template_config,
+                                    config_name,
+                                    template_info.get('description'),
+                                    set_as_default=False
+                                )
+                                if success:
+                                    st.success(f"✅ 配置已创建: {config_name}")
+                                    st.session_state.selected_config_id = config_id
+                                    st.rerun()
+                                else:
+                                    st.error(error)
+                        else:
+                            # 编辑模式：覆盖当前配置
+                            st.session_state.current_config = template_config
+                            st.success(f"✅ 模板 '{template_info['project_name']}' 已加载到当前配置")
+                            st.info("💡 请点击下方「💾 保存配置」按钮保存修改")
+                            st.rerun()
 
             if st.button(f"👁️ 预览", key=f"preview_{template_key}"):
                 st.session_state.preview_template = template_key
@@ -625,43 +670,199 @@ def render_json_editor(config: Dict) -> Optional[Dict]:
     return None
 
 
+def render_config_list_selector():
+    """
+    渲染配置列表选择器（侧边栏）
+
+    Returns:
+        selected_config_id: 选中的配置ID，None表示创建新配置
+    """
+    with st.sidebar:
+        st.markdown("### 📂 我的配置")
+
+        # 获取配置列表
+        success, configs, error = list_all_configs()
+
+        if not success:
+            st.error(f"获取配置列表失败: {error}")
+            return None
+
+        if not configs:
+            st.info("暂无配置，请创建新配置")
+            if st.button("➕ 创建新配置", use_container_width=True, type="primary"):
+                st.session_state.selected_config_id = "new"
+                st.rerun()
+            return "new"
+
+        # 配置列表
+        for idx, config_meta in enumerate(configs):
+            config_id = config_meta["id"]
+            name = config_meta["name"]
+            is_default = config_meta.get("is_default", False)
+            updated_at = config_meta.get("updated_at", "")
+
+            # 默认配置标记
+            name_display = f"⭐ {name}" if is_default else name
+
+            # 按钮选择配置
+            col1, col2 = st.columns([4, 1])
+            with col1:
+                if st.button(
+                    name_display,
+                    key=f"select_{config_id}",
+                    use_container_width=True,
+                    type="primary" if st.session_state.get("selected_config_id") == config_id else "secondary",
+                ):
+                    st.session_state.selected_config_id = config_id
+                    st.session_state.config_reload_trigger = True
+                    st.rerun()
+
+            with col2:
+                # 删除按钮
+                if st.button("🗑️", key=f"delete_{config_id}", help="删除此配置"):
+                    if is_default and len(configs) > 1:
+                        st.error("无法删除默认配置，请先设置其他配置为默认")
+                    else:
+                        success_del, error_del = delete_config(config_id)
+                        if success_del:
+                            st.success(f"已删除配置: {name}")
+                            if st.session_state.get("selected_config_id") == config_id:
+                                st.session_state.selected_config_id = None
+                            st.rerun()
+                        else:
+                            st.error(error_del)
+
+            # 显示更新时间
+            if updated_at:
+                try:
+                    from datetime import datetime
+                    updated_dt = datetime.fromisoformat(updated_at.replace("Z", "+00:00"))
+                    st.caption(f"更新于: {updated_dt.strftime('%Y-%m-%d %H:%M')}")
+                except:
+                    st.caption(f"更新于: {updated_at[:16]}")
+
+        st.markdown("---")
+
+        # 新建配置按钮
+        if st.button("➕ 创建新配置", use_container_width=True, type="primary"):
+            st.session_state.selected_config_id = "new"
+            st.session_state.config_reload_trigger = True
+            st.rerun()
+
+        # 返回选中的配置ID
+        return st.session_state.get("selected_config_id")
+
+
+def render_create_config_form():
+    """渲染创建配置表单"""
+    st.title("➕ 创建新配置")
+    st.markdown("---")
+
+    st.info("💡 您可以从空白配置开始，或加载预置的行业模板")
+
+    # Tab选择：空白配置 vs 加载模板
+    tab1, tab2 = st.tabs(["🆕 空白配置", "📋 从模板创建"])
+
+    with tab1:
+        st.subheader("创建空白配置")
+        name = st.text_input("配置名称*", placeholder="例如：学生管理系统 - 生产版")
+        description = st.text_area("配置描述", placeholder="简要描述此配置的用途")
+        set_as_default = st.checkbox("设为默认配置", value=False)
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("✅ 创建空白配置", use_container_width=True, type="primary"):
+                if not name:
+                    st.error("配置名称不能为空")
+                else:
+                    # 创建空白配置
+                    blank_config = {
+                        "project_name": name,
+                        "version": "1.0",
+                        "description": description or "",
+                        "industry": "",
+                        "bridge_definitions": [],
+                        "domain_definitions": [],
+                    }
+
+                    success, config_id, error = create_config(blank_config, name, description, set_as_default)
+                    if success:
+                        st.success(f"✅ 配置已创建: {name}")
+                        st.session_state.selected_config_id = config_id
+                        st.session_state.config_reload_trigger = True
+                        st.rerun()
+                    else:
+                        st.error(error)
+
+        with col2:
+            if st.button("❌ 取消", use_container_width=True):
+                st.session_state.selected_config_id = None
+                st.rerun()
+
+    with tab2:
+        st.subheader("从模板创建")
+        render_template_selector(is_create_mode=True)
+
+
 def config_manager_page():
-    """配置管理主页面"""
+    """配置管理主页面（支持多配置管理）"""
     st.title("⚙️ 图谱配置管理")
     st.markdown("---")
 
-    # 获取当前配置
-    config = fetch_graph_config()
+    # 🔥 渲染配置列表选择器（侧边栏）
+    selected_config_id = render_config_list_selector()
 
-    # 如果没有配置，显示模板选择器
-    if config is None:
-        st.info("💡 当前无配置，请选择一个模板开始，或创建自定义配置")
-        render_template_selector()
-
-        st.markdown("---")
-        st.subheader("🆕 或创建空白配置")
-
-        project_name = st.text_input("项目名称", placeholder="例如：我的知识图谱项目")
-        industry = st.text_input("所属行业", placeholder="例如：法务、电商、医疗")
-        description = st.text_area("项目描述", placeholder="简要描述此知识图谱的用途")
-
-        if st.button("✅ 创建空白配置"):
-            if not project_name:
-                st.error("项目名称不能为空")
-            else:
-                new_config = {
-                    "project_name": project_name,
-                    "version": "1.0",
-                    "description": description,
-                    "industry": industry,
-                    "bridge_definitions": [],
-                    "domain_definitions": [],
-                }
-                success, _ = save_graph_config(new_config, show_feedback=True)
-                if success:
-                    st.rerun()
-
+    # 如果选中"创建新配置"
+    if selected_config_id == "new":
+        render_create_config_form()
         return
+
+    # 如果没有选中任何配置
+    if not selected_config_id:
+        st.info("👈 请在左侧选择一个配置进行编辑，或创建新配置")
+        return
+
+    # 🔥 加载选中的配置
+    success, config, metadata, error = get_config_detail(selected_config_id)
+
+    if not success:
+        st.error(f"加载配置失败: {error}")
+        return
+
+    if not config:
+        st.error("配置内容为空")
+        return
+
+    # 🔥 显示当前配置名称和元数据
+    st.subheader(f"正在编辑: {metadata.get('name', '未命名配置')}")
+    if metadata.get('description'):
+        st.caption(f"📝 {metadata['description']}")
+    if metadata.get('is_default'):
+        st.success("⭐ 这是默认配置")
+
+    # 🔥 配置操作按钮
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        if not metadata.get('is_default'):
+            if st.button("⭐ 设为默认", use_container_width=True):
+                success_default, error_default = set_default_config(selected_config_id)
+                if success_default:
+                    st.success("已设为默认配置")
+                    st.rerun()
+                else:
+                    st.error(error_default)
+    with col2:
+        if st.button("📋 复制配置", use_container_width=True):
+            new_name = f"{metadata['name']} - 副本"
+            success_dup, new_id, error_dup = duplicate_config(selected_config_id, new_name)
+            if success_dup:
+                st.success(f"已复制配置: {new_name}")
+                st.session_state.selected_config_id = new_id
+                st.rerun()
+            else:
+                st.error(error_dup)
+
+    st.markdown("---")
 
     # 🔥 使用 session state 管理配置（支持 JSON 编辑器更新）
     if "current_config" not in st.session_state or st.session_state.get("config_reload_trigger"):
@@ -673,6 +874,26 @@ def config_manager_page():
             del st.session_state.config_reload_trigger
 
     working_config = st.session_state.current_config
+
+    # 🔥 保存时使用配置仓库API而不是旧的save_graph_config
+    def save_current_config():
+        """保存当前配置到配置仓库"""
+        success, error = update_config(
+            selected_config_id,
+            working_config,
+            name=metadata.get('name'),
+            description=metadata.get('description')
+        )
+        if success:
+            st.session_state.saved_config_snapshot = working_config.copy()
+            st.session_state.config_reload_trigger = True
+            return True
+        else:
+            st.error(error)
+            return False
+
+    # 将保存函数存储到session_state供Tab使用
+    st.session_state.save_current_config = save_current_config
 
     # 检查是否有未保存的修改
     saved_config = st.session_state.get("saved_config_snapshot")
