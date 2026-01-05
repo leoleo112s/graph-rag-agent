@@ -357,6 +357,7 @@ class LocalSearchTool(BaseSearchTool):
         class LocalRetrievalTool(BaseTool):
             name: str = "lc_search_tool"
             description: str = lc_description
+            last_response: Optional[Dict] = None  # ✅ 添加字段定义
 
             def _run(self_tool, query: Any, **kwargs: Any) -> str:
                 payload = query if isinstance(query, dict) else {"query": query}
