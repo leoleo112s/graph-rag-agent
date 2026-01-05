@@ -203,6 +203,8 @@ def render_template_selector():
             if st.button(f"📥 加载", key=f"load_{template_key}"):
                 with st.spinner("正在加载模板..."):
                     if load_template(template_key):
+                        # 触发配置重载
+                        st.session_state.config_reload_trigger = True
                         st.success(f"✅ 模板 '{template_info['project_name']}' 加载成功！")
                         st.rerun()
 
@@ -244,10 +246,12 @@ def render_bridge_editor(config: Dict):
                         # 🔥 立即自动保存
                         success, _ = save_graph_config(config, show_feedback=False)
                         if success:
+                            # 触发配置重载
+                            st.session_state.config_reload_trigger = True
                             st.success(f"✅ 桥接点 '{deleted_name}' 已删除并保存")
+                            st.rerun()
                         else:
                             st.error(f"❌ 桥接点删除失败，请手动保存")
-                        st.rerun()
     else:
         st.info("暂无桥接点，点击下方按钮添加")
 
@@ -282,10 +286,12 @@ def render_bridge_editor(config: Dict):
                 # 🔥 立即自动保存
                 success, _ = save_graph_config(config, show_feedback=False)
                 if success:
+                    # 触发配置重载
+                    st.session_state.config_reload_trigger = True
                     st.success(f"✅ 桥接点 '{bridge_name}' 已添加并保存")
+                    st.rerun()
                 else:
                     st.error(f"❌ 桥接点添加失败，请手动保存")
-                st.rerun()
 
 
 def render_domain_editor(config: Dict):
@@ -336,10 +342,12 @@ def render_domain_editor(config: Dict):
                         # 🔥 立即自动保存
                         success, _ = save_graph_config(config, show_feedback=False)
                         if success:
+                            # 触发配置重载
+                            st.session_state.config_reload_trigger = True
                             st.success(f"✅ 领域 '{deleted_name}' 已删除并保存")
+                            st.rerun()
                         else:
                             st.error(f"❌ 领域删除失败，请手动保存")
-                        st.rerun()
     else:
         st.info("暂无领域，点击下方按钮添加")
 
@@ -396,10 +404,12 @@ def render_domain_editor(config: Dict):
                 # 🔥 立即自动保存
                 success, _ = save_graph_config(config, show_feedback=False)
                 if success:
+                    # 触发配置重载
+                    st.session_state.config_reload_trigger = True
                     st.success(f"✅ 领域 '{domain_name}' 已添加并保存")
+                    st.rerun()
                 else:
                     st.error(f"❌ 领域添加失败，请手动保存")
-                st.rerun()
 
 
 def render_config_overview(config: Dict):
@@ -661,6 +671,7 @@ def config_manager_page():
                 if success:
                     # 触发配置重载
                     st.session_state.config_reload_trigger = True
+                    st.rerun()
 
         with col2:
             # 导出配置
