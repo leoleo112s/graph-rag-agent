@@ -176,6 +176,41 @@ def load_template(template_name: str, project_name: Optional[str] = None) -> boo
         return False
 
 
+def check_config_modified(working_config: Dict, saved_config: Optional[Dict]) -> bool:
+    """检查配置是否被修改（未保存）"""
+    if saved_config is None:
+        return True  # 没有保存的配置，算作有修改
+
+    # 简单比较：转为JSON字符串比较
+    import json
+    working_str = json.dumps(working_config, sort_keys=True)
+    saved_str = json.dumps(saved_config, sort_keys=True)
+    return working_str != saved_str
+
+
+def render_save_button(working_config: Dict) -> bool:
+    """
+    渲染统一的保存按钮（每个tab底部都会调用）
+
+    Returns:
+        True if saved successfully, False otherwise
+    """
+    st.markdown("---")
+    col1, col2, col3 = st.columns([2, 1, 2])
+
+    with col2:
+        if st.button("💾 保存配置", type="primary", use_container_width=True, key=f"save_btn_{st.session_state.get('active_tab', 'default')}"):
+            success, _ = save_graph_config(working_config, show_feedback=True)
+            if success:
+                # 保存成功后，更新 saved_config_snapshot
+                st.session_state.saved_config_snapshot = working_config.copy()
+                st.session_state.config_reload_trigger = True
+                st.rerun()
+                return True
+            return False
+    return False
+
+
 def render_template_selector():
     """渲染模板选择器"""
     st.subheader("📋 选择预置行业模板")
@@ -202,14 +237,88 @@ def render_template_selector():
 
             if st.button(f"📥 加载", key=f"load_{template_key}"):
                 with st.spinner("正在加载模板..."):
-                    if load_template(template_key):
-                        # 触发配置重载
-                        st.session_state.config_reload_trigger = True
-                        st.success(f"✅ 模板 '{template_info['project_name']}' 加载成功！")
+                    template_config = fetch_template_detail(template_key)
+                    if template_config:
+                        # 只更新working_config，不保存
+                        st.session_state.current_config = template_config
+                        st.success(f"✅ 模板 '{template_info['project_name']}' 已加载到当前配置")
+                        st.info("💡 请点击下方「💾 保存配置」按钮保存修改")
                         st.rerun()
 
             if st.button(f"👁️ 预览", key=f"preview_{template_key}"):
                 st.session_state.preview_template = template_key
+
+
+def render_template_tab(config: Dict):
+    """渲染模板加载标签页"""
+    st.subheader("📋 加载预置行业模板")
+    st.info("💡 这里提供 3 个预置的行业模板作为快速起点，适合首次使用或重新开始项目时使用")
+    st.warning("⚠️ **重要提示**：加载模板会**完全覆盖**你当前的所有配置（包括桥接点和领域）！")
+
+    # 添加确认开关
+    confirm_load = st.checkbox("我已了解风险，允许覆盖当前配置", key="confirm_template_load")
+
+    if confirm_load:
+        render_template_selector()
+    else:
+        st.info("👆 请先勾选上方确认框，才能加载模板")
+
+    # 渲染保存按钮
+    render_save_button(config)
+
+
+def render_project_info_tab(config: Dict):
+    """渲染项目信息编辑标签页"""
+    st.subheader("💼 项目信息")
+    st.caption("修改项目的元数据信息")
+
+    # 修改项目信息
+    project_name = st.text_input("项目名称", value=config.get("project_name", ""), key="edit_project_name")
+    industry = st.text_input("所属行业", value=config.get("industry", ""), key="edit_industry")
+    description = st.text_area("项目描述", value=config.get("description", ""), key="edit_description")
+
+    # 更新配置
+    config["project_name"] = project_name
+    config["industry"] = industry
+    config["description"] = description
+
+    # 渲染保存按钮
+    render_save_button(config)
+
+
+def render_export_tab(config: Dict):
+    """渲染导出配置标签页"""
+    st.subheader("📥 导出配置")
+    st.caption("将当前配置导出为 JSON 文件，作为备份或分享给他人")
+
+    # 显示配置摘要
+    st.markdown("### 当前配置摘要")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.info(f"**项目名称**: {config.get('project_name', 'N/A')}")
+        st.info(f"**所属行业**: {config.get('industry', 'N/A')}")
+    with col2:
+        bridge_count = len(config.get("bridge_definitions", []))
+        domain_count = len(config.get("domain_definitions", []))
+        st.info(f"**桥接点数量**: {bridge_count}")
+        st.info(f"**领域数量**: {domain_count}")
+
+    st.markdown("---")
+
+    # 导出按钮
+    config_json = json.dumps(config, ensure_ascii=False, indent=2)
+    st.download_button(
+        label="📥 导出配置文件 (JSON)",
+        data=config_json,
+        file_name=f"{config.get('project_name', 'graph_config')}.json",
+        mime="application/json",
+        use_container_width=True,
+        type="primary",
+    )
+
+    st.markdown("---")
+    st.info("💡 导出的配置文件可以在其他项目中导入使用")
+    st.caption("⚠️ 注意：导出功能不需要保存，它会导出当前编辑状态的配置")
 
 
 def render_bridge_editor(config: Dict):
@@ -242,16 +351,9 @@ def render_bridge_editor(config: Dict):
                         deleted_name = bridges[idx].get("name", "未命名")
                         bridges.pop(idx)
                         config["bridge_definitions"] = bridges
-
-                        # 🔥 立即自动保存
-                        success, _ = save_graph_config(config, show_feedback=False)
-                        if success:
-                            # 触发配置重载
-                            st.session_state.config_reload_trigger = True
-                            st.success(f"✅ 桥接点 '{deleted_name}' 已删除并保存")
-                            st.rerun()
-                        else:
-                            st.error(f"❌ 桥接点删除失败，请手动保存")
+                        st.success(f"✅ 桥接点 '{deleted_name}' 已删除")
+                        st.info("💡 请点击下方「💾 保存配置」按钮保存修改")
+                        st.rerun()
     else:
         st.info("暂无桥接点，点击下方按钮添加")
 
@@ -282,16 +384,12 @@ def render_bridge_editor(config: Dict):
                 }
                 bridges.append(new_bridge)
                 config["bridge_definitions"] = bridges
+                st.success(f"✅ 桥接点 '{bridge_name}' 已添加")
+                st.info("💡 请点击下方「💾 保存配置」按钮保存修改")
+                st.rerun()
 
-                # 🔥 立即自动保存
-                success, _ = save_graph_config(config, show_feedback=False)
-                if success:
-                    # 触发配置重载
-                    st.session_state.config_reload_trigger = True
-                    st.success(f"✅ 桥接点 '{bridge_name}' 已添加并保存")
-                    st.rerun()
-                else:
-                    st.error(f"❌ 桥接点添加失败，请手动保存")
+    # 渲染保存按钮
+    render_save_button(config)
 
 
 def render_domain_editor(config: Dict):
@@ -338,16 +436,9 @@ def render_domain_editor(config: Dict):
                         deleted_name = domains[idx].get("domain_name", "未命名")
                         domains.pop(idx)
                         config["domain_definitions"] = domains
-
-                        # 🔥 立即自动保存
-                        success, _ = save_graph_config(config, show_feedback=False)
-                        if success:
-                            # 触发配置重载
-                            st.session_state.config_reload_trigger = True
-                            st.success(f"✅ 领域 '{deleted_name}' 已删除并保存")
-                            st.rerun()
-                        else:
-                            st.error(f"❌ 领域删除失败，请手动保存")
+                        st.success(f"✅ 领域 '{deleted_name}' 已删除")
+                        st.info("💡 请点击下方「💾 保存配置」按钮保存修改")
+                        st.rerun()
     else:
         st.info("暂无领域，点击下方按钮添加")
 
@@ -400,22 +491,23 @@ def render_domain_editor(config: Dict):
                 }
                 domains.append(new_domain)
                 config["domain_definitions"] = domains
+                st.success(f"✅ 领域 '{domain_name}' 已添加")
+                st.info("💡 请点击下方「💾 保存配置」按钮保存修改")
+                st.rerun()
 
-                # 🔥 立即自动保存
-                success, _ = save_graph_config(config, show_feedback=False)
-                if success:
-                    # 触发配置重载
-                    st.session_state.config_reload_trigger = True
-                    st.success(f"✅ 领域 '{domain_name}' 已添加并保存")
-                    st.rerun()
-                else:
-                    st.error(f"❌ 领域添加失败，请手动保存")
+    # 渲染保存按钮
+    render_save_button(config)
 
 
-def render_config_overview(config: Dict):
+def render_config_overview(config: Dict, has_unsaved_changes: bool = False):
     """渲染配置概览"""
     st.subheader("📊 当前配置概览")
-    st.success("✅ 以下是当前生效的配置（重新构建知识图谱后应用）")
+
+    # 显示保存状态
+    if has_unsaved_changes:
+        st.warning("⚠️ 有未保存的修改 - 请点击任意 Tab 底部的「💾 保存配置」按钮")
+    else:
+        st.success("✅ 所有修改已保存（重新构建知识图谱后应用）")
 
     col1, col2, col3, col4 = st.columns(4)
 
@@ -471,7 +563,7 @@ def render_json_editor(config: Dict) -> Optional[Dict]:
 
                 # 更新 session state
                 st.success("✅ JSON 格式校验通过！")
-                st.info("💡 配置已更新到当前编辑状态，请点击「💾 保存配置」标签页保存")
+                st.info("💡 配置已更新到当前编辑状态，请点击下方「💾 保存配置」按钮保存")
 
                 return new_config
 
@@ -527,6 +619,9 @@ def render_json_editor(config: Dict) -> Optional[Dict]:
         except:
             st.caption("无法解析 JSON 进行 Diff 比较")
 
+    # 渲染保存按钮
+    render_save_button(config)
+
     return None
 
 
@@ -571,13 +666,20 @@ def config_manager_page():
     # 🔥 使用 session state 管理配置（支持 JSON 编辑器更新）
     if "current_config" not in st.session_state or st.session_state.get("config_reload_trigger"):
         st.session_state.current_config = config.copy()
+        # 同时初始化saved_config_snapshot
+        if "saved_config_snapshot" not in st.session_state:
+            st.session_state.saved_config_snapshot = config.copy()
         if "config_reload_trigger" in st.session_state:
             del st.session_state.config_reload_trigger
 
     working_config = st.session_state.current_config
 
-    # 显示配置概览
-    render_config_overview(working_config)
+    # 检查是否有未保存的修改
+    saved_config = st.session_state.get("saved_config_snapshot")
+    has_unsaved_changes = check_config_modified(working_config, saved_config)
+
+    # 显示配置概览（带保存状态）
+    render_config_overview(working_config, has_unsaved_changes)
 
     # 🔥 添加快速操作指南
     with st.expander("📖 使用指南（首次使用请阅读）", expanded=False):
@@ -591,45 +693,51 @@ def config_manager_page():
         **2️⃣ 编辑配置：**
         - 在 "🔗 桥接点配置" 标签添加桥接点（连接所有领域的公共概念）
         - 在 "📦 领域配置" 标签添加领域（不同类型文档的专属 schema）
-        - ✅ **配置会自动保存**，无需手动保存
+        - ⚠️ **编辑后需要保存**：点击任意 Tab 底部的「💾 保存配置」按钮
 
         **3️⃣ 高级编辑（可选）：**
         - "📝 JSON 编辑器" 标签可直接编辑完整配置
-        - "💾 修改项目信息" 标签可更新项目名称、描述等元数据
+        - "💼 项目信息" 标签可更新项目名称、描述等元数据
 
         **4️⃣ 导出配置（可选）：**
-        - 在 "💾 修改项目信息" 标签点击 "📥 导出配置"，可保存为 JSON 文件备份
+        - 在 "📥 导出配置" 标签可导出为 JSON 文件备份
+
+        **5️⃣ 应用配置：**
+        - 保存配置后，前往「🏗️ 构建管理」页面
+        - 在下拉框选择"当前配置"
+        - 点击"完整构建"或"增量构建"应用新配置
 
         ---
 
         ### 常见问题
 
-        **❓ 我添加的配置刷新后不见了怎么办？**
-        - 已修复！现在所有添加/删除操作都会自动保存
+        **❓ 我的配置什么时候会保存？**
+        - 任何添加/删除/修改操作后，点击Tab底部的「💾 保存配置」按钮才会保存
 
-        **❓ "加载行业模板" 和我的配置有什么关系？**
-        - "加载行业模板" 是加载预置的行业模板，会**覆盖**你当前的配置
-        - 你的自定义配置就是当前正在编辑的配置，**已经在使用**，无需额外"应用"
+        **❓ "加载行业模板" 会覆盖我的配置吗？**
+        - 是的！加载模板会替换当前所有配置，建议先导出备份
 
-        **❓ 如何知道我的配置生效了？**
-        - 上方的 "📊 配置概览" 显示的就是当前生效的配置
-        - 重新构建知识图谱后，新配置才会应用到提取过程
+        **❓ 如何应用我保存的配置到构建？**
+        - 保存后，去「🏗️ 构建管理」页面，选择"当前配置"，然后点击构建
         """)
 
     st.markdown("---")
 
-    # 🔥 创建标签页（调整顺序和命名）
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(
-        ["🔗 桥接点配置", "📦 领域配置", "📝 JSON 编辑器", "📋 加载行业模板", "💾 修改项目信息"]
+    # 🔥 创建标签页（6个tab，拆分项目信息和导出）
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
+        ["🔗 桥接点配置", "📦 领域配置", "📝 JSON 编辑器", "📋 加载行业模板", "💼 项目信息", "📥 导出配置"]
     )
 
     with tab1:
+        st.session_state.active_tab = "tab1"
         render_bridge_editor(working_config)
 
     with tab2:
+        st.session_state.active_tab = "tab2"
         render_domain_editor(working_config)
 
     with tab3:
+        st.session_state.active_tab = "tab3"
         # 🔥 JSON 源码编辑模式
         updated_config = render_json_editor(working_config)
         if updated_config:
@@ -637,52 +745,16 @@ def config_manager_page():
             st.rerun()
 
     with tab4:
-        st.subheader("📋 加载预置行业模板")
-        st.info("💡 这里提供 3 个预置的行业模板作为快速起点，适合首次使用或重新开始项目时使用")
-        st.warning("⚠️ **重要提示**：加载模板会**完全覆盖**你当前的所有配置（包括桥接点和领域），请先导出备份！")
-
-        # 添加确认开关
-        confirm_load = st.checkbox("我已了解风险，允许覆盖当前配置", key="confirm_template_load")
-
-        if confirm_load:
-            render_template_selector()
-        else:
-            st.info("👆 请先勾选上方确认框，才能加载模板")
+        st.session_state.active_tab = "tab4"
+        render_template_tab(working_config)
 
     with tab5:
-        st.subheader("💾 修改项目信息与导出")
-        st.caption("修改项目的元数据信息，或导出配置文件作为备份")
+        st.session_state.active_tab = "tab5"
+        render_project_info_tab(working_config)
 
-        # 修改项目信息
-        project_name = st.text_input("项目名称", value=working_config.get("project_name", ""), key="edit_project_name")
-        industry = st.text_input("所属行业", value=working_config.get("industry", ""), key="edit_industry")
-        description = st.text_area("项目描述", value=working_config.get("description", ""), key="edit_description")
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            if st.button("💾 保存配置", type="primary", use_container_width=True):
-                # 🔥 更新配置并使用增强版 save_graph_config
-                working_config["project_name"] = project_name
-                working_config["industry"] = industry
-                working_config["description"] = description
-
-                success, response_data = save_graph_config(working_config, show_feedback=True)
-                if success:
-                    # 触发配置重载
-                    st.session_state.config_reload_trigger = True
-                    st.rerun()
-
-        with col2:
-            # 导出配置
-            config_json = json.dumps(working_config, ensure_ascii=False, indent=2)
-            st.download_button(
-                label="📥 导出配置 (JSON)",
-                data=config_json,
-                file_name=f"{working_config.get('project_name', 'config')}.json",
-                mime="application/json",
-                use_container_width=True,
-            )
+    with tab6:
+        st.session_state.active_tab = "tab6"
+        render_export_tab(working_config)
 
     # 预览模板
     if st.session_state.get("preview_template"):
@@ -721,17 +793,17 @@ def config_manager_page():
         - 系统会根据文档内容自动路由到对应领域
 
         ### 配置生效机制
-        - ✅ 配置编辑后会**自动保存**
-        - ⚠️ 配置修改后需要**重新构建知识图谱**才会应用到提取流程
-        - 💡 在 "知识图谱构建" 页面点击 "全量构建" 或 "增量构建" 应用新配置
+        - ⚠️ 配置编辑后需要**点击保存按钮**才会保存（每个Tab底部都有保存按钮）
+        - ⚠️ 配置保存后需要**重新构建知识图谱**才会应用到提取流程
+        - 💡 在 "知识图谱构建" 页面选择"当前配置"，点击"完整构建"应用新配置
 
         ### 三种使用方式
-        1. **从模板开始**：加载预置的行业模板（法务/电商/医疗），然后根据需求调整
-        2. **从头开始**：直接添加桥接点和领域，完全自定义
+        1. **从模板开始**：加载预置的行业模板（法务/电商/医疗），然后根据需求调整，最后保存
+        2. **从头开始**：直接添加桥接点和领域，完全自定义，最后保存
         3. **AI 辅助**：使用 "AI 配置向导" 自动分析文档并生成配置建议
 
         ### 注意事项
-        - 配置会自动保存，无需手动操作
+        - 所有修改需点击「💾 保存配置」按钮才会保存
         - 加载模板会覆盖当前配置，请先导出备份
         - 建议定期导出配置文件作为备份
         """
