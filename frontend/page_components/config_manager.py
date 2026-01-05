@@ -235,8 +235,16 @@ def render_bridge_editor(config: Dict):
 
                 with col2:
                     if st.button("🗑️", key=f"del_bridge_{idx}", help="删除此桥接点"):
+                        deleted_name = bridges[idx].get("name", "未命名")
                         bridges.pop(idx)
                         config["bridge_definitions"] = bridges
+
+                        # 🔥 立即自动保存
+                        success, _ = save_graph_config(config, show_feedback=False)
+                        if success:
+                            st.success(f"✅ 桥接点 '{deleted_name}' 已删除并保存")
+                        else:
+                            st.error(f"❌ 桥接点删除失败，请手动保存")
                         st.rerun()
     else:
         st.info("暂无桥接点，点击下方按钮添加")
@@ -268,7 +276,13 @@ def render_bridge_editor(config: Dict):
                 }
                 bridges.append(new_bridge)
                 config["bridge_definitions"] = bridges
-                st.success(f"✅ 桥接点 '{bridge_name}' 已添加")
+
+                # 🔥 立即自动保存
+                success, _ = save_graph_config(config, show_feedback=False)
+                if success:
+                    st.success(f"✅ 桥接点 '{bridge_name}' 已添加并保存")
+                else:
+                    st.error(f"❌ 桥接点添加失败，请手动保存")
                 st.rerun()
 
 
@@ -313,8 +327,16 @@ def render_domain_editor(config: Dict):
 
                 with col2:
                     if st.button("🗑️", key=f"del_domain_{idx}", help="删除此领域"):
+                        deleted_name = domains[idx].get("domain_name", "未命名")
                         domains.pop(idx)
                         config["domain_definitions"] = domains
+
+                        # 🔥 立即自动保存
+                        success, _ = save_graph_config(config, show_feedback=False)
+                        if success:
+                            st.success(f"✅ 领域 '{deleted_name}' 已删除并保存")
+                        else:
+                            st.error(f"❌ 领域删除失败，请手动保存")
                         st.rerun()
     else:
         st.info("暂无领域，点击下方按钮添加")
@@ -368,7 +390,13 @@ def render_domain_editor(config: Dict):
                 }
                 domains.append(new_domain)
                 config["domain_definitions"] = domains
-                st.success(f"✅ 领域 '{domain_name}' 已添加")
+
+                # 🔥 立即自动保存
+                success, _ = save_graph_config(config, show_feedback=False)
+                if success:
+                    st.success(f"✅ 领域 '{domain_name}' 已添加并保存")
+                else:
+                    st.error(f"❌ 领域添加失败，请手动保存")
                 st.rerun()
 
 
