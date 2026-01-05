@@ -33,7 +33,10 @@ from graphrag_agent.config.settings import (
     community_algorithm,
     MAX_WORKERS,
     BATCH_SIZE,
-    NEO4J_CONFIG
+    NEO4J_CONFIG,
+    ENTITY_VECTOR_INDEX,
+    EMBEDDING_DIM,
+    VECTOR_SIMILARITY_FUNCTION
 )
 
 # 导入新的管道组件
