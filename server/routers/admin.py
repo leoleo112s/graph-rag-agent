@@ -433,18 +433,42 @@ async def get_build_statistics():
 
 @router.get("/graph/stats")
 async def get_graph_stats():
-    """获取图谱统计信息"""
+    """获取图谱统计信息（包含类型分布）"""
     logger.info("收到图谱统计请求")
     try:
         # 查询实体数量
-        entity_count_query = "MATCH (n) RETURN count(n) as count"
+        entity_count_query = "MATCH (n:`__Entity__`) RETURN count(n) as count"
         entity_result = connection_manager.execute_query(entity_count_query)
         entity_count = entity_result[0]["count"] if entity_result else 0
 
         # 查询关系数量
-        relationship_count_query = "MATCH ()-[r]->() RETURN count(r) as count"
+        relationship_count_query = "MATCH ()-[r:`__Relationship__`]->() RETURN count(r) as count"
         relationship_result = connection_manager.execute_query(relationship_count_query)
         relationship_count = relationship_result[0]["count"] if relationship_result else 0
+
+        # 查询实体类型分布
+        entity_type_query = """
+        MATCH (e:`__Entity__`)
+        WHERE e.type IS NOT NULL AND e.type <> ''
+        RETURN e.type AS type, count(e) AS count
+        ORDER BY count DESC
+        """
+        entity_type_result = connection_manager.execute_query(entity_type_query)
+        entity_type_distribution = {
+            row["type"]: row["count"] for row in entity_type_result
+        } if entity_type_result else {}
+
+        # 查询关系类型分布
+        relationship_type_query = """
+        MATCH ()-[r:`__Relationship__`]->()
+        WHERE r.type IS NOT NULL AND r.type <> ''
+        RETURN r.type AS type, count(r) AS count
+        ORDER BY count DESC
+        """
+        relationship_type_result = connection_manager.execute_query(relationship_type_query)
+        relationship_type_distribution = {
+            row["type"]: row["count"] for row in relationship_type_result
+        } if relationship_type_result else {}
 
         # 查询社区数量
         community_count_query = (
@@ -462,6 +486,8 @@ async def get_graph_stats():
             "relationship_count": relationship_count,
             "community_count": community_count,
             "document_count": document_count,
+            "entity_type_distribution": entity_type_distribution,  # 新增
+            "relationship_type_distribution": relationship_type_distribution,  # 新增
             "last_build_time": datetime.now().isoformat() if entity_count > 0 else None,
         }
     except Exception as e:
