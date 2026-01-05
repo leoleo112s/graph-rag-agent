@@ -118,33 +118,33 @@ class DynamicPromptBuilder:
         prompt_parts.append("")
         prompt_parts.append("**正确输出 JSON**：")
         prompt_parts.append("```json")
-        prompt_parts.append("{")
+        prompt_parts.append("{{")
         prompt_parts.append('  "domains": ["规则库"],')
         prompt_parts.append('  "bridges": [],')
         prompt_parts.append('  "entities": [')
         prompt_parts.append(
-            '    {"name": "学生管理规定", "type": "政策", "bridge_key": null, "description": "学校规章制度", "domain": "规则库"},'
+            '    {{"name": "学生管理规定", "type": "政策", "bridge_key": null, "description": "学校规章制度", "domain": "规则库"}},'
         )
         prompt_parts.append(
-            '    {"name": "教务处", "type": "部门", "bridge_key": null, "description": "学校行政部门", "domain": "规则库"},'
+            '    {{"name": "教务处", "type": "部门", "bridge_key": null, "description": "学校行政部门", "domain": "规则库"}},'
         )
         prompt_parts.append(
-            '    {"name": "学籍管理", "type": "流程", "bridge_key": null, "description": "管理活动", "domain": "规则库"}'
+            '    {{"name": "学籍管理", "type": "流程", "bridge_key": null, "description": "管理活动", "domain": "规则库"}}'
         )
         prompt_parts.append("  ],")
         prompt_parts.append('  "relationships": [')
         prompt_parts.append(
-            '    {"source": "教务处", "target": "学籍管理", "type": "负责", "description": "负责该流程", "domain": "规则库"}'
+            '    {{"source": "教务处", "target": "学籍管理", "type": "负责", "description": "负责该流程", "domain": "规则库"}}'
         )
         prompt_parts.append("  ]")
-        prompt_parts.append("}")
+        prompt_parts.append("}}")
         prompt_parts.append("```")
         prompt_parts.append("")
         prompt_parts.append("**错误示例**（请避免）：")
-        prompt_parts.append('- ❌ `{"name": "StudentAffairs", "type": "部门"}` → 名称必须是中文原文')
-        prompt_parts.append('- ❌ `{"name": "教务处", "type": "行政部门"}` → 类型必须来自schema，不能自创')
+        prompt_parts.append('- ❌ `{{"name": "StudentAffairs", "type": "部门"}}` → 名称必须是中文原文')
+        prompt_parts.append('- ❌ `{{"name": "教务处", "type": "行政部门"}}` → 类型必须来自schema，不能自创')
         prompt_parts.append(
-            '- ❌ `{"name": "教务处", "type": "ORGANIZATION"}` → 类型必须与schema一致，如果schema是中文则用中文'
+            '- ❌ `{{"name": "教务处", "type": "ORGANIZATION"}}` → 类型必须与schema一致，如果schema是中文则用中文'
         )
 
         # 6. 输出格式
