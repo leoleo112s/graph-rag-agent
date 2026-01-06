@@ -192,6 +192,29 @@ class GraphConfigService:
                 "bridge_count": len(self._cached_config.bridge_definitions) if self._cached_config else 0,
             }
 
+    def load_by_id(self, config_id: str) -> Optional[GraphConfig]:
+        """
+        从UserConfigRepository加载指定ID的配置并设为当前配置
+
+        Args:
+            config_id: 配置ID (UUID)
+
+        Returns:
+            GraphConfig 实例，如果不存在则返回 None
+        """
+        from graphrag_agent.config.user_config_repository import get_repository
+
+        with self._cache_lock:
+            repo = get_repository()
+            config = repo.get_config(config_id)
+
+            if config:
+                self._cached_config = config
+                self._last_reload_time = datetime.now()
+                print(f"[GraphConfigService] 已加载配置 ID={config_id}: {config.project_name}")
+
+            return config
+
 
 # 全局便捷函数
 def get_config_service() -> GraphConfigService:

@@ -58,12 +58,15 @@ FILE_REGISTRY_PATH = PROJECT_ROOT / "file_registry.json"  # 文件注册表路�
 
 # ===== 知识库与系统参数 =====
 
-KB_NAME = "华东理工大学"  # 知识库主题，用于deepsearch
+# 🔥 动态配置：根据 GraphConfig 自动适配
+from graphrag_agent.config.dynamic_descriptions import get_kb_name, get_theme
+
+KB_NAME = get_kb_name()  # 知识库主题，用于deepsearch（动态加载）
 workers = _get_env_int("FASTAPI_WORKERS", 2) or 2  # FastAPI 并发进程数
 
 # ===== 知识图谱配置 =====
 
-theme = "华东理工大学学生管理"  # 知识图谱主题
+theme = get_theme()  # 知识图谱主题（动态加载）
 
 entity_types = [
     "学生类型",
@@ -120,24 +123,15 @@ response_type = os.getenv("RESPONSE_TYPE", "多个段落")  # 默认回答形式
 
 # ===== Agent 工具描述 =====
 
-lc_description = (
-    "用于需要具体细节的查询。检索华东理工大学学生管理文件中的具体规定、条款、流程等详细内容。"
-    "适用于'某个具体规定是什么'、'处理流程如何'等问题。"
-)
-gl_description = (
-    "用于需要总结归纳的查询。分析华东理工大学学生管理体系的整体框架、管理原则、学生权利义务等宏观内容。"
-    "适用于'学校的学生管理总体思路'、'学生权益保护机制'等需要系统性分析的问题。"
-)
-naive_description = (
-    "基础检索工具，直接查找与问题最相关的文本片段，不做复杂分析。快速获取华东理工大学相关政策，返回最匹配的原文段落。"
-)
+# 🔥 动态工具描述：根据 GraphConfig 自动生成适配的描述
+from graphrag_agent.config.dynamic_descriptions import get_dynamic_descriptions, get_dynamic_examples
 
-examples = [
-    "旷课多少学时会被退学？",
-    "国家奖学金和国家励志奖学金互斥吗？",
-    "优秀学生要怎么申请？",
-    "那上海市奖学金呢？",
-]  # 前端示例问题
+_descriptions = get_dynamic_descriptions()
+lc_description = _descriptions["lc_description"]
+gl_description = _descriptions["gl_description"]
+naive_description = _descriptions["naive_description"]
+
+examples = get_dynamic_examples()  # 前端示例问题（动态加载）
 
 # ===== 日志配置 (Logging) =====
 

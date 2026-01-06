@@ -23,6 +23,7 @@ async def process_chat(
     agent_type: str = "hybrid_agent",
     use_deeper_tool: bool = True,
     show_thinking: bool = False,
+    config_id: str = None,
 ) -> Dict:
     """
     处理聊天请求
@@ -36,6 +37,7 @@ async def process_chat(
         agent_type: Agent类型
         use_deeper_tool: 是否使用增强版研究工具 (for deep_research_agent)
         show_thinking: 是否显示思考过程 (for deep_research_agent)
+        config_id: 指定使用的GraphConfig配置ID (可选)
 
     Returns:
         Dict: 聊天响应结果
@@ -77,6 +79,21 @@ async def process_chat(
     except Exception as e:
         # 索引检查异常：记录日志但不阻塞用户请求
         print(f"⚠️ 索引状态检查异常（继续执行）: {e}")
+
+    # ========== 🔥 加载用户选择的GraphConfig配置 ==========
+    if config_id:
+        try:
+            from server.services.graph_config_service import get_config_service
+
+            config_service = get_config_service()
+            loaded_config = config_service.load_by_id(config_id)
+
+            if loaded_config:
+                print(f"✅ 已加载用户选择的配置: {loaded_config.project_name} (ID: {config_id})")
+            else:
+                print(f"⚠️ 配置ID {config_id} 不存在，将使用默认配置")
+        except Exception as e:
+            print(f"⚠️ 加载配置失败（使用默认配置）: {e}")
 
     # ========== 聊天锁控制 ==========
     # 生成锁的键
@@ -308,6 +325,7 @@ async def process_chat_stream(
     agent_type: str = "hybrid_agent",
     use_deeper_tool: bool = True,
     show_thinking: bool = False,
+    config_id: str = None,
 ) -> AsyncGenerator[str, None]:
     """
     处理聊天请求，返回流式输出
@@ -321,6 +339,7 @@ async def process_chat_stream(
         agent_type: Agent类型
         use_deeper_tool: 是否使用增强版研究工具
         show_thinking: 是否显示思考过程
+        config_id: 指定使用的GraphConfig配置ID (可选)
 
     Yields:
         流式文本块或状态更新
@@ -359,6 +378,21 @@ async def process_chat_stream(
     except Exception as e:
         # 索引检查异常：记录日志但不阻塞用户请求
         print(f"⚠️ 索引状态检查异常（继续执行）: {e}")
+
+    # ========== 🔥 加载用户选择的GraphConfig配置 ==========
+    if config_id:
+        try:
+            from server.services.graph_config_service import get_config_service
+
+            config_service = get_config_service()
+            loaded_config = config_service.load_by_id(config_id)
+
+            if loaded_config:
+                print(f"✅ 已加载用户选择的配置（流式）: {loaded_config.project_name} (ID: {config_id})")
+            else:
+                print(f"⚠️ 配置ID {config_id} 不存在，将使用默认配置（流式）")
+        except Exception as e:
+            print(f"⚠️ 加载配置失败（使用默认配置，流式）: {e}")
 
     # ========== 聊天锁控制 ==========
     # 生成锁的键

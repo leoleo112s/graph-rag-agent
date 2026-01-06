@@ -30,6 +30,7 @@ async def chat(request: ChatRequest):
         agent_type=request.agent_type,
         use_deeper_tool=request.use_deeper_tool,
         show_thinking=request.show_thinking,
+        config_id=request.config_id,  # 🔥 传递config_id
     )
 
     if request.debug and "execution_log" in result:
@@ -91,6 +92,7 @@ async def chat_stream(request: Request):
     agent_type = data.get("agent_type", "hybrid_agent")
     use_deeper_tool = data.get("use_deeper_tool", True)
     show_thinking = data.get("show_thinking", False)
+    config_id = data.get("config_id")  # 🔥 提取config_id
 
     # 设置流式响应
     async def event_generator():
@@ -108,6 +110,7 @@ async def chat_stream(request: Request):
                 agent_type=agent_type,
                 use_deeper_tool=use_deeper_tool,
                 show_thinking=show_thinking,
+                config_id=config_id,  # 🔥 传递config_id
             ):
                 # 检查是否是字典格式
                 if isinstance(chunk, dict):

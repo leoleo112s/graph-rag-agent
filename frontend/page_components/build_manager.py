@@ -763,10 +763,11 @@ def build_manager_page():
                         if record.get("error_msg"):
                             st.error(f"**错误信息:** {record['error_msg']}")
 
-                        # 配置快照
+                        # 配置快照 (使用 markdown + code 代替嵌套 expander，避免 Streamlit 限制)
                         if record.get("config_snapshot"):
-                            with st.expander("🔍 查看配置快照"):
-                                st.json(record["config_snapshot"])
+                            st.markdown("---")
+                            st.markdown("**🔍 配置快照:**")
+                            st.json(record["config_snapshot"])
 
     # 帮助信息
     with st.expander("❓ 使用说明"):

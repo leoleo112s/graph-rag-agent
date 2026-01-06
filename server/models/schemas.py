@@ -17,6 +17,7 @@ class ChatRequest(BaseModel):
     agent_type: str = "naive_rag_agent"
     use_deeper_tool: Optional[bool] = True
     show_thinking: Optional[bool] = False
+    config_id: Optional[str] = None  # 🔥 新增：指定使用的配置ID
 
 
 class ChatResponse(BaseModel):
