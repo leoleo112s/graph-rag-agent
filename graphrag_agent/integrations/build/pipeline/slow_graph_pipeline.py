@@ -16,7 +16,7 @@ from rich.console import Console
 from graphrag_agent.graph.extraction.extractor_factory import create_entity_extractor
 from graphrag_agent.graph.indexing.embedding_manager import EmbeddingManager
 from graphrag_agent.graph.structure.struct_builder import GraphStructureBuilder
-from graphrag_agent.graph.builder.graph_writer import GraphWriter
+from graphrag_agent.graph.extraction.graph_writer import GraphWriter
 from graphrag_agent.config.neo4jdb import get_db_manager
 from graphrag_agent.integrations.build.pipeline.task_queue import Task, TaskStatus
 from graphrag_agent.config.settings import (
