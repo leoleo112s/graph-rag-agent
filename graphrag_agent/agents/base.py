@@ -526,8 +526,11 @@ class BaseAgent(ABC):
 
     def _normalize_response_to_string(self, response: Any) -> str:
         """将响应标准化为字符串格式"""
+        if response is None:
+            return ""
         if isinstance(response, dict):
-            return response.get("answer", str(response))
+            answer = response.get("answer", "")
+            return answer if answer else str(response)
         elif not isinstance(response, str):
             return str(response)
         return response
@@ -535,6 +538,10 @@ class BaseAgent(ABC):
     async def _stream_cached_response(self, response: str) -> AsyncGenerator[str, None]:
         """以流式方式输出缓存的响应"""
         import re
+
+        # 确保 response 是有效的字符串（防止 None 或其他类型导致 re.split 错误）
+        if not response or not isinstance(response, str):
+            return
 
         chunks = re.split(r"([.!?。！？]\s*)", response)
         buffer = ""
