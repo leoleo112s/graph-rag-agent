@@ -230,7 +230,7 @@ class SlowGraphPipeline:
             file_path: 文件路径
 
         Returns:
-            List[Dict]: Chunk列表
+            List[Dict]: Chunk列表（包含 chunk_doc Document对象）
         """
         # 从 Neo4j 查询文件对应的所有 Chunk
         # 这需要一个查询接口
@@ -242,6 +242,7 @@ class SlowGraphPipeline:
         # 目前先返回空列表或模拟数据
         import os
         from graphrag_agent.config.neo4jdb import get_db_manager
+        from langchain_core.documents import Document
 
         graph = get_db_manager().graph
 
@@ -266,7 +267,16 @@ class SlowGraphPipeline:
                 "chunk_id": row["chunk_id"],
                 "text": row["text"],
                 "file_name": row["file_name"],
-                "chunk_index": row["chunk_index"]
+                "chunk_index": row["chunk_index"],
+                # 🔥 添加 chunk_doc Document对象（GraphWriter需要）
+                "chunk_doc": Document(
+                    page_content=row["text"],
+                    metadata={
+                        "chunk_id": row["chunk_id"],
+                        "file_name": row["file_name"],
+                        "chunk_index": row["chunk_index"]
+                    }
+                )
             }
             for row in result
         ]
