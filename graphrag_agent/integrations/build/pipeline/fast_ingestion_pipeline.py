@@ -202,7 +202,7 @@ class FastIngestionPipeline:
         提取文本并分块，然后写入 Neo4j
 
         Args:
-            file_path: 文件路径
+            file_path: 文件路径（可以是绝对路径、相对路径或仅文件名）
 
         Returns:
             List[Dict]: Chunk列表（已写入 Neo4j），包含 chunk_id 和 chunk_doc
@@ -210,13 +210,26 @@ class FastIngestionPipeline:
         import os
 
         try:
-            file_name = os.path.basename(file_path)
-            file_ext = os.path.splitext(file_path)[1]  # 例如 '.pdf'
+            # 🔥 修复：确保 file_path 是完整路径
+            # 如果传入的只是文件名，拼接 files_dir
+            if not os.path.isabs(file_path):
+                # 检查是否已经是相对于 files_dir 的路径
+                potential_path = os.path.join(self.files_dir, file_path)
+                if os.path.exists(potential_path):
+                    full_path = potential_path
+                else:
+                    # 假设是相对于当前工作目录的路径
+                    full_path = os.path.abspath(file_path)
+            else:
+                full_path = file_path
+
+            file_name = os.path.basename(full_path)
+            file_ext = os.path.splitext(full_path)[1]  # 例如 '.pdf'
 
             # 步骤 1: 调用 DocumentProcessor.process_file 提取文本并分块
             # ✅ 使用新的 process_file 方法，避免处理整个目录
             results, _ = self.doc_processor.process_file(
-                file_path=file_path,
+                file_path=full_path,
                 return_summary=False
             )
 
