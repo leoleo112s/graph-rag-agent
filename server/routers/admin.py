@@ -101,7 +101,7 @@ def _process_config_for_pipeline(raw_config: Optional[Dict]) -> Dict:
 
 def _run_full_build_task(task_id: str, config: Optional[Dict] = None):
     """后台执行全量构建任务"""
-    global _is_building
+    # ✅ 定义锁资源名称
     lock_resource = "graph_build"
     pm = get_progress_manager()
     history_db = get_build_history_db()
@@ -148,10 +148,10 @@ def _run_full_build_task(task_id: str, config: Optional[Dict] = None):
             record_id=record_id, status=BuildStatus.FAILED, error_msg=error_msg, final_stage="failed"
         )
     finally:
-        # ✅ 释放分布式锁（同步版本，因为此函数在后台线程中运行）
-        _lock_manager.release(lock_resource)
-        global _is_building
-        _is_building = False
+        # ✅ 关键修复：释放分布式锁（同步版本，因为此函数在后台线程中运行）
+        # 在释放前检查是否持有锁，避免重复释放导致的错误
+        if _lock_manager.is_locked(lock_resource):
+            _lock_manager.release(lock_resource)
 
 
 def _run_incremental_build_task(task_id: str, config: Optional[Dict] = None):

@@ -9,6 +9,7 @@ L0 快速摄取管道 - 文本分块与向量化
 
 目标：让用户立即使用 Naive RAG 搜索
 """
+import os
 import time
 from pathlib import Path
 from typing import List, Dict, Optional
@@ -100,6 +101,19 @@ class FastIngestionPipeline:
         self.console.print(f"[bold cyan][L0] 快速处理文件: {file_path}[/bold cyan]")
 
         try:
+            # 跳过隐藏文件或系统元数据文件（例如 .DS_Store）
+            target_filename = os.path.basename(file_path)
+            if target_filename.startswith('.'):
+                self.console.print(
+                    f"[yellow]⚠ 跳过隐藏/系统文件: {target_filename}[/yellow]"
+                )
+                return {
+                    "status": "skipped",
+                    "file_path": file_path,
+                    "reason": "hidden or system file",
+                    "duration": time.time() - start_time,
+                }
+
             # 步骤 1: 文本提取与分块
             self.console.print("[cyan]  → 步骤 1/2: 文本提取与分块...[/cyan]")
             chunk_start = time.time()
@@ -199,22 +213,19 @@ class FastIngestionPipeline:
             file_name = os.path.basename(file_path)
             file_ext = os.path.splitext(file_path)[1]  # 例如 '.pdf'
 
-            # 步骤 1: 调用 DocumentProcessor 提取文本并分块
-            results, summary = self.doc_processor.process_directory(
-                file_extensions=[file_ext] if file_ext else None,
-                recursive=False  # 不递归，提高性能
+            # 步骤 1: 调用 DocumentProcessor.process_file 提取文本并分块
+            # ✅ 使用新的 process_file 方法，避免处理整个目录
+            results, _ = self.doc_processor.process_file(
+                file_path=file_path,
+                return_summary=False
             )
 
-            # 步骤 2: 找到当前文件的结果
-            file_result = None
-            for result in results:
-                if result.get("filename") == file_name or result.get("filepath") == file_name:
-                    file_result = result
-                    break
-
-            if not file_result:
+            # 步骤 2: 获取文件处理结果
+            if not results or len(results) == 0:
                 self.console.print(f"[yellow]未找到文件 {file_name} 的处理结果[/yellow]")
                 return []
+
+            file_result = results[0]
 
             chunks_text = file_result.get("chunks", [])
             if not chunks_text:
