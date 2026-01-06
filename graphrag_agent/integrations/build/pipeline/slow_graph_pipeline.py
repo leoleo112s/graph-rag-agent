@@ -15,6 +15,9 @@ from rich.console import Console
 
 from graphrag_agent.graph.extraction.extractor_factory import create_entity_extractor
 from graphrag_agent.graph.indexing.embedding_manager import EmbeddingManager
+from graphrag_agent.graph.structure.struct_builder import GraphStructureBuilder
+from graphrag_agent.graph.builder.graph_writer import GraphWriter
+from graphrag_agent.config.neo4jdb import get_db_manager
 from graphrag_agent.integrations.build.pipeline.task_queue import Task, TaskStatus
 from graphrag_agent.config.settings import (
     BATCH_SIZE,
@@ -72,6 +75,11 @@ class SlowGraphPipeline:
             max_workers=MAX_WORKERS
         )
 
+        # 🔥 初始化图结构构建器和图写入器
+        self.graph = get_db_manager().graph
+        self.struct_builder = GraphStructureBuilder(batch_size=BATCH_SIZE)
+        self.graph_writer = GraphWriter(self.graph, batch_size=50, max_workers=MAX_WORKERS)
+
     def process_file_entity_extraction(self, file_path: str, task: Optional[Task] = None) -> Dict:
         """
         处理单个文件的实体提取
@@ -124,8 +132,55 @@ class SlowGraphPipeline:
                 f"({extraction_duration:.2f}s)[/green]"
             )
 
+            # 🔥 步骤 2.5: 写入数据库（修复缺失步骤）
+            self.console.print("[magenta]  → 步骤 2.5/4: 写入数据库...[/magenta]")
+
+            write_start = time.time()
+
+            # 准备GraphWriter所需的数据格式
+            import os
+            file_name = os.path.basename(file_path)
+
+            # 构建entity_data格式 - 将提取的实体和关系组织成字典列表
+            entity_data = []
+            for chunk in chunks:
+                # 每个chunk对应一个entity_data字典
+                chunk_entity_dict = {
+                    "entities": [],  # 稍后填充
+                    "relationships": [],
+                    "relations": [],
+                    "bridges": [],
+                    "domains": []
+                }
+                entity_data.append(chunk_entity_dict)
+
+            # 将提取的实体和关系分配到对应的chunk（简化处理：放到第一个chunk）
+            if entity_data and (entities or relationships):
+                entity_data[0]["entities"] = entities
+                entity_data[0]["relationships"] = relationships
+                entity_data[0]["relations"] = relationships
+
+            # 准备GraphWriter数据
+            graph_writer_data = [
+                [
+                    file_name,
+                    "",  # content (不需要)
+                    [chunk.get("text", "") for chunk in chunks],  # chunk文本列表
+                    chunks,  # graph_result (chunk节点信息)
+                    entity_data  # 实体提取结果
+                ]
+            ]
+
+            # 写入数据库
+            self.graph_writer.process_and_write_graph_documents(graph_writer_data)
+            write_duration = time.time() - write_start
+
+            self.console.print(
+                f"[green]  ✓ 数据库写入完成 ({write_duration:.2f}s)[/green]"
+            )
+
             # 步骤 3: 生成实体 Embedding
-            self.console.print("[magenta]  → 步骤 3/3: 生成实体向量...[/magenta]")
+            self.console.print("[magenta]  → 步骤 3/4: 生成实体向量...[/magenta]")
 
             embed_start = time.time()
             embedded_count = self.embedding_manager.update_entity_embeddings()
