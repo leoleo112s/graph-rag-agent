@@ -101,9 +101,12 @@ class LocalSearch:
         collect {
             UNWIND nodes as n
             MATCH (n)-[:IN_COMMUNITY]->(c:__Community__)
-            WITH distinct c, c.community_rank as rank, c.weight AS weight
-            RETURN c.summary 
-            ORDER BY rank, weight DESC
+            WHERE c.summary IS NOT NULL
+            WITH distinct c,
+                 COALESCE(c.community_rank, 0) as rank,
+                 COALESCE(c.weight, 0) AS weight
+            RETURN c.summary
+            ORDER BY rank DESC, weight DESC
             LIMIT $topCommunities
         } AS report_mapping,
         collect {
@@ -208,8 +211,13 @@ class LocalSearch:
         )
 
         # 使用LLM生成响应
+        # 确保 context 始终是字符串（处理 None 和空值情况）
+        context = ""
+        if docs and len(docs) > 0 and docs[0].page_content:
+            context = str(docs[0].page_content)
+
         response = chain.invoke(
-            {"context": docs[0].page_content if docs else "", "input": query, "response_type": self.response_type}
+            {"context": context, "input": query, "response_type": self.response_type}
         )
 
         return response

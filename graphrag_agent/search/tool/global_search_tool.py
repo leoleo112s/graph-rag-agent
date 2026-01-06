@@ -151,7 +151,7 @@ class GlobalSearchTool(BaseSearchTool):
         # 添加排序和返回语句
         cypher_query += """
         WITH c
-        ORDER BY c.community_rank DESC, c.weight DESC
+        ORDER BY COALESCE(c.community_rank, 0) DESC, COALESCE(c.weight, 0) DESC
         LIMIT 20
         RETURN {communityId: c.id, full_content: c.full_content} AS output
         """

@@ -85,9 +85,9 @@ class CommunityAwareSearchEnhancer:
         community_query = """
         MATCH (c:__Community__)
         WHERE c.summary IS NOT NULL
-        RETURN c.id AS community_id, c.summary AS summary, 
-               c.community_rank AS rank
-        ORDER BY c.community_rank DESC
+        RETURN c.id AS community_id, c.summary AS summary,
+               COALESCE(c.community_rank, 0) AS rank
+        ORDER BY COALESCE(c.community_rank, 0) DESC
         LIMIT 20
         """
 
