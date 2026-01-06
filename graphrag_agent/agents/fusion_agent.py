@@ -57,6 +57,23 @@ class FusionGraphRAGAgent:
         self._global_cache.clear()
         self._session_cache.clear()
 
+    def configure(self, config: Dict[str, Any]) -> None:
+        """
+        配置Agent的运行时参数（与 BaseAgent 接口兼容）
+
+        Args:
+            config: 配置字典，可能包含：
+                - use_deeper_tool: bool
+                - show_thinking: bool
+                - 其他Agent特定参数
+
+        Note:
+            FusionGraphRAGAgent 目前不使用这些配置，但提供此方法以保持接口一致性
+        """
+        # FusionGraphRAGAgent 通过 MultiAgentFacade 内部处理配置
+        # 此方法为空实现，仅用于接口兼容
+        pass
+
     def _execute(
         self, query: str, thread_id: str, *, assumptions: Optional[list[str]] = None, report_type: Optional[str] = None
     ) -> Tuple[str, Dict[str, Any]]:
