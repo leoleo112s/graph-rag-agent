@@ -38,6 +38,7 @@ from graphrag_agent.config.settings import (
     EMBEDDING_DIM,
     VECTOR_SIMILARITY_FUNCTION
 )
+from graphrag_agent.config.graph_config_storage import GraphConfigStorage
 
 # 导入新的管道组件
 from graphrag_agent.integrations.build.pipeline import (
@@ -90,8 +91,29 @@ class IncrementalUpdateManagerV2:
         self.validator = GraphConsistencyValidator()
         self.edit_manager = ManualEditManager()
 
-        # 初始化新组件
-        self.fast_pipeline = FastIngestionPipeline(files_dir)
+        # 🔥 从 GraphConfig 读取分块配置
+        chunking_strategy = "simple"
+        chunk_size = 500
+        chunk_overlap = 100
+
+        try:
+            storage = GraphConfigStorage()
+            graph_config = storage.load()
+            if graph_config:
+                chunking_strategy = graph_config.chunking_strategy
+                chunk_size = graph_config.chunk_size
+                chunk_overlap = graph_config.chunk_overlap
+                self.console.print(f"[green]✅ 已从 GraphConfig 加载分块配置: {chunking_strategy}, size={chunk_size}, overlap={chunk_overlap}[/green]")
+        except Exception as e:
+            self.console.print(f"[yellow]⚠️  未找到 GraphConfig，使用默认分块配置: {e}[/yellow]")
+
+        # 初始化新组件 - 传递分块配置
+        self.fast_pipeline = FastIngestionPipeline(
+            files_dir,
+            chunking_strategy=chunking_strategy,
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap
+        )
         self.slow_pipeline = SlowGraphPipeline()
 
         # 获取全局任务队列

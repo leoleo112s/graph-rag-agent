@@ -35,18 +35,41 @@ class FastIngestionPipeline:
     - 社区检测（很慢）
     """
 
-    def __init__(self, files_dir: str = FILES_DIR):
+    def __init__(
+        self,
+        files_dir: str = FILES_DIR,
+        chunking_strategy: str = "simple",
+        chunk_size: int = 500,
+        chunk_overlap: int = 100
+    ):
         """
         初始化快速摄取管道
 
         Args:
             files_dir: 文件目录
+            chunking_strategy: 分块策略 (simple/adaptive/semantic/custom)
+            chunk_size: 分块大小
+            chunk_overlap: 分块重叠
         """
         self.console = Console()
         self.files_dir = files_dir
 
-        # 初始化组件
-        self.doc_processor = DocumentProcessor(directory_path=files_dir)
+        # 🔥 根据策略选择 chunker_mode
+        chunker_mode_map = {
+            "simple": "default",
+            "adaptive": "adaptive",
+            "semantic": "rag",  # 语义分块使用RAG chunker
+            "custom": "default"  # 自定义分隔符暂时使用默认
+        }
+        chunker_mode = chunker_mode_map.get(chunking_strategy, "default")
+
+        # 初始化组件 - 使用用户配置的分块参数
+        self.doc_processor = DocumentProcessor(
+            directory_path=files_dir,
+            chunk_size=chunk_size,
+            overlap=chunk_overlap,
+            chunker_mode=chunker_mode
+        )
         self.struct_builder = GraphStructureBuilder(batch_size=BATCH_SIZE)
         self.embedding_manager = EmbeddingManager(
             batch_size=BATCH_SIZE,
