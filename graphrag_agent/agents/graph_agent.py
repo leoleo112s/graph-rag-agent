@@ -256,23 +256,30 @@ class GraphAgent(BaseAgent):
         # 检查缓存
         cached_result = self.cache_manager.get(f"generate:{question}", thread_id=thread_id)
         if cached_result:
-            # 分块输出缓存内容
-            sentences = re.split(r"([.!?。！？]\s*)", cached_result)
-            buffer = ""
+            # 确保缓存结果是有效字符串
+            if isinstance(cached_result, dict):
+                cached_result = cached_result.get("answer", "")
+            if not isinstance(cached_result, str) or not cached_result:
+                # 缓存无效，继续正常流程
+                pass
+            else:
+                # 分块输出缓存内容
+                sentences = re.split(r"([.!?。！？]\s*)", cached_result)
+                buffer = ""
 
-            for i in range(0, len(sentences)):
-                buffer += sentences[i]
+                for i in range(0, len(sentences)):
+                    buffer += sentences[i]
 
-                # 当缓冲区包含完整句子或达到合理大小时输出
-                if (i % 2 == 1) or len(buffer) >= self.stream_flush_threshold:
+                    # 当缓冲区包含完整句子或达到合理大小时输出
+                    if (i % 2 == 1) or len(buffer) >= self.stream_flush_threshold:
+                        yield buffer
+                        buffer = ""
+                        await asyncio.sleep(0.01)
+
+                # 输出任何剩余内容
+                if buffer:
                     yield buffer
-                    buffer = ""
-                    await asyncio.sleep(0.01)
-
-            # 输出任何剩余内容
-            if buffer:
-                yield buffer
-            return
+                return
 
         # 构建提示模板
         prompt = ChatPromptTemplate.from_messages(
@@ -287,17 +294,26 @@ class GraphAgent(BaseAgent):
         rag_chain = prompt | self.llm | StrOutputParser()
         response = rag_chain.invoke({"context": docs, "question": question, "response_type": response_type})
 
+        # 确保response是有效字符串
+        if not isinstance(response, str):
+            response = str(response) if response else ""
+
+        if not response:
+            return
+
         # 分块输出结果
         sentences = re.split(r"([.!?。！？]\s*)", response)
         buffer = ""
 
         for i in range(len(sentences)):
             buffer += sentences[i]
-        if i % 2 == 1 or len(buffer) >= self.stream_flush_threshold:
-            yield buffer
-            buffer = ""
-            await asyncio.sleep(0.01)
+            # 当缓冲区包含完整句子或达到合理大小时输出
+            if i % 2 == 1 or len(buffer) >= self.stream_flush_threshold:
+                yield buffer
+                buffer = ""
+                await asyncio.sleep(0.01)
 
+        # 输出任何剩余内容
         if buffer:
             yield buffer
 
@@ -310,23 +326,30 @@ class GraphAgent(BaseAgent):
         # 首先检查缓存
         cached_response = self.cache_manager.get(query.strip(), thread_id=thread_id)
         if cached_response:
-            # 分块返回缓存结果
-            sentences = re.split(r"([.!?。！？]\s*)", cached_response)
-            buffer = ""
+            # 确保缓存响应是有效字符串
+            if isinstance(cached_response, dict):
+                cached_response = cached_response.get("answer", "")
+            if not isinstance(cached_response, str) or not cached_response:
+                # 缓存无效，继续正常流程
+                pass
+            else:
+                # 分块返回缓存结果
+                sentences = re.split(r"([.!?。！？]\s*)", cached_response)
+                buffer = ""
 
-            for i in range(0, len(sentences)):
-                buffer += sentences[i]
+                for i in range(0, len(sentences)):
+                    buffer += sentences[i]
 
-                # 当缓冲区包含完整句子或达到合理大小时输出
-                if (i % 2 == 1) or len(buffer) >= self.stream_flush_threshold:
+                    # 当缓冲区包含完整句子或达到合理大小时输出
+                    if (i % 2 == 1) or len(buffer) >= self.stream_flush_threshold:
+                        yield buffer
+                        buffer = ""
+                        await asyncio.sleep(0.01)
+
+                # 输出任何剩余内容
+                if buffer:
                     yield buffer
-                    buffer = ""
-                    await asyncio.sleep(0.01)
-
-            # 输出任何剩余内容
-            if buffer:
-                yield buffer
-            return
+                return
 
         # 处理工作流
         workflow_state = {"messages": [HumanMessage(content=query)]}
@@ -370,6 +393,13 @@ class GraphAgent(BaseAgent):
             # 不需要工具，直接返回Agent的响应
             final_msg = workflow_state["messages"][-1]
             content = final_msg.content if hasattr(final_msg, "content") else str(final_msg)
+
+            # 确保content是有效字符串
+            if not isinstance(content, str):
+                content = str(content) if content else ""
+
+            if not content:
+                return
 
             # 分块返回
             sentences = re.split(r"([.!?。！？]\s*)", content)
