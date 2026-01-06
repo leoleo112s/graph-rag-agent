@@ -47,14 +47,25 @@ class SlowGraphPipeline:
     - 支持任务队列异步执行
     """
 
-    def __init__(self, user_examples: Optional[List[str]] = None):
+    def __init__(
+        self,
+        user_examples: Optional[List[str]] = None,
+        entity_types_override: Optional[List[str]] = None,
+        relationship_types_override: Optional[List[str]] = None
+    ):
         """
         初始化慢速图谱管道
 
         Args:
             user_examples: 用户修正的示例（用于 Few-Shot Prompt）
+            entity_types_override: 覆盖默认的实体类型列表（来自用户选择的配置）
+            relationship_types_override: 覆盖默认的关系类型列表（来自用户选择的配置）
         """
         self.console = Console()
+
+        # 🔥 使用用户传入的schema，如果没有则使用settings.py的默认值
+        final_entity_types = entity_types_override if entity_types_override else entity_types
+        final_relationship_types = relationship_types_override if relationship_types_override else relationship_types
 
         # 使用工厂函数初始化实体提取器（支持动态/传统配置）
         # 注意：create_entity_extractor 内部会通过 get_llm_model() 创建 LLM 实例
@@ -62,8 +73,8 @@ class SlowGraphPipeline:
             llm=get_llm_model(),
             system_template=system_template_build_graph,
             human_template=human_template_build_graph,
-            entity_types=entity_types,
-            relationship_types=relationship_types,
+            entity_types=final_entity_types,
+            relationship_types=final_relationship_types,
             max_workers=MAX_WORKERS,
             batch_size=BATCH_SIZE
             # user_examples=user_examples  # TODO: 需要在 EntityRelationExtractor 中实现

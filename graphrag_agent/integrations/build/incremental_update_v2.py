@@ -91,21 +91,42 @@ class IncrementalUpdateManagerV2:
         self.validator = GraphConsistencyValidator()
         self.edit_manager = ManualEditManager()
 
-        # 🔥 从 GraphConfig 读取分块配置
+        # 🔥 从用户传入的 config 或 GraphConfig 读取分块配置
         chunking_strategy = "simple"
         chunk_size = 500
         chunk_overlap = 100
+        entity_types_override = None
+        relationship_types_override = None
 
-        try:
-            storage = GraphConfigStorage()
-            graph_config = storage.load()
-            if graph_config:
-                chunking_strategy = graph_config.chunking_strategy
-                chunk_size = graph_config.chunk_size
-                chunk_overlap = graph_config.chunk_overlap
-                self.console.print(f"[green]✅ 已从 GraphConfig 加载分块配置: {chunking_strategy}, size={chunk_size}, overlap={chunk_overlap}[/green]")
-        except Exception as e:
-            self.console.print(f"[yellow]⚠️  未找到 GraphConfig，使用默认分块配置: {e}[/yellow]")
+        # 优先使用传入的 config（从 admin.py 传来的用户选择的配置）
+        if self.config:
+            # 如果config包含分块配置，使用它
+            if "chunking_strategy" in self.config:
+                chunking_strategy = self.config.get("chunking_strategy", "simple")
+                chunk_size = self.config.get("chunk_size", 500)
+                chunk_overlap = self.config.get("chunk_overlap", 100)
+                self.console.print(f"[green]✅ 从传入config加载分块配置: {chunking_strategy}, size={chunk_size}, overlap={chunk_overlap}[/green]")
+
+            # 提取实体和关系类型（用于 SlowGraphPipeline）
+            if "entity_types" in self.config:
+                entity_types_override = self.config["entity_types"]
+                self.console.print(f"[green]✅ 从传入config加载 {len(entity_types_override)} 种实体类型[/green]")
+            if "relationship_types" in self.config:
+                relationship_types_override = self.config["relationship_types"]
+                self.console.print(f"[green]✅ 从传入config加载 {len(relationship_types_override)} 种关系类型[/green]")
+
+        # 如果没有传入配置，尝试从 graph_config.json 加载
+        if not self.config or "chunking_strategy" not in self.config:
+            try:
+                storage = GraphConfigStorage()
+                graph_config = storage.load()
+                if graph_config:
+                    chunking_strategy = graph_config.chunking_strategy
+                    chunk_size = graph_config.chunk_size
+                    chunk_overlap = graph_config.chunk_overlap
+                    self.console.print(f"[green]✅ 从 graph_config.json 加载分块配置: {chunking_strategy}, size={chunk_size}, overlap={chunk_overlap}[/green]")
+            except Exception as e:
+                self.console.print(f"[yellow]⚠️  未找到 GraphConfig，使用默认分块配置: {e}[/yellow]")
 
         # 初始化新组件 - 传递分块配置
         self.fast_pipeline = FastIngestionPipeline(
@@ -114,7 +135,12 @@ class IncrementalUpdateManagerV2:
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap
         )
-        self.slow_pipeline = SlowGraphPipeline()
+
+        # 🔥 传递实体/关系类型到 SlowGraphPipeline
+        self.slow_pipeline = SlowGraphPipeline(
+            entity_types_override=entity_types_override,
+            relationship_types_override=relationship_types_override
+        )
 
         # 获取全局任务队列
         self.task_queue = get_global_task_queue()

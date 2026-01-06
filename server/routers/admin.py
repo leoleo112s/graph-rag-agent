@@ -53,7 +53,7 @@ _lock_manager = get_build_lock_manager()
 def _process_config_for_pipeline(raw_config: Optional[Dict]) -> Dict:
     """
     将前端复杂的图谱配置（Domain/Bridge结构）
-    转换为 Pipeline 能理解的扁平化配置（entity_types, relationship_types）
+    转换为 Pipeline 能理解的扁平化配置（entity_types, relationship_types, chunking_strategy）
     """
     if not raw_config:
         return {}
@@ -83,7 +83,12 @@ def _process_config_for_pipeline(raw_config: Optional[Dict]) -> Dict:
         if schema.get("relations"):
             relations.update(schema["relations"])
 
-    # 3. 构造结果
+    # 3. 提取分块配置
+    chunking_strategy = raw_config.get("chunking_strategy", "simple")
+    chunk_size = raw_config.get("chunk_size", 500)
+    chunk_overlap = raw_config.get("chunk_overlap", 100)
+
+    # 4. 构造结果
     result = {}
     if entities:
         result["entity_types"] = list(entities)
@@ -92,6 +97,12 @@ def _process_config_for_pipeline(raw_config: Optional[Dict]) -> Dict:
     if relations:
         result["relationship_types"] = list(relations)
         print(f"DEBUG: [Admin] 提取到 {len(relations)} 种关系类型")
+
+    # 🔥 添加分块配置到result
+    result["chunking_strategy"] = chunking_strategy
+    result["chunk_size"] = chunk_size
+    result["chunk_overlap"] = chunk_overlap
+    print(f"DEBUG: [Admin] 分块配置: {chunking_strategy}, size={chunk_size}, overlap={chunk_overlap}")
 
     return result
 
