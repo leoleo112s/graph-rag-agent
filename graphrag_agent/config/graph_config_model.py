@@ -4,7 +4,7 @@
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -79,6 +79,16 @@ class GraphConfig(BaseModel):
     # 核心配置
     bridge_definitions: List[BridgeDefinition] = Field(..., description="桥接点定义列表")
     domain_definitions: List[DomainDefinition] = Field(..., description="领域定义列表")
+
+    # 分块配置
+    chunking_strategy: Literal["simple", "adaptive", "semantic", "custom"] = Field(
+        default="simple", description="分块策略：simple(简单分词), adaptive(自适应), semantic(语义分块), custom(自定义)"
+    )
+    chunk_size: int = Field(default=500, description="分块大小（字符数）", ge=100, le=5000)
+    chunk_overlap: int = Field(default=100, description="分块重叠（字符数）", ge=0, le=1000)
+    custom_separators: Optional[List[str]] = Field(
+        default=None, description="自定义分隔符列表（仅用于custom策略），例如：['\\n\\n', '。', '！', '？']"
+    )
 
     # 元数据
     created_at: datetime = Field(default_factory=datetime.now)

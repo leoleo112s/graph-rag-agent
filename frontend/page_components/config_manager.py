@@ -327,6 +327,111 @@ def render_project_info_tab(config: Dict):
     config["industry"] = industry
     config["description"] = description
 
+    st.markdown("---")
+
+    # 🔥 分块配置
+    st.subheader("✂️ 分块配置")
+    st.caption("配置文档分块策略，控制文本如何被切分为小段落")
+
+    # 分块策略选择
+    chunking_strategy = st.selectbox(
+        "分块策略",
+        options=["simple", "adaptive", "semantic", "custom"],
+        index=["simple", "adaptive", "semantic", "custom"].index(config.get("chunking_strategy", "simple")),
+        format_func=lambda x: {
+            "simple": "简单分词 - 基于固定字符数切分",
+            "adaptive": "自适应 - 根据内容动态调整块大小",
+            "semantic": "语义分块 - 按句子/段落语义切分",
+            "custom": "自定义 - 使用自定义分隔符"
+        }[x],
+        key="edit_chunking_strategy",
+        help="选择分块策略会影响知识图谱的构建质量和检索性能"
+    )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        chunk_size = st.number_input(
+            "分块大小（字符数）",
+            min_value=100,
+            max_value=5000,
+            value=config.get("chunk_size", 500),
+            step=50,
+            key="edit_chunk_size",
+            help="每个文本块的最大字符数。较大的块包含更多上下文，较小的块更精确"
+        )
+
+    with col2:
+        chunk_overlap = st.number_input(
+            "分块重叠（字符数）",
+            min_value=0,
+            max_value=1000,
+            value=config.get("chunk_overlap", 100),
+            step=20,
+            key="edit_chunk_overlap",
+            help="相邻块之间的重叠字符数。重叠可以避免重要信息被切断"
+        )
+
+    # 自定义分隔符（仅在custom策略时显示）
+    custom_separators = None
+    if chunking_strategy == "custom":
+        st.markdown("**自定义分隔符**")
+        separators_input = st.text_input(
+            "分隔符列表（逗号分隔）",
+            value=",".join(config.get("custom_separators", [])) if config.get("custom_separators") else "\\n\\n,。,！,？",
+            key="edit_custom_separators",
+            help="使用逗号分隔多个分隔符，例如：\\n\\n,。,！,？"
+        )
+        if separators_input:
+            custom_separators = [s.strip() for s in separators_input.split(",")]
+
+    # 更新配置
+    config["chunking_strategy"] = chunking_strategy
+    config["chunk_size"] = chunk_size
+    config["chunk_overlap"] = chunk_overlap
+    if custom_separators is not None:
+        config["custom_separators"] = custom_separators
+
+    # 显示分块策略说明
+    with st.expander("📖 分块策略说明", expanded=False):
+        st.markdown("""
+        ### 分块策略对比
+
+        **🔹 Simple（简单分词）**
+        - 基于固定字符数进行切分
+        - 速度最快，适合大多数场景
+        - 可能会在词语中间切断
+
+        **🔹 Adaptive（自适应）**
+        - 根据文档结构动态调整块大小
+        - 保留文档的自然段落边界
+        - 平衡速度和质量
+
+        **🔹 Semantic（语义分块）**
+        - 按句子和段落语义进行切分
+        - 保证每个块语义完整
+        - 质量最高，但速度较慢
+
+        **🔹 Custom（自定义）**
+        - 使用用户指定的分隔符
+        - 适合特定格式的文档
+        - 需要熟悉文档结构
+
+        ### 参数建议
+
+        **📊 知识图谱构建**（推荐）
+        - chunk_size: 1000
+        - chunk_overlap: 50
+        - 策略: simple 或 adaptive
+
+        **🔍 向量检索**（精确搜索）
+        - chunk_size: 400
+        - chunk_overlap: 80
+        - 策略: semantic 或 simple
+
+        ⚠️ **注意**：修改分块配置后需要重新构建知识图谱才能生效
+        """)
+
     # 渲染保存按钮
     render_save_button(config)
 
