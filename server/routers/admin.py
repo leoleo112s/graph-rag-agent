@@ -107,6 +107,23 @@ def _process_config_for_pipeline(raw_config: Optional[Dict]) -> Dict:
     return result
 
 
+def _apply_graph_config(raw_config: Optional[Dict]) -> None:
+    """
+    将前端选择的配置写入 GraphConfigService（持久化到 graph_config.json）
+    以确保构建管道的动态提示词和抽取逻辑使用最新配置。
+    """
+    if not raw_config:
+        return
+
+    try:
+        config_obj = GraphConfig(**raw_config)
+    except Exception as exc:
+        raise ValueError(f"图谱配置解析失败: {exc}") from exc
+
+    config_service = get_config_service()
+    config_service.update_config_obj(config_obj)
+    logger.info("已同步图谱配置到 graph_config.json: %s", config_obj.project_name)
+
 # ==================== 核心构建逻辑 (V2 集成) ====================
 
 
@@ -122,6 +139,9 @@ def _run_full_build_task(task_id: str, config: Optional[Dict] = None):
     logger.info(f"创建构建历史记录: {record_id}")
 
     try:
+        # 0. 同步用户选择的图谱配置（确保构建使用当前配置）
+        _apply_graph_config(config)
+
         # 1. 处理配置格式
         pipeline_config = _process_config_for_pipeline(config)
 
@@ -178,6 +198,9 @@ def _run_incremental_build_task(task_id: str, config: Optional[Dict] = None):
     logger.info(f"创建构建历史记录: {record_id}")
 
     try:
+        # 0. 同步用户选择的图谱配置（确保构建使用当前配置）
+        _apply_graph_config(config)
+
         # 1. 处理配置格式
         pipeline_config = _process_config_for_pipeline(config)
 
