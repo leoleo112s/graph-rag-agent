@@ -10592,3 +10592,968 @@ openai.APIStatusError: Error code: 402 - {'error': {'message': 'Insufficient Bal
 2026-01-06 22:46:25 [graphrag-server] [INFO] routers.admin:434 - 查询构建统计信息
 2026-01-06 22:46:25 [graphrag-server] [INFO] routers.admin:406 - 查询构建历史: limit=50, offset=0
 2026-01-07 09:13:12 [graphrag-server] [WARNING] main:166 - HTTP异常: Failed to fetch status: Cannot perform operations - Neo4j connection has been closed
+2026-01-07 17:24:42 [graphrag-server] [INFO] graphrag_agent.utils.logging_config:95 - 日志系统初始化完成: level=INFO, format=text, file=logs/graphrag.log
+2026-01-07 17:24:42 [graphrag-server] [INFO] graphrag_agent.utils.logging_config:95 - 日志系统初始化完成: level=INFO, format=text, file=logs/graphrag.log
+2026-01-07 17:24:42 [graphrag-server] [INFO] main:166 - 知识图谱问答系统启动
+2026-01-07 17:24:46 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 17:24:46 [graphrag-server] [INFO] routers.user_configs:63 - 返回 3 个配置
+2026-01-07 17:24:46 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 1152aba8-7904-471e-98b0-1a2b25011c7f
+2026-01-07 17:24:46 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员
+2026-01-07 17:24:46 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 54326f8d-cc92-48fb-8666-e8970bb159c5
+2026-01-07 17:24:46 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 测试
+2026-01-07 17:24:46 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 9a4866c1-90e8-4f6d-b314-2e7f14d03801
+2026-01-07 17:24:46 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 本科生奖学金与学生纪律管理制度
+2026-01-07 17:24:46 [graphrag-server] [INFO] routers.admin:769 - 收到列出模板请求
+2026-01-07 17:24:46 [graphrag-server] [INFO] routers.admin:775 - 返回 3 个模板
+2026-01-07 17:24:46 [graphrag-server] [INFO] routers.admin:452 - 收到图谱统计请求
+2026-01-07 17:24:46 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownRelationshipTypeWarning} {category: UNRECOGNIZED} {title: The provided relationship type is not in the database.} {description: One of the relationship types in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing relationship type is: __Relationship__)} {position: line: 1, column: 13, offset: 12} for query: 'MATCH ()-[r:`__Relationship__`]->() RETURN count(r) as count'
+2026-01-07 17:24:46 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownRelationshipTypeWarning} {category: UNRECOGNIZED} {title: The provided relationship type is not in the database.} {description: One of the relationship types in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing relationship type is: __Relationship__)} {position: line: 2, column: 13, offset: 21} for query: "\n        MATCH ()-[r:`__Relationship__`]->()\n        WHERE r.type IS NOT NULL AND r.type <> ''\n        RETURN r.type AS type, count(r) AS count\n        ORDER BY count DESC\n        "
+2026-01-07 17:24:46 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-07 17:24:46 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-07 17:24:48 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 17:24:48 [graphrag-server] [INFO] routers.user_configs:63 - 返回 3 个配置
+2026-01-07 17:24:50 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 17:24:50 [graphrag-server] [INFO] routers.user_configs:63 - 返回 3 个配置
+2026-01-07 17:24:50 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 17:24:50 [graphrag-server] [INFO] routers.user_configs:63 - 返回 3 个配置
+2026-01-07 17:24:50 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 1152aba8-7904-471e-98b0-1a2b25011c7f
+2026-01-07 17:24:50 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员
+2026-01-07 17:25:12 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 17:25:12 [graphrag-server] [INFO] routers.user_configs:63 - 返回 3 个配置
+2026-01-07 17:25:12 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 1152aba8-7904-471e-98b0-1a2b25011c7f
+2026-01-07 17:25:12 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员
+2026-01-07 17:25:12 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 54326f8d-cc92-48fb-8666-e8970bb159c5
+2026-01-07 17:25:12 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 测试
+2026-01-07 17:25:12 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 9a4866c1-90e8-4f6d-b314-2e7f14d03801
+2026-01-07 17:25:12 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 本科生奖学金与学生纪律管理制度
+2026-01-07 17:25:12 [graphrag-server] [INFO] routers.admin:769 - 收到列出模板请求
+2026-01-07 17:25:12 [graphrag-server] [INFO] routers.admin:775 - 返回 3 个模板
+2026-01-07 17:25:12 [graphrag-server] [INFO] routers.admin:452 - 收到图谱统计请求
+2026-01-07 17:25:12 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownRelationshipTypeWarning} {category: UNRECOGNIZED} {title: The provided relationship type is not in the database.} {description: One of the relationship types in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing relationship type is: __Relationship__)} {position: line: 1, column: 13, offset: 12} for query: 'MATCH ()-[r:`__Relationship__`]->() RETURN count(r) as count'
+2026-01-07 17:25:12 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownRelationshipTypeWarning} {category: UNRECOGNIZED} {title: The provided relationship type is not in the database.} {description: One of the relationship types in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing relationship type is: __Relationship__)} {position: line: 2, column: 13, offset: 21} for query: "\n        MATCH ()-[r:`__Relationship__`]->()\n        WHERE r.type IS NOT NULL AND r.type <> ''\n        RETURN r.type AS type, count(r) AS count\n        ORDER BY count DESC\n        "
+2026-01-07 17:25:12 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-07 17:25:12 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-07 17:25:15 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 17:25:15 [graphrag-server] [INFO] routers.user_configs:63 - 返回 3 个配置
+2026-01-07 17:25:15 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 1152aba8-7904-471e-98b0-1a2b25011c7f
+2026-01-07 17:25:15 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员
+2026-01-07 17:25:15 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 54326f8d-cc92-48fb-8666-e8970bb159c5
+2026-01-07 17:25:15 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 测试
+2026-01-07 17:25:15 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 9a4866c1-90e8-4f6d-b314-2e7f14d03801
+2026-01-07 17:25:15 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 本科生奖学金与学生纪律管理制度
+2026-01-07 17:25:15 [graphrag-server] [INFO] routers.admin:769 - 收到列出模板请求
+2026-01-07 17:25:15 [graphrag-server] [INFO] routers.admin:775 - 返回 3 个模板
+2026-01-07 17:25:15 [graphrag-server] [INFO] routers.admin:452 - 收到图谱统计请求
+2026-01-07 17:25:15 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownRelationshipTypeWarning} {category: UNRECOGNIZED} {title: The provided relationship type is not in the database.} {description: One of the relationship types in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing relationship type is: __Relationship__)} {position: line: 1, column: 13, offset: 12} for query: 'MATCH ()-[r:`__Relationship__`]->() RETURN count(r) as count'
+2026-01-07 17:25:15 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownRelationshipTypeWarning} {category: UNRECOGNIZED} {title: The provided relationship type is not in the database.} {description: One of the relationship types in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing relationship type is: __Relationship__)} {position: line: 2, column: 13, offset: 21} for query: "\n        MATCH ()-[r:`__Relationship__`]->()\n        WHERE r.type IS NOT NULL AND r.type <> ''\n        RETURN r.type AS type, count(r) AS count\n        ORDER BY count DESC\n        "
+2026-01-07 17:25:15 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-07 17:25:15 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-07 17:25:17 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 17:25:17 [graphrag-server] [INFO] routers.user_configs:63 - 返回 3 个配置
+2026-01-07 17:25:17 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 1152aba8-7904-471e-98b0-1a2b25011c7f
+2026-01-07 17:25:17 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员
+2026-01-07 17:25:17 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 54326f8d-cc92-48fb-8666-e8970bb159c5
+2026-01-07 17:25:17 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 测试
+2026-01-07 17:25:17 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 9a4866c1-90e8-4f6d-b314-2e7f14d03801
+2026-01-07 17:25:17 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 本科生奖学金与学生纪律管理制度
+2026-01-07 17:25:17 [graphrag-server] [INFO] routers.admin:769 - 收到列出模板请求
+2026-01-07 17:25:17 [graphrag-server] [INFO] routers.admin:775 - 返回 3 个模板
+2026-01-07 17:25:17 [graphrag-server] [INFO] routers.admin:452 - 收到图谱统计请求
+2026-01-07 17:25:17 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownRelationshipTypeWarning} {category: UNRECOGNIZED} {title: The provided relationship type is not in the database.} {description: One of the relationship types in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing relationship type is: __Relationship__)} {position: line: 1, column: 13, offset: 12} for query: 'MATCH ()-[r:`__Relationship__`]->() RETURN count(r) as count'
+2026-01-07 17:25:17 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownRelationshipTypeWarning} {category: UNRECOGNIZED} {title: The provided relationship type is not in the database.} {description: One of the relationship types in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing relationship type is: __Relationship__)} {position: line: 2, column: 13, offset: 21} for query: "\n        MATCH ()-[r:`__Relationship__`]->()\n        WHERE r.type IS NOT NULL AND r.type <> ''\n        RETURN r.type AS type, count(r) AS count\n        ORDER BY count DESC\n        "
+2026-01-07 17:25:17 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-07 17:25:17 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-07 17:25:18 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 17:25:18 [graphrag-server] [INFO] routers.user_configs:63 - 返回 3 个配置
+2026-01-07 17:25:18 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 1152aba8-7904-471e-98b0-1a2b25011c7f
+2026-01-07 17:25:18 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员
+2026-01-07 17:25:18 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 54326f8d-cc92-48fb-8666-e8970bb159c5
+2026-01-07 17:25:18 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 测试
+2026-01-07 17:25:18 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 9a4866c1-90e8-4f6d-b314-2e7f14d03801
+2026-01-07 17:25:18 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 本科生奖学金与学生纪律管理制度
+2026-01-07 17:25:18 [graphrag-server] [INFO] routers.admin:769 - 收到列出模板请求
+2026-01-07 17:25:18 [graphrag-server] [INFO] routers.admin:775 - 返回 3 个模板
+2026-01-07 17:25:18 [graphrag-server] [INFO] routers.admin:234 - 收到完整构建请求
+2026-01-07 17:25:18 [graphrag-server] [INFO] routers.admin:122 - 创建构建历史记录: 63d770e0-3989-4136-8581-7e23b153b91b
+2026-01-07 17:25:18 [graphrag-server] [INFO] graphrag_agent.pipelines.ingestion.document_processor:113 - ⚠️  使用默认 Chunker: chunk_size=500, overlap=100
+2026-01-07 17:25:18 [graphrag-server] [INFO] graphrag_agent.pipelines.ingestion.document_processor:114 -    推荐使用 chunker_mode='adaptive' 以获得更好的性能
+2026-01-07 17:25:18 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:411 - 创建缓存目录（版本隔离）: ./cache/graph/deepseek-chat/911fb00c
+2026-01-07 17:25:18 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:421 - 🔥 生产级实体提取器已初始化
+2026-01-07 17:25:18 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:422 -    - Model: deepseek-chat
+2026-01-07 17:25:18 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:423 -    - Prompt Version: 911fb00c
+2026-01-07 17:25:18 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:424 -    - Cache Dir: ./cache/graph/deepseek-chat/911fb00c
+2026-01-07 17:25:18 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:425 -    - Max Workers: 4
+2026-01-07 17:25:18 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:426 -    - 实体类型白名单：{'当事人', '条款', '文档', '概念', '部门', '政策', '规章制度', '条件', '法条', '地点', '机构', '流程'}
+2026-01-07 17:25:18 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:427 -    - 关系类型白名单：{'适用于', '关联', '提交给', '负责', '依据', '发布', '有步骤', '包含', '需要', '属于', '有条件'}
+2026-01-07 17:25:18 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:428 -    - 最小实体频率：1
+2026-01-07 17:25:18 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:429 -    - 名称相似度阈值：0.85
+2026-01-07 17:25:18 [graphrag-server] [INFO] graphrag_agent.pipelines.ingestion.document_processor:109 - 🔍 使用 RAGChunker: chunk_size=400, overlap=80
+2026-01-07 17:25:18 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:411 - 创建缓存目录（版本隔离）: ./cache/graph/deepseek-chat/1a6529db
+2026-01-07 17:25:18 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:421 - 🔥 生产级实体提取器已初始化
+2026-01-07 17:25:18 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:422 -    - Model: deepseek-chat
+2026-01-07 17:25:18 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:423 -    - Prompt Version: 1a6529db
+2026-01-07 17:25:18 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:424 -    - Cache Dir: ./cache/graph/deepseek-chat/1a6529db
+2026-01-07 17:25:18 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:425 -    - Max Workers: 4
+2026-01-07 17:25:18 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:426 -    - 实体类型白名单：{'当事人', '条款', '文档', '概念', '部门', '政策', '规章制度', '条件', '法条', '地点', '机构', '流程'}
+2026-01-07 17:25:18 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:427 -    - 关系类型白名单：{'适用于', '关联', '提交给', '负责', '依据', '发布', '有步骤', '包含', '需要', '属于', '有条件'}
+2026-01-07 17:25:18 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:428 -    - 最小实体频率：1
+2026-01-07 17:25:18 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:429 -    - 名称相似度阈值：0.85
+2026-01-07 17:25:18 [graphrag-server] [INFO] routers.admin:132 - 开始执行全量构建: 7198a84e-86c1-4b7c-a91d-c37be998ba6c
+2026-01-07 17:25:18 [graphrag-server] [INFO] graphrag_agent.graph.structure.struct_builder:137 - 创建关系耗时: 0.06秒
+2026-01-07 17:25:18 [graphrag-server] [INFO] graphrag_agent.graph.structure.struct_builder:137 - 创建关系耗时: 0.05秒
+2026-01-07 17:25:18 [graphrag-server] [INFO] graphrag_agent.graph.structure.struct_builder:137 - 创建关系耗时: 0.05秒
+2026-01-07 17:25:18 [graphrag-server] [INFO] graphrag_agent.graph.structure.struct_builder:137 - 创建关系耗时: 0.06秒
+2026-01-07 17:25:20 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 17:25:20 [graphrag-server] [INFO] routers.user_configs:63 - 返回 3 个配置
+2026-01-07 17:25:20 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 1152aba8-7904-471e-98b0-1a2b25011c7f
+2026-01-07 17:25:20 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员
+2026-01-07 17:25:20 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 54326f8d-cc92-48fb-8666-e8970bb159c5
+2026-01-07 17:25:20 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 测试
+2026-01-07 17:25:20 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 9a4866c1-90e8-4f6d-b314-2e7f14d03801
+2026-01-07 17:25:20 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 本科生奖学金与学生纪律管理制度
+2026-01-07 17:25:20 [graphrag-server] [INFO] routers.admin:769 - 收到列出模板请求
+2026-01-07 17:25:20 [graphrag-server] [INFO] routers.admin:775 - 返回 3 个模板
+2026-01-07 17:25:20 [graphrag-server] [INFO] routers.admin:452 - 收到图谱统计请求
+2026-01-07 17:25:20 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownRelationshipTypeWarning} {category: UNRECOGNIZED} {title: The provided relationship type is not in the database.} {description: One of the relationship types in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing relationship type is: __Relationship__)} {position: line: 1, column: 13, offset: 12} for query: 'MATCH ()-[r:`__Relationship__`]->() RETURN count(r) as count'
+2026-01-07 17:25:20 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownRelationshipTypeWarning} {category: UNRECOGNIZED} {title: The provided relationship type is not in the database.} {description: One of the relationship types in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing relationship type is: __Relationship__)} {position: line: 2, column: 13, offset: 21} for query: "\n        MATCH ()-[r:`__Relationship__`]->()\n        WHERE r.type IS NOT NULL AND r.type <> ''\n        RETURN r.type AS type, count(r) AS count\n        ORDER BY count DESC\n        "
+2026-01-07 17:25:20 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-07 17:25:20 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-07 17:25:22 [graphrag-server] [INFO] graphrag_agent.graph.structure.struct_builder:137 - 创建关系耗时: 0.02秒
+2026-01-07 17:25:22 [graphrag-server] [INFO] graphrag_agent.graph.structure.struct_builder:137 - 创建关系耗时: 0.01秒
+2026-01-07 17:25:22 [graphrag-server] [INFO] graphrag_agent.graph.structure.struct_builder:137 - 创建关系耗时: 0.00秒
+2026-01-07 17:25:23 [graphrag-server] [INFO] graphrag_agent.graph.structure.struct_builder:137 - 创建关系耗时: 0.04秒
+2026-01-07 17:25:23 [graphrag-server] [INFO] graphrag_agent.graph.structure.struct_builder:137 - 创建关系耗时: 0.00秒
+2026-01-07 17:25:23 [graphrag-server] [INFO] graphrag_agent.graph.structure.struct_builder:137 - 创建关系耗时: 0.01秒
+2026-01-07 17:25:23 [graphrag-server] [INFO] graphrag_agent.graph.structure.struct_builder:137 - 创建关系耗时: 0.01秒
+2026-01-07 17:25:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:421 - 🔥 生产级实体提取器已初始化
+2026-01-07 17:25:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:422 -    - Model: deepseek-chat
+2026-01-07 17:25:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:421 - 🔥 生产级实体提取器已初始化
+2026-01-07 17:25:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:423 -    - Prompt Version: 1a6529db
+2026-01-07 17:25:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:422 -    - Model: deepseek-chat
+2026-01-07 17:25:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:424 -    - Cache Dir: ./cache/graph/deepseek-chat/1a6529db
+2026-01-07 17:25:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:423 -    - Prompt Version: 1a6529db
+2026-01-07 17:25:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:425 -    - Max Workers: 4
+2026-01-07 17:25:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:424 -    - Cache Dir: ./cache/graph/deepseek-chat/1a6529db
+2026-01-07 17:25:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:426 -    - 实体类型白名单：{'当事人', '条款', '文档', '概念', '部门', '政策', '规章制度', '条件', '法条', '地点', '机构', '流程'}
+2026-01-07 17:25:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:425 -    - Max Workers: 4
+2026-01-07 17:25:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:427 -    - 关系类型白名单：{'适用于', '关联', '提交给', '负责', '依据', '发布', '有步骤', '包含', '需要', '属于', '有条件'}
+2026-01-07 17:25:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:426 -    - 实体类型白名单：{'当事人', '条款', '文档', '概念', '部门', '政策', '规章制度', '条件', '法条', '地点', '机构', '流程'}
+2026-01-07 17:25:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:428 -    - 最小实体频率：1
+2026-01-07 17:25:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:427 -    - 关系类型白名单：{'适用于', '关联', '提交给', '负责', '依据', '发布', '有步骤', '包含', '需要', '属于', '有条件'}
+2026-01-07 17:25:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:429 -    - 名称相似度阈值：0.85
+2026-01-07 17:25:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:428 -    - 最小实体频率：1
+2026-01-07 17:25:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:429 -    - 名称相似度阈值：0.85
+2026-01-07 17:25:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1067 - 开始批量抽取 6 个 chunks...
+2026-01-07 17:25:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1067 - 开始批量抽取 3 个 chunks...
+2026-01-07 17:25:54 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：7 → 7 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:26:01 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：11 → 11 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:26:09 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：11 → 11 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:26:11 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：14 → 14 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:26:13 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：15 → 15 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:26:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：17 → 17 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:26:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：19 → 19 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:26:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1197 - 批量抽取完成，共 3 个 chunk，全部成功
+2026-01-07 17:26:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:345 - 开始处理 3 个chunks的GraphDocument
+2026-01-07 17:26:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:402 - 共处理 3 个chunks, 成功 1, 失败 2, 失败率 66.67%
+2026-01-07 17:26:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:430 - 开始批量写入 1 个文档，批次大小: 10, 总批次: 1
+2026-01-07 17:26:26 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:441 - 已写入批次 1/1 (使用事务)
+2026-01-07 17:26:26 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:467 - 开始合并 1 个唯一chunk关系
+2026-01-07 17:26:26 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:473 - 合并关系批次大小: 20, 总批次: 1
+2026-01-07 17:26:26 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:494 - 已处理合并关系批次 1/1 (使用事务)
+2026-01-07 17:26:28 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:421 - 🔥 生产级实体提取器已初始化
+2026-01-07 17:26:28 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:422 -    - Model: deepseek-chat
+2026-01-07 17:26:28 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:423 -    - Prompt Version: 1a6529db
+2026-01-07 17:26:28 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:424 -    - Cache Dir: ./cache/graph/deepseek-chat/1a6529db
+2026-01-07 17:26:28 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:425 -    - Max Workers: 4
+2026-01-07 17:26:28 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:426 -    - 实体类型白名单：{'当事人', '条款', '文档', '概念', '部门', '政策', '规章制度', '条件', '法条', '地点', '机构', '流程'}
+2026-01-07 17:26:28 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:427 -    - 关系类型白名单：{'适用于', '关联', '提交给', '负责', '依据', '发布', '有步骤', '包含', '需要', '属于', '有条件'}
+2026-01-07 17:26:28 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:428 -    - 最小实体频率：1
+2026-01-07 17:26:28 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:429 -    - 名称相似度阈值：0.85
+2026-01-07 17:26:28 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1067 - 开始批量抽取 1 个 chunks...
+2026-01-07 17:26:38 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：10 → 10 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:26:38 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：11 → 11 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:26:38 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1197 - 批量抽取完成，共 6 个 chunk，全部成功
+2026-01-07 17:26:38 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:345 - 开始处理 6 个chunks的GraphDocument
+2026-01-07 17:26:38 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:402 - 共处理 6 个chunks, 成功 1, 失败 5, 失败率 83.33%
+2026-01-07 17:26:38 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:430 - 开始批量写入 1 个文档，批次大小: 10, 总批次: 1
+2026-01-07 17:26:38 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:441 - 已写入批次 1/1 (使用事务)
+2026-01-07 17:26:38 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:467 - 开始合并 1 个唯一chunk关系
+2026-01-07 17:26:38 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:473 - 合并关系批次大小: 20, 总批次: 1
+2026-01-07 17:26:38 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:494 - 已处理合并关系批次 1/1 (使用事务)
+2026-01-07 17:26:41 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:421 - 🔥 生产级实体提取器已初始化
+2026-01-07 17:26:41 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:422 -    - Model: deepseek-chat
+2026-01-07 17:26:41 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:423 -    - Prompt Version: 1a6529db
+2026-01-07 17:26:41 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:424 -    - Cache Dir: ./cache/graph/deepseek-chat/1a6529db
+2026-01-07 17:26:41 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:425 -    - Max Workers: 4
+2026-01-07 17:26:41 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:426 -    - 实体类型白名单：{'当事人', '条款', '文档', '概念', '部门', '政策', '规章制度', '条件', '法条', '地点', '机构', '流程'}
+2026-01-07 17:26:41 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:427 -    - 关系类型白名单：{'适用于', '关联', '提交给', '负责', '依据', '发布', '有步骤', '包含', '需要', '属于', '有条件'}
+2026-01-07 17:26:41 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:428 -    - 最小实体频率：1
+2026-01-07 17:26:41 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:429 -    - 名称相似度阈值：0.85
+2026-01-07 17:26:41 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1067 - 开始批量抽取 6 个 chunks...
+2026-01-07 17:26:48 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：9 → 9 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:26:48 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1197 - 批量抽取完成，共 1 个 chunk，全部成功
+2026-01-07 17:26:48 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:345 - 开始处理 1 个chunks的GraphDocument
+2026-01-07 17:26:48 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:402 - 共处理 1 个chunks, 成功 1, 失败 0, 失败率 0.00%
+2026-01-07 17:26:48 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:430 - 开始批量写入 1 个文档，批次大小: 10, 总批次: 1
+2026-01-07 17:26:48 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:441 - 已写入批次 1/1 (使用事务)
+2026-01-07 17:26:48 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:467 - 开始合并 1 个唯一chunk关系
+2026-01-07 17:26:48 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:473 - 合并关系批次大小: 20, 总批次: 1
+2026-01-07 17:26:48 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:494 - 已处理合并关系批次 1/1 (使用事务)
+2026-01-07 17:26:50 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:421 - 🔥 生产级实体提取器已初始化
+2026-01-07 17:26:50 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:422 -    - Model: deepseek-chat
+2026-01-07 17:26:50 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:423 -    - Prompt Version: 1a6529db
+2026-01-07 17:26:50 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:424 -    - Cache Dir: ./cache/graph/deepseek-chat/1a6529db
+2026-01-07 17:26:50 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:425 -    - Max Workers: 4
+2026-01-07 17:26:50 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:426 -    - 实体类型白名单：{'当事人', '条款', '文档', '概念', '部门', '政策', '规章制度', '条件', '法条', '地点', '机构', '流程'}
+2026-01-07 17:26:50 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:427 -    - 关系类型白名单：{'适用于', '关联', '提交给', '负责', '依据', '发布', '有步骤', '包含', '需要', '属于', '有条件'}
+2026-01-07 17:26:50 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:428 -    - 最小实体频率：1
+2026-01-07 17:26:50 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:429 -    - 名称相似度阈值：0.85
+2026-01-07 17:26:50 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1067 - 开始批量抽取 4 个 chunks...
+2026-01-07 17:27:13 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：10 → 10 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:27:20 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：11 → 11 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:27:22 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：10 → 10 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:27:23 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：11 → 10 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:27:27 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：14 → 14 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:27:28 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：15 → 15 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:27:30 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：13 → 13 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:27:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：14 → 13 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:27:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1197 - 批量抽取完成，共 4 个 chunk，全部成功
+2026-01-07 17:27:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:345 - 开始处理 4 个chunks的GraphDocument
+2026-01-07 17:27:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:402 - 共处理 4 个chunks, 成功 1, 失败 3, 失败率 75.00%
+2026-01-07 17:27:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:430 - 开始批量写入 1 个文档，批次大小: 10, 总批次: 1
+2026-01-07 17:27:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:441 - 已写入批次 1/1 (使用事务)
+2026-01-07 17:27:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:467 - 开始合并 1 个唯一chunk关系
+2026-01-07 17:27:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:473 - 合并关系批次大小: 20, 总批次: 1
+2026-01-07 17:27:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:494 - 已处理合并关系批次 1/1 (使用事务)
+2026-01-07 17:27:42 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:421 - 🔥 生产级实体提取器已初始化
+2026-01-07 17:27:42 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:422 -    - Model: deepseek-chat
+2026-01-07 17:27:42 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:423 -    - Prompt Version: 1a6529db
+2026-01-07 17:27:42 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:424 -    - Cache Dir: ./cache/graph/deepseek-chat/1a6529db
+2026-01-07 17:27:42 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:425 -    - Max Workers: 4
+2026-01-07 17:27:42 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:426 -    - 实体类型白名单：{'当事人', '条款', '文档', '概念', '部门', '政策', '规章制度', '条件', '法条', '地点', '机构', '流程'}
+2026-01-07 17:27:42 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:427 -    - 关系类型白名单：{'适用于', '关联', '提交给', '负责', '依据', '发布', '有步骤', '包含', '需要', '属于', '有条件'}
+2026-01-07 17:27:42 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:428 -    - 最小实体频率：1
+2026-01-07 17:27:42 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:429 -    - 名称相似度阈值：0.85
+2026-01-07 17:27:42 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1067 - 开始批量抽取 1 个 chunks...
+2026-01-07 17:27:44 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：10 → 10 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:28:03 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：9 → 9 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:28:03 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1197 - 批量抽取完成，共 1 个 chunk，全部成功
+2026-01-07 17:28:03 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:345 - 开始处理 1 个chunks的GraphDocument
+2026-01-07 17:28:03 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:402 - 共处理 1 个chunks, 成功 1, 失败 0, 失败率 0.00%
+2026-01-07 17:28:03 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:430 - 开始批量写入 1 个文档，批次大小: 10, 总批次: 1
+2026-01-07 17:28:03 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:441 - 已写入批次 1/1 (使用事务)
+2026-01-07 17:28:03 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:467 - 开始合并 1 个唯一chunk关系
+2026-01-07 17:28:03 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:473 - 合并关系批次大小: 20, 总批次: 1
+2026-01-07 17:28:03 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:494 - 已处理合并关系批次 1/1 (使用事务)
+2026-01-07 17:28:05 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:421 - 🔥 生产级实体提取器已初始化
+2026-01-07 17:28:05 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:422 -    - Model: deepseek-chat
+2026-01-07 17:28:05 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:423 -    - Prompt Version: 1a6529db
+2026-01-07 17:28:05 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:424 -    - Cache Dir: ./cache/graph/deepseek-chat/1a6529db
+2026-01-07 17:28:05 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:425 -    - Max Workers: 4
+2026-01-07 17:28:05 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:426 -    - 实体类型白名单：{'当事人', '条款', '文档', '概念', '部门', '政策', '规章制度', '条件', '法条', '地点', '机构', '流程'}
+2026-01-07 17:28:05 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:427 -    - 关系类型白名单：{'适用于', '关联', '提交给', '负责', '依据', '发布', '有步骤', '包含', '需要', '属于', '有条件'}
+2026-01-07 17:28:05 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:428 -    - 最小实体频率：1
+2026-01-07 17:28:05 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:429 -    - 名称相似度阈值：0.85
+2026-01-07 17:28:05 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1067 - 开始批量抽取 4 个 chunks...
+2026-01-07 17:28:07 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：16 → 16 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:28:07 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1197 - 批量抽取完成，共 6 个 chunk，全部成功
+2026-01-07 17:28:07 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:345 - 开始处理 6 个chunks的GraphDocument
+2026-01-07 17:28:07 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:402 - 共处理 6 个chunks, 成功 1, 失败 5, 失败率 83.33%
+2026-01-07 17:28:07 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:430 - 开始批量写入 1 个文档，批次大小: 10, 总批次: 1
+2026-01-07 17:28:07 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:441 - 已写入批次 1/1 (使用事务)
+2026-01-07 17:28:07 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:467 - 开始合并 1 个唯一chunk关系
+2026-01-07 17:28:07 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:473 - 合并关系批次大小: 20, 总批次: 1
+2026-01-07 17:28:07 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:494 - 已处理合并关系批次 1/1 (使用事务)
+2026-01-07 17:28:09 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:421 - 🔥 生产级实体提取器已初始化
+2026-01-07 17:28:09 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:422 -    - Model: deepseek-chat
+2026-01-07 17:28:09 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:423 -    - Prompt Version: 1a6529db
+2026-01-07 17:28:09 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:424 -    - Cache Dir: ./cache/graph/deepseek-chat/1a6529db
+2026-01-07 17:28:09 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:425 -    - Max Workers: 4
+2026-01-07 17:28:09 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:426 -    - 实体类型白名单：{'当事人', '条款', '文档', '概念', '部门', '政策', '规章制度', '条件', '法条', '地点', '机构', '流程'}
+2026-01-07 17:28:09 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:427 -    - 关系类型白名单：{'适用于', '关联', '提交给', '负责', '依据', '发布', '有步骤', '包含', '需要', '属于', '有条件'}
+2026-01-07 17:28:09 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:428 -    - 最小实体频率：1
+2026-01-07 17:28:09 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:429 -    - 名称相似度阈值：0.85
+2026-01-07 17:28:09 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1067 - 开始批量抽取 15 个 chunks...
+2026-01-07 17:28:37 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：9 → 9 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:28:39 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：12 → 11 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:28:45 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：14 → 14 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:28:47 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：10 → 10 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:28:47 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：10 → 10 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:28:51 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：15 → 15 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:28:59 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：13 → 13 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:29:09 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：10 → 10 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:29:21 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：11 → 11 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:29:31 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：13 → 13 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:29:33 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：10 → 10 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:29:47 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：12 → 12 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:29:58 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：10 → 10 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:29:59 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：14 → 12 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:30:09 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：11 → 11 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:30:23 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：11 → 11 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:30:23 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：9 → 9 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:30:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：11 → 11 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:30:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1197 - 批量抽取完成，共 15 个 chunk，全部成功
+2026-01-07 17:30:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:345 - 开始处理 15 个chunks的GraphDocument
+2026-01-07 17:30:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:402 - 共处理 15 个chunks, 成功 1, 失败 14, 失败率 93.33%
+2026-01-07 17:30:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:430 - 开始批量写入 1 个文档，批次大小: 10, 总批次: 1
+2026-01-07 17:30:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:441 - 已写入批次 1/1 (使用事务)
+2026-01-07 17:30:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:467 - 开始合并 1 个唯一chunk关系
+2026-01-07 17:30:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:473 - 合并关系批次大小: 20, 总批次: 1
+2026-01-07 17:30:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:494 - 已处理合并关系批次 1/1 (使用事务)
+2026-01-07 17:30:29 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:421 - 🔥 生产级实体提取器已初始化
+2026-01-07 17:30:29 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:422 -    - Model: deepseek-chat
+2026-01-07 17:30:29 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:423 -    - Prompt Version: 1a6529db
+2026-01-07 17:30:29 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:424 -    - Cache Dir: ./cache/graph/deepseek-chat/1a6529db
+2026-01-07 17:30:29 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:425 -    - Max Workers: 4
+2026-01-07 17:30:29 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:426 -    - 实体类型白名单：{'当事人', '条款', '文档', '概念', '部门', '政策', '规章制度', '条件', '法条', '地点', '机构', '流程'}
+2026-01-07 17:30:29 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:427 -    - 关系类型白名单：{'适用于', '关联', '提交给', '负责', '依据', '发布', '有步骤', '包含', '需要', '属于', '有条件'}
+2026-01-07 17:30:29 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:428 -    - 最小实体频率：1
+2026-01-07 17:30:29 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:429 -    - 名称相似度阈值：0.85
+2026-01-07 17:30:29 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1067 - 开始批量抽取 1 个 chunks...
+2026-01-07 17:30:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：7 → 7 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:30:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1197 - 批量抽取完成，共 1 个 chunk，全部成功
+2026-01-07 17:30:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:345 - 开始处理 1 个chunks的GraphDocument
+2026-01-07 17:30:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:402 - 共处理 1 个chunks, 成功 1, 失败 0, 失败率 0.00%
+2026-01-07 17:30:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:430 - 开始批量写入 1 个文档，批次大小: 10, 总批次: 1
+2026-01-07 17:30:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:441 - 已写入批次 1/1 (使用事务)
+2026-01-07 17:30:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:467 - 开始合并 1 个唯一chunk关系
+2026-01-07 17:30:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:473 - 合并关系批次大小: 20, 总批次: 1
+2026-01-07 17:30:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:494 - 已处理合并关系批次 1/1 (使用事务)
+2026-01-07 17:30:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:421 - 🔥 生产级实体提取器已初始化
+2026-01-07 17:30:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:422 -    - Model: deepseek-chat
+2026-01-07 17:30:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:423 -    - Prompt Version: 1a6529db
+2026-01-07 17:30:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:424 -    - Cache Dir: ./cache/graph/deepseek-chat/1a6529db
+2026-01-07 17:30:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:425 -    - Max Workers: 4
+2026-01-07 17:30:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:426 -    - 实体类型白名单：{'当事人', '条款', '文档', '概念', '部门', '政策', '规章制度', '条件', '法条', '地点', '机构', '流程'}
+2026-01-07 17:30:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:427 -    - 关系类型白名单：{'适用于', '关联', '提交给', '负责', '依据', '发布', '有步骤', '包含', '需要', '属于', '有条件'}
+2026-01-07 17:30:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:428 -    - 最小实体频率：1
+2026-01-07 17:30:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:429 -    - 名称相似度阈值：0.85
+2026-01-07 17:30:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1067 - 开始批量抽取 6 个 chunks...
+2026-01-07 17:31:24 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：11 → 11 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:31:27 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：13 → 13 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:31:29 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：13 → 13 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:31:36 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：15 → 15 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:31:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：8 → 8 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:31:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1197 - 批量抽取完成，共 6 个 chunk，全部成功
+2026-01-07 17:31:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:345 - 开始处理 6 个chunks的GraphDocument
+2026-01-07 17:31:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:402 - 共处理 6 个chunks, 成功 1, 失败 5, 失败率 83.33%
+2026-01-07 17:31:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:430 - 开始批量写入 1 个文档，批次大小: 10, 总批次: 1
+2026-01-07 17:31:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:441 - 已写入批次 1/1 (使用事务)
+2026-01-07 17:31:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:467 - 开始合并 1 个唯一chunk关系
+2026-01-07 17:31:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:473 - 合并关系批次大小: 20, 总批次: 1
+2026-01-07 17:31:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:494 - 已处理合并关系批次 1/1 (使用事务)
+2026-01-07 17:31:50 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:421 - 🔥 生产级实体提取器已初始化
+2026-01-07 17:31:50 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:422 -    - Model: deepseek-chat
+2026-01-07 17:31:50 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:423 -    - Prompt Version: 1a6529db
+2026-01-07 17:31:50 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:424 -    - Cache Dir: ./cache/graph/deepseek-chat/1a6529db
+2026-01-07 17:31:50 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:425 -    - Max Workers: 4
+2026-01-07 17:31:50 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:426 -    - 实体类型白名单：{'当事人', '条款', '文档', '概念', '部门', '政策', '规章制度', '条件', '法条', '地点', '机构', '流程'}
+2026-01-07 17:31:50 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:427 -    - 关系类型白名单：{'适用于', '关联', '提交给', '负责', '依据', '发布', '有步骤', '包含', '需要', '属于', '有条件'}
+2026-01-07 17:31:50 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:428 -    - 最小实体频率：1
+2026-01-07 17:31:50 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:429 -    - 名称相似度阈值：0.85
+2026-01-07 17:31:51 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1067 - 开始批量抽取 3 个 chunks...
+2026-01-07 17:32:33 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：15 → 15 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:32:35 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：12 → 12 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:32:35 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1197 - 批量抽取完成，共 3 个 chunk，全部成功
+2026-01-07 17:32:35 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:345 - 开始处理 3 个chunks的GraphDocument
+2026-01-07 17:32:35 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:402 - 共处理 3 个chunks, 成功 1, 失败 2, 失败率 66.67%
+2026-01-07 17:32:35 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:430 - 开始批量写入 1 个文档，批次大小: 10, 总批次: 1
+2026-01-07 17:32:35 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:441 - 已写入批次 1/1 (使用事务)
+2026-01-07 17:32:35 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:467 - 开始合并 1 个唯一chunk关系
+2026-01-07 17:32:35 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:473 - 合并关系批次大小: 20, 总批次: 1
+2026-01-07 17:32:35 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:494 - 已处理合并关系批次 1/1 (使用事务)
+2026-01-07 17:34:10 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：12 → 12 个实体（Schema: 16 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 17:34:10 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1197 - 批量抽取完成，共 4 个 chunk，全部成功
+2026-01-07 17:34:10 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:345 - 开始处理 4 个chunks的GraphDocument
+2026-01-07 17:34:10 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:402 - 共处理 4 个chunks, 成功 1, 失败 3, 失败率 75.00%
+2026-01-07 17:34:10 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:430 - 开始批量写入 1 个文档，批次大小: 10, 总批次: 1
+2026-01-07 17:34:10 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:441 - 已写入批次 1/1 (使用事务)
+2026-01-07 17:34:10 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:467 - 开始合并 1 个唯一chunk关系
+2026-01-07 17:34:10 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:473 - 合并关系批次大小: 20, 总批次: 1
+2026-01-07 17:34:10 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:494 - 已处理合并关系批次 1/1 (使用事务)
+2026-01-07 17:34:12 [graphrag-server] [INFO] graphrag_agent.graph.core.graph_connection:131 - 已删除索引 entity_embedding_index（如果存在）
+2026-01-07 17:34:12 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.FeatureDeprecationWarning} {category: DEPRECATION} {title: This feature is deprecated and will be removed in future versions.} {description: The query used a deprecated function: `id`.} {position: line: 4, column: 20, offset: 93} for query: '\n            MATCH (e:`__Entity__`)\n            WHERE e.embedding IS NULL\n            RETURN id(e) AS neo4j_id, e.id AS entity_id\n            '
+2026-01-07 17:34:12 [graphrag-server] [INFO] graphrag_agent.graph.indexing.entity_indexer:135 - 没有找到需要处理的实体节点（可能已存在 embeddings）
+2026-01-07 17:34:12 [graphrag-server] [INFO] graphrag_agent.graph.indexing.entity_indexer:90 - ✅ Vector index created/verified: entity_embedding_index
+2026-01-07 17:34:12 [graphrag-server] [INFO] graphrag_agent.graph.indexing.entity_indexer:139 - ✅ Vector index 已就绪（无新节点需要处理）
+2026-01-07 17:34:12 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: protected)} {position: line: 5, column: 21, offset: 129} for query: '\n        MATCH (e:`__Entity__`)\n        WHERE NOT (e)<-[:MENTIONS]-()\n          AND NOT e.manual_edit = true\n          AND NOT e.protected = true\n        RETURN e.id AS entity_id, count(e) AS count\n        '
+2026-01-07 18:07:22 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:07:22 [graphrag-server] [INFO] routers.user_configs:63 - 返回 3 个配置
+2026-01-07 18:07:22 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 1152aba8-7904-471e-98b0-1a2b25011c7f
+2026-01-07 18:07:22 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员
+2026-01-07 18:14:22 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:14:22 [graphrag-server] [INFO] routers.user_configs:63 - 返回 3 个配置
+2026-01-07 18:14:22 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 1152aba8-7904-471e-98b0-1a2b25011c7f
+2026-01-07 18:14:22 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员
+2026-01-07 18:14:22 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 54326f8d-cc92-48fb-8666-e8970bb159c5
+2026-01-07 18:14:22 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 测试
+2026-01-07 18:14:22 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 9a4866c1-90e8-4f6d-b314-2e7f14d03801
+2026-01-07 18:14:22 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 本科生奖学金与学生纪律管理制度
+2026-01-07 18:14:22 [graphrag-server] [INFO] routers.admin:769 - 收到列出模板请求
+2026-01-07 18:14:22 [graphrag-server] [INFO] routers.admin:775 - 返回 3 个模板
+2026-01-07 18:14:22 [graphrag-server] [INFO] routers.admin:452 - 收到图谱统计请求
+2026-01-07 18:14:22 [graphrag-server] [INFO] routers.admin:434 - 查询构建统计信息
+2026-01-07 18:14:22 [graphrag-server] [INFO] routers.admin:406 - 查询构建历史: limit=50, offset=0
+2026-01-07 18:14:23 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:14:23 [graphrag-server] [INFO] routers.user_configs:63 - 返回 3 个配置
+2026-01-07 18:14:23 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 1152aba8-7904-471e-98b0-1a2b25011c7f
+2026-01-07 18:14:23 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员
+2026-01-07 18:14:26 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:14:26 [graphrag-server] [INFO] routers.user_configs:63 - 返回 3 个配置
+2026-01-07 18:14:26 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 1152aba8-7904-471e-98b0-1a2b25011c7f
+2026-01-07 18:14:26 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员
+2026-01-07 18:14:26 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 54326f8d-cc92-48fb-8666-e8970bb159c5
+2026-01-07 18:14:26 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 测试
+2026-01-07 18:14:26 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 9a4866c1-90e8-4f6d-b314-2e7f14d03801
+2026-01-07 18:14:26 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 本科生奖学金与学生纪律管理制度
+2026-01-07 18:14:26 [graphrag-server] [INFO] routers.admin:769 - 收到列出模板请求
+2026-01-07 18:14:26 [graphrag-server] [INFO] routers.admin:775 - 返回 3 个模板
+2026-01-07 18:14:26 [graphrag-server] [INFO] routers.admin:452 - 收到图谱统计请求
+2026-01-07 18:14:26 [graphrag-server] [INFO] routers.admin:434 - 查询构建统计信息
+2026-01-07 18:14:26 [graphrag-server] [INFO] routers.admin:406 - 查询构建历史: limit=50, offset=0
+2026-01-07 18:14:26 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:14:26 [graphrag-server] [INFO] routers.user_configs:63 - 返回 3 个配置
+2026-01-07 18:14:26 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 1152aba8-7904-471e-98b0-1a2b25011c7f
+2026-01-07 18:14:26 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员
+2026-01-07 18:21:28 [graphrag-server] [INFO] main:166 - 已关闭所有 Agent 资源
+2026-01-07 18:21:28 [graphrag-server] [INFO] main:166 - 已关闭 Neo4j 连接
+2026-01-07 18:21:28 [graphrag-server] [INFO] graphrag_agent.graph.core.graph_connection:214 - Graph connection closed successfully
+2026-01-07 18:21:28 [graphrag-server] [INFO] graphrag_agent.graph.core.graph_connection:223 - Driver connection closed successfully
+2026-01-07 18:21:54 [graphrag-server] [INFO] graphrag_agent.utils.logging_config:95 - 日志系统初始化完成: level=INFO, format=text, file=logs/graphrag.log
+2026-01-07 18:21:54 [graphrag-server] [INFO] graphrag_agent.utils.logging_config:95 - 日志系统初始化完成: level=INFO, format=text, file=logs/graphrag.log
+2026-01-07 18:21:54 [graphrag-server] [INFO] main:166 - 知识图谱问答系统启动
+2026-01-07 18:22:15 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:22:15 [graphrag-server] [INFO] routers.user_configs:63 - 返回 3 个配置
+2026-01-07 18:22:18 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:22:18 [graphrag-server] [INFO] routers.user_configs:63 - 返回 3 个配置
+2026-01-07 18:22:19 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:22:19 [graphrag-server] [INFO] routers.user_configs:63 - 返回 3 个配置
+2026-01-07 18:22:19 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 1152aba8-7904-471e-98b0-1a2b25011c7f
+2026-01-07 18:22:19 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员
+2026-01-07 18:22:19 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 54326f8d-cc92-48fb-8666-e8970bb159c5
+2026-01-07 18:22:19 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 测试
+2026-01-07 18:22:19 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 9a4866c1-90e8-4f6d-b314-2e7f14d03801
+2026-01-07 18:22:19 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 本科生奖学金与学生纪律管理制度
+2026-01-07 18:22:19 [graphrag-server] [INFO] routers.admin:792 - 收到列出模板请求
+2026-01-07 18:22:19 [graphrag-server] [INFO] routers.admin:798 - 返回 3 个模板
+2026-01-07 18:22:19 [graphrag-server] [INFO] routers.admin:475 - 收到图谱统计请求
+2026-01-07 18:22:19 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownRelationshipTypeWarning} {category: UNRECOGNIZED} {title: The provided relationship type is not in the database.} {description: One of the relationship types in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing relationship type is: __Relationship__)} {position: line: 1, column: 13, offset: 12} for query: 'MATCH ()-[r:`__Relationship__`]->() RETURN count(r) as count'
+2026-01-07 18:22:19 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownRelationshipTypeWarning} {category: UNRECOGNIZED} {title: The provided relationship type is not in the database.} {description: One of the relationship types in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing relationship type is: __Relationship__)} {position: line: 2, column: 13, offset: 21} for query: "\n        MATCH ()-[r:`__Relationship__`]->()\n        WHERE r.type IS NOT NULL AND r.type <> ''\n        RETURN r.type AS type, count(r) AS count\n        ORDER BY count DESC\n        "
+2026-01-07 18:22:19 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-07 18:22:19 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-07 18:22:19 [graphrag-server] [INFO] routers.admin:457 - 查询构建统计信息
+2026-01-07 18:22:19 [graphrag-server] [INFO] routers.admin:429 - 查询构建历史: limit=50, offset=0
+2026-01-07 18:22:23 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:22:23 [graphrag-server] [INFO] routers.user_configs:63 - 返回 3 个配置
+2026-01-07 18:25:16 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:25:16 [graphrag-server] [INFO] routers.user_configs:63 - 返回 3 个配置
+2026-01-07 18:25:16 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:25:16 [graphrag-server] [INFO] routers.user_configs:63 - 返回 3 个配置
+2026-01-07 18:25:16 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 1152aba8-7904-471e-98b0-1a2b25011c7f
+2026-01-07 18:25:16 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员
+2026-01-07 18:25:18 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:25:18 [graphrag-server] [INFO] routers.user_configs:63 - 返回 3 个配置
+2026-01-07 18:25:18 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 1152aba8-7904-471e-98b0-1a2b25011c7f
+2026-01-07 18:25:18 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员
+2026-01-07 18:25:18 [graphrag-server] [INFO] routers.user_configs:293 - 收到复制配置请求: 1152aba8-7904-471e-98b0-1a2b25011c7f -> 宝安AI调解员 - 副本
+2026-01-07 18:25:18 [graphrag-server] [INFO] routers.user_configs:304 - 配置复制成功: 宝安AI调解员 - 副本 (ID: 635df1c6-6fd6-4f3a-95b1-4158b2defdec)
+2026-01-07 18:25:18 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:25:18 [graphrag-server] [INFO] routers.user_configs:63 - 返回 4 个配置
+2026-01-07 18:25:19 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 635df1c6-6fd6-4f3a-95b1-4158b2defdec
+2026-01-07 18:25:19 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员 - 副本
+2026-01-07 18:25:36 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:25:36 [graphrag-server] [INFO] routers.user_configs:63 - 返回 4 个配置
+2026-01-07 18:25:36 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 635df1c6-6fd6-4f3a-95b1-4158b2defdec
+2026-01-07 18:25:36 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员 - 副本
+2026-01-07 18:25:36 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:25:36 [graphrag-server] [INFO] routers.user_configs:63 - 返回 4 个配置
+2026-01-07 18:25:36 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 635df1c6-6fd6-4f3a-95b1-4158b2defdec
+2026-01-07 18:25:36 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员 - 副本
+2026-01-07 18:25:36 [graphrag-server] [INFO] routers.user_configs:180 - 收到更新配置请求: 635df1c6-6fd6-4f3a-95b1-4158b2defdec
+2026-01-07 18:25:36 [graphrag-server] [INFO] routers.user_configs:193 - 配置更新成功: 宝安AI调解员 - 副本
+2026-01-07 18:25:37 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:25:37 [graphrag-server] [INFO] routers.user_configs:63 - 返回 4 个配置
+2026-01-07 18:25:37 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 635df1c6-6fd6-4f3a-95b1-4158b2defdec
+2026-01-07 18:25:37 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员 - 副本
+2026-01-07 18:25:59 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:25:59 [graphrag-server] [INFO] routers.user_configs:63 - 返回 4 个配置
+2026-01-07 18:25:59 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 635df1c6-6fd6-4f3a-95b1-4158b2defdec
+2026-01-07 18:25:59 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员 - 副本
+2026-01-07 18:26:08 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:26:08 [graphrag-server] [INFO] routers.user_configs:63 - 返回 4 个配置
+2026-01-07 18:26:08 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 635df1c6-6fd6-4f3a-95b1-4158b2defdec
+2026-01-07 18:26:08 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员 - 副本
+2026-01-07 18:26:16 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:26:16 [graphrag-server] [INFO] routers.user_configs:63 - 返回 4 个配置
+2026-01-07 18:26:16 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 635df1c6-6fd6-4f3a-95b1-4158b2defdec
+2026-01-07 18:26:16 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员 - 副本
+2026-01-07 18:26:25 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:26:25 [graphrag-server] [INFO] routers.user_configs:63 - 返回 4 个配置
+2026-01-07 18:26:25 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 635df1c6-6fd6-4f3a-95b1-4158b2defdec
+2026-01-07 18:26:25 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员 - 副本
+2026-01-07 18:26:38 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:26:38 [graphrag-server] [INFO] routers.user_configs:63 - 返回 4 个配置
+2026-01-07 18:26:38 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 635df1c6-6fd6-4f3a-95b1-4158b2defdec
+2026-01-07 18:26:38 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员 - 副本
+2026-01-07 18:27:11 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:27:11 [graphrag-server] [INFO] routers.user_configs:63 - 返回 4 个配置
+2026-01-07 18:27:11 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 635df1c6-6fd6-4f3a-95b1-4158b2defdec
+2026-01-07 18:27:11 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员 - 副本
+2026-01-07 18:27:55 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:27:55 [graphrag-server] [INFO] routers.user_configs:63 - 返回 4 个配置
+2026-01-07 18:27:55 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 635df1c6-6fd6-4f3a-95b1-4158b2defdec
+2026-01-07 18:27:55 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员 - 副本
+2026-01-07 18:27:58 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:27:58 [graphrag-server] [INFO] routers.user_configs:63 - 返回 4 个配置
+2026-01-07 18:27:58 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 635df1c6-6fd6-4f3a-95b1-4158b2defdec
+2026-01-07 18:27:58 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员 - 副本
+2026-01-07 18:27:58 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:27:58 [graphrag-server] [INFO] routers.user_configs:63 - 返回 4 个配置
+2026-01-07 18:27:58 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 635df1c6-6fd6-4f3a-95b1-4158b2defdec
+2026-01-07 18:27:58 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员 - 副本
+2026-01-07 18:28:06 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:28:06 [graphrag-server] [INFO] routers.user_configs:63 - 返回 4 个配置
+2026-01-07 18:28:06 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 635df1c6-6fd6-4f3a-95b1-4158b2defdec
+2026-01-07 18:28:06 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员 - 副本
+2026-01-07 18:28:06 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:28:06 [graphrag-server] [INFO] routers.user_configs:63 - 返回 4 个配置
+2026-01-07 18:28:06 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 635df1c6-6fd6-4f3a-95b1-4158b2defdec
+2026-01-07 18:28:06 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员 - 副本
+2026-01-07 18:28:09 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:28:09 [graphrag-server] [INFO] routers.user_configs:63 - 返回 4 个配置
+2026-01-07 18:28:09 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 635df1c6-6fd6-4f3a-95b1-4158b2defdec
+2026-01-07 18:28:09 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员 - 副本
+2026-01-07 18:28:09 [graphrag-server] [INFO] routers.user_configs:180 - 收到更新配置请求: 635df1c6-6fd6-4f3a-95b1-4158b2defdec
+2026-01-07 18:28:09 [graphrag-server] [INFO] routers.user_configs:193 - 配置更新成功: 宝安AI调解员 - 副本
+2026-01-07 18:28:09 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:28:09 [graphrag-server] [INFO] routers.user_configs:63 - 返回 4 个配置
+2026-01-07 18:28:09 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 635df1c6-6fd6-4f3a-95b1-4158b2defdec
+2026-01-07 18:28:09 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员 - 副本
+2026-01-07 18:29:04 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:29:04 [graphrag-server] [INFO] routers.user_configs:63 - 返回 4 个配置
+2026-01-07 18:29:04 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 635df1c6-6fd6-4f3a-95b1-4158b2defdec
+2026-01-07 18:29:04 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员 - 副本
+2026-01-07 18:29:04 [graphrag-server] [INFO] routers.user_configs:180 - 收到更新配置请求: 635df1c6-6fd6-4f3a-95b1-4158b2defdec
+2026-01-07 18:29:04 [graphrag-server] [INFO] routers.user_configs:193 - 配置更新成功: 宝安AI调解员 - 副本
+2026-01-07 18:29:05 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:29:05 [graphrag-server] [INFO] routers.user_configs:63 - 返回 4 个配置
+2026-01-07 18:29:05 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 635df1c6-6fd6-4f3a-95b1-4158b2defdec
+2026-01-07 18:29:05 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员 - 副本
+2026-01-07 18:30:16 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:30:16 [graphrag-server] [INFO] routers.user_configs:63 - 返回 4 个配置
+2026-01-07 18:30:16 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 635df1c6-6fd6-4f3a-95b1-4158b2defdec
+2026-01-07 18:30:16 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员 - 副本
+2026-01-07 18:30:16 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 1152aba8-7904-471e-98b0-1a2b25011c7f
+2026-01-07 18:30:16 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员
+2026-01-07 18:30:16 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 54326f8d-cc92-48fb-8666-e8970bb159c5
+2026-01-07 18:30:16 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 测试
+2026-01-07 18:30:16 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 9a4866c1-90e8-4f6d-b314-2e7f14d03801
+2026-01-07 18:30:16 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 本科生奖学金与学生纪律管理制度
+2026-01-07 18:30:16 [graphrag-server] [INFO] routers.admin:792 - 收到列出模板请求
+2026-01-07 18:30:16 [graphrag-server] [INFO] routers.admin:798 - 返回 3 个模板
+2026-01-07 18:30:16 [graphrag-server] [INFO] routers.admin:475 - 收到图谱统计请求
+2026-01-07 18:30:16 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownRelationshipTypeWarning} {category: UNRECOGNIZED} {title: The provided relationship type is not in the database.} {description: One of the relationship types in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing relationship type is: __Relationship__)} {position: line: 1, column: 13, offset: 12} for query: 'MATCH ()-[r:`__Relationship__`]->() RETURN count(r) as count'
+2026-01-07 18:30:16 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownRelationshipTypeWarning} {category: UNRECOGNIZED} {title: The provided relationship type is not in the database.} {description: One of the relationship types in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing relationship type is: __Relationship__)} {position: line: 2, column: 13, offset: 21} for query: "\n        MATCH ()-[r:`__Relationship__`]->()\n        WHERE r.type IS NOT NULL AND r.type <> ''\n        RETURN r.type AS type, count(r) AS count\n        ORDER BY count DESC\n        "
+2026-01-07 18:30:16 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-07 18:30:16 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-07 18:30:16 [graphrag-server] [INFO] routers.admin:457 - 查询构建统计信息
+2026-01-07 18:30:16 [graphrag-server] [INFO] routers.admin:429 - 查询构建历史: limit=50, offset=0
+2026-01-07 18:30:20 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:30:20 [graphrag-server] [INFO] routers.user_configs:63 - 返回 4 个配置
+2026-01-07 18:30:20 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 635df1c6-6fd6-4f3a-95b1-4158b2defdec
+2026-01-07 18:30:20 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员 - 副本
+2026-01-07 18:30:20 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 1152aba8-7904-471e-98b0-1a2b25011c7f
+2026-01-07 18:30:20 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员
+2026-01-07 18:30:20 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 54326f8d-cc92-48fb-8666-e8970bb159c5
+2026-01-07 18:30:20 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 测试
+2026-01-07 18:30:20 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 9a4866c1-90e8-4f6d-b314-2e7f14d03801
+2026-01-07 18:30:20 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 本科生奖学金与学生纪律管理制度
+2026-01-07 18:30:20 [graphrag-server] [INFO] routers.admin:792 - 收到列出模板请求
+2026-01-07 18:30:20 [graphrag-server] [INFO] routers.admin:798 - 返回 3 个模板
+2026-01-07 18:30:20 [graphrag-server] [INFO] routers.admin:475 - 收到图谱统计请求
+2026-01-07 18:30:20 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownRelationshipTypeWarning} {category: UNRECOGNIZED} {title: The provided relationship type is not in the database.} {description: One of the relationship types in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing relationship type is: __Relationship__)} {position: line: 1, column: 13, offset: 12} for query: 'MATCH ()-[r:`__Relationship__`]->() RETURN count(r) as count'
+2026-01-07 18:30:20 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownRelationshipTypeWarning} {category: UNRECOGNIZED} {title: The provided relationship type is not in the database.} {description: One of the relationship types in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing relationship type is: __Relationship__)} {position: line: 2, column: 13, offset: 21} for query: "\n        MATCH ()-[r:`__Relationship__`]->()\n        WHERE r.type IS NOT NULL AND r.type <> ''\n        RETURN r.type AS type, count(r) AS count\n        ORDER BY count DESC\n        "
+2026-01-07 18:30:20 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-07 18:30:20 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-07 18:30:20 [graphrag-server] [INFO] routers.admin:457 - 查询构建统计信息
+2026-01-07 18:30:20 [graphrag-server] [INFO] routers.admin:429 - 查询构建历史: limit=50, offset=0
+2026-01-07 18:32:07 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:32:07 [graphrag-server] [INFO] routers.user_configs:63 - 返回 4 个配置
+2026-01-07 18:32:07 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 635df1c6-6fd6-4f3a-95b1-4158b2defdec
+2026-01-07 18:32:07 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员 - 副本
+2026-01-07 18:32:07 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 1152aba8-7904-471e-98b0-1a2b25011c7f
+2026-01-07 18:32:07 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员
+2026-01-07 18:32:07 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 54326f8d-cc92-48fb-8666-e8970bb159c5
+2026-01-07 18:32:07 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 测试
+2026-01-07 18:32:07 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 9a4866c1-90e8-4f6d-b314-2e7f14d03801
+2026-01-07 18:32:07 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 本科生奖学金与学生纪律管理制度
+2026-01-07 18:32:07 [graphrag-server] [INFO] routers.admin:792 - 收到列出模板请求
+2026-01-07 18:32:07 [graphrag-server] [INFO] routers.admin:798 - 返回 3 个模板
+2026-01-07 18:32:07 [graphrag-server] [INFO] routers.admin:475 - 收到图谱统计请求
+2026-01-07 18:32:07 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownRelationshipTypeWarning} {category: UNRECOGNIZED} {title: The provided relationship type is not in the database.} {description: One of the relationship types in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing relationship type is: __Relationship__)} {position: line: 1, column: 13, offset: 12} for query: 'MATCH ()-[r:`__Relationship__`]->() RETURN count(r) as count'
+2026-01-07 18:32:07 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownRelationshipTypeWarning} {category: UNRECOGNIZED} {title: The provided relationship type is not in the database.} {description: One of the relationship types in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing relationship type is: __Relationship__)} {position: line: 2, column: 13, offset: 21} for query: "\n        MATCH ()-[r:`__Relationship__`]->()\n        WHERE r.type IS NOT NULL AND r.type <> ''\n        RETURN r.type AS type, count(r) AS count\n        ORDER BY count DESC\n        "
+2026-01-07 18:32:07 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-07 18:32:07 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-07 18:32:10 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:32:10 [graphrag-server] [INFO] routers.user_configs:63 - 返回 4 个配置
+2026-01-07 18:32:10 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 635df1c6-6fd6-4f3a-95b1-4158b2defdec
+2026-01-07 18:32:10 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员 - 副本
+2026-01-07 18:32:10 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 1152aba8-7904-471e-98b0-1a2b25011c7f
+2026-01-07 18:32:10 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员
+2026-01-07 18:32:10 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 54326f8d-cc92-48fb-8666-e8970bb159c5
+2026-01-07 18:32:10 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 测试
+2026-01-07 18:32:10 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 9a4866c1-90e8-4f6d-b314-2e7f14d03801
+2026-01-07 18:32:10 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 本科生奖学金与学生纪律管理制度
+2026-01-07 18:32:10 [graphrag-server] [INFO] routers.admin:792 - 收到列出模板请求
+2026-01-07 18:32:10 [graphrag-server] [INFO] routers.admin:798 - 返回 3 个模板
+2026-01-07 18:32:10 [graphrag-server] [INFO] routers.admin:257 - 收到完整构建请求
+2026-01-07 18:32:10 [graphrag-server] [INFO] routers.admin:139 - 创建构建历史记录: 1e57a93a-5544-4f24-b5a8-037a5a543a05
+2026-01-07 18:32:10 [graphrag-server] [INFO] routers.admin:125 - 已同步图谱配置到 graph_config.json: 宝安AI调解员-最新
+2026-01-07 18:32:10 [graphrag-server] [INFO] graphrag_agent.pipelines.ingestion.document_processor:113 - ⚠️  使用默认 Chunker: chunk_size=500, overlap=100
+2026-01-07 18:32:10 [graphrag-server] [INFO] graphrag_agent.pipelines.ingestion.document_processor:114 -    推荐使用 chunker_mode='adaptive' 以获得更好的性能
+2026-01-07 18:32:10 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:411 - 创建缓存目录（版本隔离）: ./cache/graph/deepseek-chat/911fb00c
+2026-01-07 18:32:10 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:421 - 🔥 生产级实体提取器已初始化
+2026-01-07 18:32:10 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:422 -    - Model: deepseek-chat
+2026-01-07 18:32:10 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:423 -    - Prompt Version: 911fb00c
+2026-01-07 18:32:10 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:424 -    - Cache Dir: ./cache/graph/deepseek-chat/911fb00c
+2026-01-07 18:32:10 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:425 -    - Max Workers: 4
+2026-01-07 18:32:10 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:426 -    - 实体类型白名单：{'地点', '条款', '当事人', '文档', '法条', '条件', '规章制度', '部门', '流程', '概念', '机构', '政策'}
+2026-01-07 18:32:10 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:427 -    - 关系类型白名单：{'属于', '适用于', '有条件', '有步骤', '依据', '需要', '关联', '包含', '负责', '发布', '提交给'}
+2026-01-07 18:32:10 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:428 -    - 最小实体频率：1
+2026-01-07 18:32:10 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:429 -    - 名称相似度阈值：0.85
+2026-01-07 18:32:10 [graphrag-server] [INFO] graphrag_agent.pipelines.ingestion.document_processor:109 - 🔍 使用 RAGChunker: chunk_size=400, overlap=80
+2026-01-07 18:32:10 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:411 - 创建缓存目录（版本隔离）: ./cache/graph/deepseek-chat/72e4c93d
+2026-01-07 18:32:10 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:421 - 🔥 生产级实体提取器已初始化
+2026-01-07 18:32:10 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:422 -    - Model: deepseek-chat
+2026-01-07 18:32:10 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:423 -    - Prompt Version: 72e4c93d
+2026-01-07 18:32:10 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:424 -    - Cache Dir: ./cache/graph/deepseek-chat/72e4c93d
+2026-01-07 18:32:10 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:425 -    - Max Workers: 4
+2026-01-07 18:32:10 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:426 -    - 实体类型白名单：{'地点', '条款', '当事人', '文档', '法条', '条件', '规章制度', '部门', '流程', '概念', '机构', '政策'}
+2026-01-07 18:32:10 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:427 -    - 关系类型白名单：{'属于', '适用于', '有条件', '有步骤', '依据', '需要', '关联', '包含', '负责', '发布', '提交给'}
+2026-01-07 18:32:10 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:428 -    - 最小实体频率：1
+2026-01-07 18:32:10 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:429 -    - 名称相似度阈值：0.85
+2026-01-07 18:32:10 [graphrag-server] [INFO] routers.admin:152 - 开始执行全量构建: 7863b9ce-383e-4ea5-9cc7-c66e3a4e7c1e
+2026-01-07 18:32:11 [graphrag-server] [INFO] graphrag_agent.graph.structure.struct_builder:137 - 创建关系耗时: 0.05秒
+2026-01-07 18:32:11 [graphrag-server] [INFO] graphrag_agent.graph.structure.struct_builder:137 - 创建关系耗时: 0.04秒
+2026-01-07 18:32:11 [graphrag-server] [INFO] graphrag_agent.graph.structure.struct_builder:137 - 创建关系耗时: 0.04秒
+2026-01-07 18:32:11 [graphrag-server] [INFO] graphrag_agent.graph.structure.struct_builder:137 - 创建关系耗时: 0.04秒
+2026-01-07 18:32:12 [graphrag-server] [INFO] routers.user_configs:57 - 收到获取配置列表请求
+2026-01-07 18:32:12 [graphrag-server] [INFO] routers.user_configs:63 - 返回 4 个配置
+2026-01-07 18:32:12 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 635df1c6-6fd6-4f3a-95b1-4158b2defdec
+2026-01-07 18:32:12 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员 - 副本
+2026-01-07 18:32:12 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 1152aba8-7904-471e-98b0-1a2b25011c7f
+2026-01-07 18:32:12 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 宝安AI调解员
+2026-01-07 18:32:12 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 54326f8d-cc92-48fb-8666-e8970bb159c5
+2026-01-07 18:32:12 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 测试
+2026-01-07 18:32:12 [graphrag-server] [INFO] routers.user_configs:82 - 收到获取配置请求: 9a4866c1-90e8-4f6d-b314-2e7f14d03801
+2026-01-07 18:32:12 [graphrag-server] [INFO] routers.user_configs:95 - 返回配置: 本科生奖学金与学生纪律管理制度
+2026-01-07 18:32:12 [graphrag-server] [INFO] routers.admin:792 - 收到列出模板请求
+2026-01-07 18:32:12 [graphrag-server] [INFO] routers.admin:798 - 返回 3 个模板
+2026-01-07 18:32:12 [graphrag-server] [INFO] routers.admin:475 - 收到图谱统计请求
+2026-01-07 18:32:12 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownRelationshipTypeWarning} {category: UNRECOGNIZED} {title: The provided relationship type is not in the database.} {description: One of the relationship types in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing relationship type is: __Relationship__)} {position: line: 1, column: 13, offset: 12} for query: 'MATCH ()-[r:`__Relationship__`]->() RETURN count(r) as count'
+2026-01-07 18:32:12 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownRelationshipTypeWarning} {category: UNRECOGNIZED} {title: The provided relationship type is not in the database.} {description: One of the relationship types in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing relationship type is: __Relationship__)} {position: line: 2, column: 13, offset: 21} for query: "\n        MATCH ()-[r:`__Relationship__`]->()\n        WHERE r.type IS NOT NULL AND r.type <> ''\n        RETURN r.type AS type, count(r) AS count\n        ORDER BY count DESC\n        "
+2026-01-07 18:32:12 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 19, offset: 18} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-07 18:32:12 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: community_id)} {position: line: 1, column: 68, offset: 67} for query: 'MATCH (n) WHERE n.community_id IS NOT NULL RETURN count(DISTINCT n.community_id) as count'
+2026-01-07 18:32:15 [graphrag-server] [INFO] graphrag_agent.graph.structure.struct_builder:137 - 创建关系耗时: 0.02秒
+2026-01-07 18:32:15 [graphrag-server] [INFO] graphrag_agent.graph.structure.struct_builder:137 - 创建关系耗时: 0.01秒
+2026-01-07 18:32:15 [graphrag-server] [INFO] graphrag_agent.graph.structure.struct_builder:137 - 创建关系耗时: 0.01秒
+2026-01-07 18:32:15 [graphrag-server] [INFO] graphrag_agent.graph.structure.struct_builder:137 - 创建关系耗时: 0.04秒
+2026-01-07 18:32:15 [graphrag-server] [INFO] graphrag_agent.graph.structure.struct_builder:137 - 创建关系耗时: 0.01秒
+2026-01-07 18:32:15 [graphrag-server] [INFO] graphrag_agent.graph.structure.struct_builder:137 - 创建关系耗时: 0.01秒
+2026-01-07 18:32:16 [graphrag-server] [INFO] graphrag_agent.graph.structure.struct_builder:137 - 创建关系耗时: 0.01秒
+2026-01-07 18:32:17 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:421 - 🔥 生产级实体提取器已初始化
+2026-01-07 18:32:17 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:422 -    - Model: deepseek-chat
+2026-01-07 18:32:17 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:423 -    - Prompt Version: 72e4c93d
+2026-01-07 18:32:17 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:424 -    - Cache Dir: ./cache/graph/deepseek-chat/72e4c93d
+2026-01-07 18:32:17 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:425 -    - Max Workers: 4
+2026-01-07 18:32:17 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:426 -    - 实体类型白名单：{'地点', '条款', '当事人', '文档', '法条', '条件', '规章制度', '部门', '流程', '概念', '机构', '政策'}
+2026-01-07 18:32:17 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:427 -    - 关系类型白名单：{'属于', '适用于', '有条件', '有步骤', '依据', '需要', '关联', '包含', '负责', '发布', '提交给'}
+2026-01-07 18:32:17 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:428 -    - 最小实体频率：1
+2026-01-07 18:32:17 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:429 -    - 名称相似度阈值：0.85
+2026-01-07 18:32:17 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:421 - 🔥 生产级实体提取器已初始化
+2026-01-07 18:32:17 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:422 -    - Model: deepseek-chat
+2026-01-07 18:32:17 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:423 -    - Prompt Version: 72e4c93d
+2026-01-07 18:32:17 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:424 -    - Cache Dir: ./cache/graph/deepseek-chat/72e4c93d
+2026-01-07 18:32:17 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:425 -    - Max Workers: 4
+2026-01-07 18:32:17 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:426 -    - 实体类型白名单：{'地点', '条款', '当事人', '文档', '法条', '条件', '规章制度', '部门', '流程', '概念', '机构', '政策'}
+2026-01-07 18:32:17 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:427 -    - 关系类型白名单：{'属于', '适用于', '有条件', '有步骤', '依据', '需要', '关联', '包含', '负责', '发布', '提交给'}
+2026-01-07 18:32:17 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:428 -    - 最小实体频率：1
+2026-01-07 18:32:17 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:429 -    - 名称相似度阈值：0.85
+2026-01-07 18:32:18 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1067 - 开始批量抽取 3 个 chunks...
+2026-01-07 18:32:18 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1067 - 开始批量抽取 6 个 chunks...
+2026-01-07 18:32:42 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：7 → 7 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:32:48 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：9 → 9 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:32:53 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：9 → 8 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:32:53 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1197 - 批量抽取完成，共 3 个 chunk，全部成功
+2026-01-07 18:32:53 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:345 - 开始处理 3 个chunks的GraphDocument
+2026-01-07 18:32:53 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:402 - 共处理 3 个chunks, 成功 1, 失败 2, 失败率 66.67%
+2026-01-07 18:32:53 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:430 - 开始批量写入 1 个文档，批次大小: 10, 总批次: 1
+2026-01-07 18:32:53 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:441 - 已写入批次 1/1 (使用事务)
+2026-01-07 18:32:53 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:467 - 开始合并 1 个唯一chunk关系
+2026-01-07 18:32:53 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:473 - 合并关系批次大小: 20, 总批次: 1
+2026-01-07 18:32:53 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:494 - 已处理合并关系批次 1/1 (使用事务)
+2026-01-07 18:32:55 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：11 → 11 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:33:00 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:421 - 🔥 生产级实体提取器已初始化
+2026-01-07 18:33:00 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:422 -    - Model: deepseek-chat
+2026-01-07 18:33:00 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:423 -    - Prompt Version: 72e4c93d
+2026-01-07 18:33:00 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:424 -    - Cache Dir: ./cache/graph/deepseek-chat/72e4c93d
+2026-01-07 18:33:00 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:425 -    - Max Workers: 4
+2026-01-07 18:33:00 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:426 -    - 实体类型白名单：{'地点', '条款', '当事人', '文档', '法条', '条件', '规章制度', '部门', '流程', '概念', '机构', '政策'}
+2026-01-07 18:33:00 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:427 -    - 关系类型白名单：{'属于', '适用于', '有条件', '有步骤', '依据', '需要', '关联', '包含', '负责', '发布', '提交给'}
+2026-01-07 18:33:00 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:428 -    - 最小实体频率：1
+2026-01-07 18:33:00 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:429 -    - 名称相似度阈值：0.85
+2026-01-07 18:33:00 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1067 - 开始批量抽取 1 个 chunks...
+2026-01-07 18:33:01 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：14 → 14 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:33:04 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：14 → 14 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:33:12 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：16 → 16 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:33:21 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：9 → 8 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:33:21 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1197 - 批量抽取完成，共 1 个 chunk，全部成功
+2026-01-07 18:33:21 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:345 - 开始处理 1 个chunks的GraphDocument
+2026-01-07 18:33:21 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:402 - 共处理 1 个chunks, 成功 1, 失败 0, 失败率 0.00%
+2026-01-07 18:33:21 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:430 - 开始批量写入 1 个文档，批次大小: 10, 总批次: 1
+2026-01-07 18:33:21 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:441 - 已写入批次 1/1 (使用事务)
+2026-01-07 18:33:21 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:467 - 开始合并 1 个唯一chunk关系
+2026-01-07 18:33:21 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:473 - 合并关系批次大小: 20, 总批次: 1
+2026-01-07 18:33:21 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:494 - 已处理合并关系批次 1/1 (使用事务)
+2026-01-07 18:33:23 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:421 - 🔥 生产级实体提取器已初始化
+2026-01-07 18:33:23 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:422 -    - Model: deepseek-chat
+2026-01-07 18:33:23 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:423 -    - Prompt Version: 72e4c93d
+2026-01-07 18:33:23 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:424 -    - Cache Dir: ./cache/graph/deepseek-chat/72e4c93d
+2026-01-07 18:33:23 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:425 -    - Max Workers: 4
+2026-01-07 18:33:23 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:426 -    - 实体类型白名单：{'地点', '条款', '当事人', '文档', '法条', '条件', '规章制度', '部门', '流程', '概念', '机构', '政策'}
+2026-01-07 18:33:23 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:427 -    - 关系类型白名单：{'属于', '适用于', '有条件', '有步骤', '依据', '需要', '关联', '包含', '负责', '发布', '提交给'}
+2026-01-07 18:33:23 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:428 -    - 最小实体频率：1
+2026-01-07 18:33:23 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:429 -    - 名称相似度阈值：0.85
+2026-01-07 18:33:23 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1067 - 开始批量抽取 6 个 chunks...
+2026-01-07 18:33:31 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：10 → 10 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:33:37 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：13 → 13 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:33:37 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1197 - 批量抽取完成，共 6 个 chunk，全部成功
+2026-01-07 18:33:37 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:345 - 开始处理 6 个chunks的GraphDocument
+2026-01-07 18:33:37 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:402 - 共处理 6 个chunks, 成功 1, 失败 5, 失败率 83.33%
+2026-01-07 18:33:37 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:430 - 开始批量写入 1 个文档，批次大小: 10, 总批次: 1
+2026-01-07 18:33:37 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:441 - 已写入批次 1/1 (使用事务)
+2026-01-07 18:33:37 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:467 - 开始合并 1 个唯一chunk关系
+2026-01-07 18:33:37 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:473 - 合并关系批次大小: 20, 总批次: 1
+2026-01-07 18:33:37 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:494 - 已处理合并关系批次 1/1 (使用事务)
+2026-01-07 18:33:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:421 - 🔥 生产级实体提取器已初始化
+2026-01-07 18:33:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:422 -    - Model: deepseek-chat
+2026-01-07 18:33:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:423 -    - Prompt Version: 72e4c93d
+2026-01-07 18:33:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:424 -    - Cache Dir: ./cache/graph/deepseek-chat/72e4c93d
+2026-01-07 18:33:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:425 -    - Max Workers: 4
+2026-01-07 18:33:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:426 -    - 实体类型白名单：{'地点', '条款', '当事人', '文档', '法条', '条件', '规章制度', '部门', '流程', '概念', '机构', '政策'}
+2026-01-07 18:33:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:427 -    - 关系类型白名单：{'属于', '适用于', '有条件', '有步骤', '依据', '需要', '关联', '包含', '负责', '发布', '提交给'}
+2026-01-07 18:33:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:428 -    - 最小实体频率：1
+2026-01-07 18:33:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:429 -    - 名称相似度阈值：0.85
+2026-01-07 18:33:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1067 - 开始批量抽取 4 个 chunks...
+2026-01-07 18:33:53 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：10 → 10 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:34:01 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：10 → 10 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:34:04 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：12 → 10 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:34:06 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：14 → 14 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:34:07 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：9 → 9 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:34:15 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：11 → 11 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:34:21 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：11 → 10 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:34:22 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：12 → 12 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:34:22 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1197 - 批量抽取完成，共 4 个 chunk，全部成功
+2026-01-07 18:34:22 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:345 - 开始处理 4 个chunks的GraphDocument
+2026-01-07 18:34:22 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:402 - 共处理 4 个chunks, 成功 1, 失败 3, 失败率 75.00%
+2026-01-07 18:34:22 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:430 - 开始批量写入 1 个文档，批次大小: 10, 总批次: 1
+2026-01-07 18:34:22 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:441 - 已写入批次 1/1 (使用事务)
+2026-01-07 18:34:22 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:467 - 开始合并 1 个唯一chunk关系
+2026-01-07 18:34:22 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:473 - 合并关系批次大小: 20, 总批次: 1
+2026-01-07 18:34:22 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:494 - 已处理合并关系批次 1/1 (使用事务)
+2026-01-07 18:34:24 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:421 - 🔥 生产级实体提取器已初始化
+2026-01-07 18:34:24 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:422 -    - Model: deepseek-chat
+2026-01-07 18:34:24 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:423 -    - Prompt Version: 72e4c93d
+2026-01-07 18:34:24 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:424 -    - Cache Dir: ./cache/graph/deepseek-chat/72e4c93d
+2026-01-07 18:34:24 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:425 -    - Max Workers: 4
+2026-01-07 18:34:24 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:426 -    - 实体类型白名单：{'地点', '条款', '当事人', '文档', '法条', '条件', '规章制度', '部门', '流程', '概念', '机构', '政策'}
+2026-01-07 18:34:24 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:427 -    - 关系类型白名单：{'属于', '适用于', '有条件', '有步骤', '依据', '需要', '关联', '包含', '负责', '发布', '提交给'}
+2026-01-07 18:34:24 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:428 -    - 最小实体频率：1
+2026-01-07 18:34:24 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:429 -    - 名称相似度阈值：0.85
+2026-01-07 18:34:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1067 - 开始批量抽取 1 个 chunks...
+2026-01-07 18:34:25 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：10 → 10 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:34:38 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：14 → 14 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:34:38 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1197 - 批量抽取完成，共 6 个 chunk，全部成功
+2026-01-07 18:34:38 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:345 - 开始处理 6 个chunks的GraphDocument
+2026-01-07 18:34:38 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:402 - 共处理 6 个chunks, 成功 1, 失败 5, 失败率 83.33%
+2026-01-07 18:34:38 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:430 - 开始批量写入 1 个文档，批次大小: 10, 总批次: 1
+2026-01-07 18:34:38 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:441 - 已写入批次 1/1 (使用事务)
+2026-01-07 18:34:38 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:467 - 开始合并 1 个唯一chunk关系
+2026-01-07 18:34:38 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:473 - 合并关系批次大小: 20, 总批次: 1
+2026-01-07 18:34:38 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:494 - 已处理合并关系批次 1/1 (使用事务)
+2026-01-07 18:34:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:421 - 🔥 生产级实体提取器已初始化
+2026-01-07 18:34:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:422 -    - Model: deepseek-chat
+2026-01-07 18:34:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:423 -    - Prompt Version: 72e4c93d
+2026-01-07 18:34:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:424 -    - Cache Dir: ./cache/graph/deepseek-chat/72e4c93d
+2026-01-07 18:34:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:425 -    - Max Workers: 4
+2026-01-07 18:34:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:426 -    - 实体类型白名单：{'地点', '条款', '当事人', '文档', '法条', '条件', '规章制度', '部门', '流程', '概念', '机构', '政策'}
+2026-01-07 18:34:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:427 -    - 关系类型白名单：{'属于', '适用于', '有条件', '有步骤', '依据', '需要', '关联', '包含', '负责', '发布', '提交给'}
+2026-01-07 18:34:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:428 -    - 最小实体频率：1
+2026-01-07 18:34:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:429 -    - 名称相似度阈值：0.85
+2026-01-07 18:34:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1067 - 开始批量抽取 4 个 chunks...
+2026-01-07 18:34:46 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：9 → 8 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:34:46 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1197 - 批量抽取完成，共 1 个 chunk，全部成功
+2026-01-07 18:34:46 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:345 - 开始处理 1 个chunks的GraphDocument
+2026-01-07 18:34:46 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:402 - 共处理 1 个chunks, 成功 1, 失败 0, 失败率 0.00%
+2026-01-07 18:34:46 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:430 - 开始批量写入 1 个文档，批次大小: 10, 总批次: 1
+2026-01-07 18:34:46 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:441 - 已写入批次 1/1 (使用事务)
+2026-01-07 18:34:46 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:467 - 开始合并 1 个唯一chunk关系
+2026-01-07 18:34:46 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:473 - 合并关系批次大小: 20, 总批次: 1
+2026-01-07 18:34:46 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:494 - 已处理合并关系批次 1/1 (使用事务)
+2026-01-07 18:34:47 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:421 - 🔥 生产级实体提取器已初始化
+2026-01-07 18:34:47 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:422 -    - Model: deepseek-chat
+2026-01-07 18:34:47 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:423 -    - Prompt Version: 72e4c93d
+2026-01-07 18:34:47 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:424 -    - Cache Dir: ./cache/graph/deepseek-chat/72e4c93d
+2026-01-07 18:34:47 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:425 -    - Max Workers: 4
+2026-01-07 18:34:47 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:426 -    - 实体类型白名单：{'地点', '条款', '当事人', '文档', '法条', '条件', '规章制度', '部门', '流程', '概念', '机构', '政策'}
+2026-01-07 18:34:47 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:427 -    - 关系类型白名单：{'属于', '适用于', '有条件', '有步骤', '依据', '需要', '关联', '包含', '负责', '发布', '提交给'}
+2026-01-07 18:34:47 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:428 -    - 最小实体频率：1
+2026-01-07 18:34:47 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:429 -    - 名称相似度阈值：0.85
+2026-01-07 18:34:47 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1067 - 开始批量抽取 15 个 chunks...
+2026-01-07 18:35:11 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：11 → 11 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:35:17 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：13 → 13 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:35:17 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：9 → 9 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:35:20 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：13 → 13 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:35:23 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：12 → 12 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:35:32 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：14 → 14 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:35:33 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：18 → 17 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:35:34 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：16 → 16 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:35:34 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1197 - 批量抽取完成，共 4 个 chunk，全部成功
+2026-01-07 18:35:34 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:345 - 开始处理 4 个chunks的GraphDocument
+2026-01-07 18:35:34 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:402 - 共处理 4 个chunks, 成功 1, 失败 3, 失败率 75.00%
+2026-01-07 18:35:34 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:430 - 开始批量写入 1 个文档，批次大小: 10, 总批次: 1
+2026-01-07 18:35:34 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:441 - 已写入批次 1/1 (使用事务)
+2026-01-07 18:35:34 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:467 - 开始合并 1 个唯一chunk关系
+2026-01-07 18:35:34 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:473 - 合并关系批次大小: 20, 总批次: 1
+2026-01-07 18:35:34 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:494 - 已处理合并关系批次 1/1 (使用事务)
+2026-01-07 18:35:36 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:421 - 🔥 生产级实体提取器已初始化
+2026-01-07 18:35:36 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:422 -    - Model: deepseek-chat
+2026-01-07 18:35:36 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:423 -    - Prompt Version: 72e4c93d
+2026-01-07 18:35:36 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:424 -    - Cache Dir: ./cache/graph/deepseek-chat/72e4c93d
+2026-01-07 18:35:36 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:425 -    - Max Workers: 4
+2026-01-07 18:35:36 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:426 -    - 实体类型白名单：{'地点', '条款', '当事人', '文档', '法条', '条件', '规章制度', '部门', '流程', '概念', '机构', '政策'}
+2026-01-07 18:35:36 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:427 -    - 关系类型白名单：{'属于', '适用于', '有条件', '有步骤', '依据', '需要', '关联', '包含', '负责', '发布', '提交给'}
+2026-01-07 18:35:36 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:428 -    - 最小实体频率：1
+2026-01-07 18:35:36 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:429 -    - 名称相似度阈值：0.85
+2026-01-07 18:35:36 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1067 - 开始批量抽取 1 个 chunks...
+2026-01-07 18:35:43 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：10 → 10 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:36:00 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：9 → 9 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:36:00 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1197 - 批量抽取完成，共 1 个 chunk，全部成功
+2026-01-07 18:36:00 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:345 - 开始处理 1 个chunks的GraphDocument
+2026-01-07 18:36:00 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:402 - 共处理 1 个chunks, 成功 1, 失败 0, 失败率 0.00%
+2026-01-07 18:36:00 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:430 - 开始批量写入 1 个文档，批次大小: 10, 总批次: 1
+2026-01-07 18:36:00 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:441 - 已写入批次 1/1 (使用事务)
+2026-01-07 18:36:00 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:467 - 开始合并 1 个唯一chunk关系
+2026-01-07 18:36:00 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:473 - 合并关系批次大小: 20, 总批次: 1
+2026-01-07 18:36:00 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:494 - 已处理合并关系批次 1/1 (使用事务)
+2026-01-07 18:36:00 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：11 → 10 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:36:02 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:421 - 🔥 生产级实体提取器已初始化
+2026-01-07 18:36:02 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:422 -    - Model: deepseek-chat
+2026-01-07 18:36:02 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:423 -    - Prompt Version: 72e4c93d
+2026-01-07 18:36:02 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:424 -    - Cache Dir: ./cache/graph/deepseek-chat/72e4c93d
+2026-01-07 18:36:02 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:425 -    - Max Workers: 4
+2026-01-07 18:36:02 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:426 -    - 实体类型白名单：{'地点', '条款', '当事人', '文档', '法条', '条件', '规章制度', '部门', '流程', '概念', '机构', '政策'}
+2026-01-07 18:36:02 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:427 -    - 关系类型白名单：{'属于', '适用于', '有条件', '有步骤', '依据', '需要', '关联', '包含', '负责', '发布', '提交给'}
+2026-01-07 18:36:02 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:428 -    - 最小实体频率：1
+2026-01-07 18:36:02 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:429 -    - 名称相似度阈值：0.85
+2026-01-07 18:36:02 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1067 - 开始批量抽取 6 个 chunks...
+2026-01-07 18:36:06 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：12 → 12 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:36:06 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：10 → 10 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:36:21 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：13 → 12 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:36:34 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：9 → 9 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:36:35 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：9 → 9 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:36:38 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：10 → 9 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:36:38 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：14 → 13 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:36:45 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：14 → 14 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:36:46 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：14 → 14 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:36:49 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：15 → 15 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:36:55 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：11 → 11 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:37:01 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：9 → 9 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:37:02 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：10 → 10 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:37:02 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1197 - 批量抽取完成，共 6 个 chunk，全部成功
+2026-01-07 18:37:02 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:345 - 开始处理 6 个chunks的GraphDocument
+2026-01-07 18:37:02 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:402 - 共处理 6 个chunks, 成功 1, 失败 5, 失败率 83.33%
+2026-01-07 18:37:02 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:430 - 开始批量写入 1 个文档，批次大小: 10, 总批次: 1
+2026-01-07 18:37:02 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:441 - 已写入批次 1/1 (使用事务)
+2026-01-07 18:37:02 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:467 - 开始合并 1 个唯一chunk关系
+2026-01-07 18:37:02 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:473 - 合并关系批次大小: 20, 总批次: 1
+2026-01-07 18:37:02 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:494 - 已处理合并关系批次 1/1 (使用事务)
+2026-01-07 18:37:03 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:421 - 🔥 生产级实体提取器已初始化
+2026-01-07 18:37:03 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:422 -    - Model: deepseek-chat
+2026-01-07 18:37:03 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:423 -    - Prompt Version: 72e4c93d
+2026-01-07 18:37:03 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:424 -    - Cache Dir: ./cache/graph/deepseek-chat/72e4c93d
+2026-01-07 18:37:03 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:425 -    - Max Workers: 4
+2026-01-07 18:37:03 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:426 -    - 实体类型白名单：{'地点', '条款', '当事人', '文档', '法条', '条件', '规章制度', '部门', '流程', '概念', '机构', '政策'}
+2026-01-07 18:37:03 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:427 -    - 关系类型白名单：{'属于', '适用于', '有条件', '有步骤', '依据', '需要', '关联', '包含', '负责', '发布', '提交给'}
+2026-01-07 18:37:03 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:428 -    - 最小实体频率：1
+2026-01-07 18:37:03 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:429 -    - 名称相似度阈值：0.85
+2026-01-07 18:37:03 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1067 - 开始批量抽取 3 个 chunks...
+2026-01-07 18:37:11 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：15 → 15 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:37:11 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1197 - 批量抽取完成，共 15 个 chunk，全部成功
+2026-01-07 18:37:11 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:345 - 开始处理 15 个chunks的GraphDocument
+2026-01-07 18:37:11 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:402 - 共处理 15 个chunks, 成功 1, 失败 14, 失败率 93.33%
+2026-01-07 18:37:11 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:430 - 开始批量写入 1 个文档，批次大小: 10, 总批次: 1
+2026-01-07 18:37:11 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:441 - 已写入批次 1/1 (使用事务)
+2026-01-07 18:37:11 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:467 - 开始合并 1 个唯一chunk关系
+2026-01-07 18:37:11 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:473 - 合并关系批次大小: 20, 总批次: 1
+2026-01-07 18:37:11 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:494 - 已处理合并关系批次 1/1 (使用事务)
+2026-01-07 18:37:38 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：10 → 10 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:37:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:253 - ✅ 实体后处理：10 → 9 个实体（Schema: 13 类型，频率阈值: 1，相似度阈值: 0.85）
+2026-01-07 18:37:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:1197 - 批量抽取完成，共 3 个 chunk，全部成功
+2026-01-07 18:37:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:345 - 开始处理 3 个chunks的GraphDocument
+2026-01-07 18:37:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:402 - 共处理 3 个chunks, 成功 1, 失败 2, 失败率 66.67%
+2026-01-07 18:37:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:430 - 开始批量写入 1 个文档，批次大小: 10, 总批次: 1
+2026-01-07 18:37:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:441 - 已写入批次 1/1 (使用事务)
+2026-01-07 18:37:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:467 - 开始合并 1 个唯一chunk关系
+2026-01-07 18:37:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:473 - 合并关系批次大小: 20, 总批次: 1
+2026-01-07 18:37:40 [graphrag-server] [INFO] graphrag_agent.graph.extraction.graph_writer:494 - 已处理合并关系批次 1/1 (使用事务)
+2026-01-07 18:37:42 [graphrag-server] [INFO] graphrag_agent.graph.core.graph_connection:131 - 已删除索引 entity_embedding_index（如果存在）
+2026-01-07 18:37:42 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.FeatureDeprecationWarning} {category: DEPRECATION} {title: This feature is deprecated and will be removed in future versions.} {description: The query used a deprecated function: `id`.} {position: line: 4, column: 20, offset: 93} for query: '\n            MATCH (e:`__Entity__`)\n            WHERE e.embedding IS NULL\n            RETURN id(e) AS neo4j_id, e.id AS entity_id\n            '
+2026-01-07 18:37:42 [graphrag-server] [INFO] graphrag_agent.graph.indexing.entity_indexer:135 - 没有找到需要处理的实体节点（可能已存在 embeddings）
+2026-01-07 18:37:42 [graphrag-server] [INFO] graphrag_agent.graph.indexing.entity_indexer:90 - ✅ Vector index created/verified: entity_embedding_index
+2026-01-07 18:37:42 [graphrag-server] [INFO] graphrag_agent.graph.indexing.entity_indexer:139 - ✅ Vector index 已就绪（无新节点需要处理）
+2026-01-07 18:37:42 [graphrag-server] [WARNING] neo4j.notifications:337 - Received notification from DBMS server: {severity: WARNING} {code: Neo.ClientNotification.Statement.UnknownPropertyKeyWarning} {category: UNRECOGNIZED} {title: The provided property key is not in the database} {description: One of the property names in your query is not available in the database, make sure you didn't misspell it or that the label is available when you run this statement in your application (the missing property name is: protected)} {position: line: 5, column: 21, offset: 129} for query: '\n        MATCH (e:`__Entity__`)\n        WHERE NOT (e)<-[:MENTIONS]-()\n          AND NOT e.manual_edit = true\n          AND NOT e.protected = true\n        RETURN e.id AS entity_id, count(e) AS count\n        '
+2026-01-07 19:12:57 [graphrag-server] [INFO] utils.semantic_cache:74 - 语义缓存已初始化: threshold=0.95, max_size=1000
+2026-01-07 19:15:49 [graphrag-server] [INFO] graphrag_agent.agents.multi_agent.orchestrator:337 - 🚀 进入 FAST 通道：Local Search（跳过 Planner）
+2026-01-07 19:15:50 [graphrag-server] [INFO] graphrag_agent.agents.multi_agent.orchestrator:337 - 🚀 进入 FAST 通道：Local Search（跳过 Planner）
+2026-01-07 19:15:50 [graphrag-server] [WARNING] main:166 - HTTP异常: 5 validation errors for PlanExecutionSignal
+plan_id
+  Field required [type=missing, input_value={'tasks': [{'task_id': 'f...ion_mode': 'sequential'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.10/v/missing
+version
+  Field required [type=missing, input_value={'tasks': [{'task_id': 'f...ion_mode': 'sequential'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.10/v/missing
+execution_sequence
+  Field required [type=missing, input_value={'tasks': [{'task_id': 'f...ion_mode': 'sequential'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.10/v/missing
+assumptions
+  Field required [type=missing, input_value={'tasks': [{'task_id': 'f...ion_mode': 'sequential'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.10/v/missing
+acceptance_criteria
+  Field required [type=missing, input_value={'tasks': [{'task_id': 'f...ion_mode': 'sequential'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.10/v/missing
+2026-01-07 19:16:15 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:421 - 🔥 生产级实体提取器已初始化
+2026-01-07 19:16:15 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:422 -    - Model: deepseek-chat
+2026-01-07 19:16:15 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:423 -    - Prompt Version: 911fb00c
+2026-01-07 19:16:15 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:424 -    - Cache Dir: ./cache/graph/deepseek-chat/911fb00c
+2026-01-07 19:16:15 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:425 -    - Max Workers: 4
+2026-01-07 19:16:15 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:426 -    - 实体类型白名单：{'地点', '条款', '当事人', '文档', '法条', '条件', '规章制度', '部门', '流程', '概念', '机构', '政策'}
+2026-01-07 19:16:15 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:427 -    - 关系类型白名单：{'属于', '适用于', '有条件', '有步骤', '依据', '需要', '关联', '包含', '负责', '发布', '提交给'}
+2026-01-07 19:16:15 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:428 -    - 最小实体频率：1
+2026-01-07 19:16:15 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:429 -    - 名称相似度阈值：0.85
+2026-01-07 19:16:17 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:421 - 🔥 生产级实体提取器已初始化
+2026-01-07 19:16:17 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:422 -    - Model: deepseek-chat
+2026-01-07 19:16:17 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:423 -    - Prompt Version: 911fb00c
+2026-01-07 19:16:17 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:424 -    - Cache Dir: ./cache/graph/deepseek-chat/911fb00c
+2026-01-07 19:16:17 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:425 -    - Max Workers: 4
+2026-01-07 19:16:17 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:426 -    - 实体类型白名单：{'地点', '条款', '当事人', '文档', '法条', '条件', '规章制度', '部门', '流程', '概念', '机构', '政策'}
+2026-01-07 19:16:17 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:427 -    - 关系类型白名单：{'属于', '适用于', '有条件', '有步骤', '依据', '需要', '关联', '包含', '负责', '发布', '提交给'}
+2026-01-07 19:16:17 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:428 -    - 最小实体频率：1
+2026-01-07 19:16:17 [graphrag-server] [INFO] graphrag_agent.graph.extraction.entity_extractor:429 -    - 名称相似度阈值：0.85
+2026-01-07 19:18:50 [graphrag-server] [INFO] main:166 - 已关闭所有 Agent 资源
+2026-01-07 19:18:50 [graphrag-server] [INFO] main:166 - 已关闭 Neo4j 连接
+2026-01-07 19:18:52 [graphrag-server] [INFO] graphrag_agent.graph.core.graph_connection:214 - Graph connection closed successfully
+2026-01-07 19:18:52 [graphrag-server] [INFO] graphrag_agent.graph.core.graph_connection:223 - Driver connection closed successfully
+2026-01-08 09:44:45 [graphrag-server] [INFO] graphrag_agent.utils.logging_config:95 - 日志系统初始化完成: level=INFO, format=text, file=logs/graphrag.log
+2026-01-08 09:44:45 [graphrag-server] [INFO] graphrag_agent.utils.logging_config:95 - 日志系统初始化完成: level=INFO, format=text, file=logs/graphrag.log
+2026-01-08 09:44:45 [graphrag-server] [INFO] main:166 - 知识图谱问答系统启动

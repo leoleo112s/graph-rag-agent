@@ -26,6 +26,7 @@ env
 # 缓存和日志
 cache/
 *.log
+logs/
 .DS_Store
 
 # 环境变量（会单独挂载）
@@ -41,6 +42,7 @@ htmlcov
 # 文档
 *.md
 docs/
+.pdf
 
 # Neo4j 数据（会用 volume）
 neo4j_data/

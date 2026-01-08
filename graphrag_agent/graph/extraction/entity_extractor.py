@@ -45,34 +45,8 @@ from graphrag_agent.graph.core import generate_hash, retry
 # 生产级配置（硬约束）
 # =========================
 
-ALLOWED_ENTITY_TYPES = {
-    "机构",  # 对应 Organization (如: 华东理工大学, 答辩委员会)
-    "部门",  # 对应 Department (如: 研究生院, 学生工作部)
-    "政策",  # 对应 Policy (如: 奖学金管理办法)
-    "规章制度",  # 对应 Regulation
-    "法条",  # 对应 Law/Article
-    "条款",  # 对应 Clause/Condition (如: 6学分, 违纪处分)
-    "文档",  # 对应 Document (如: 申请表)
-    "当事人",  # 对应 Person/Party (如: 毕业生, 学生本人)
-    "地点",  # 对应 Location (如: 中西部地区)
-    "概念",  # 对应 Concept (如: 学费代偿)
-    "流程",  # 对应 Process
-    "条件",  # 对应 Condition
-}
-
-ALLOWED_RELATION_TYPES = {
-    "包含",  # PART_OF / INCLUDES
-    "属于",  # PART_OF
-    "发布",  # ISSUED_BY
-    "负责",  # RESPONSIBLE_FOR
-    "需要",  # REQUIRES
-    "依据",  # BASED_ON
-    "适用于",  # APPLIES_TO
-    "有步骤",  # HAS_STEP
-    "有条件",  # HAS_CONDITION
-    "关联",  # RELATED_TO (兜底)
-    "提交给",  # SUBMIT_TO
-}
+ALLOWED_ENTITY_TYPES = set()
+ALLOWED_RELATION_TYPES = set()
 
 # 默认后处理参数（可通过初始化覆盖）
 DEFAULT_MIN_ENTITY_FREQUENCY = 1  # 默认最小实体频率
@@ -284,7 +258,7 @@ def post_process_relations(
     if not raw_relations or not entities:
         return []
 
-    # [新增] 1. 预处理白名单为全大写
+    # 1. 预处理白名单为全大写
     allowed_rels_upper = {r.upper() for r in allowed_relation_types}
 
     entity_names = {normalize_entity_name(e["name"]) for e in entities}
@@ -296,7 +270,7 @@ def post_process_relations(
         tgt = normalize_entity_name(r.get("target", ""))
         r_type = r.get("type", "")
 
-        # [修改] 2. 核心修改：类型转大写后对比
+        # 2. 核心修改：类型转大写后对比
         if src in entity_names and tgt in entity_names and r_type and r_type.upper() in allowed_rels_upper:
             # Key 使用大写类型以防止重复
             key = (src, tgt, r_type.upper())
@@ -309,7 +283,7 @@ def post_process_relations(
 
 
 # =========================
-# 主类（生产级重构）
+# 主类
 # =========================
 
 

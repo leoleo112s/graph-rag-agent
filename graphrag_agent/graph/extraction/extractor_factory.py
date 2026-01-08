@@ -1,6 +1,6 @@
 """
 实体提取器工厂
-支持动态配置和传统配置两种模式
+作用是灵活实例化实体 - 关系抽取器（EntityRelationExtractor），支持动态配置和传统配置两种模式
 """
 
 from typing import Optional
